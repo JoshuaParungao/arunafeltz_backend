@@ -16,7 +16,13 @@ app.set("trust proxy", env.trustProxy);
 app.use(helmet());
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || env.corsOrigins.includes(origin.replace(/\/$/, ""))) {
+    if (!origin) return callback(null, true);
+    const normalized = origin.replace(/\/$/, "");
+    if (
+      env.corsOrigins.includes("*") ||
+      env.corsOrigins.includes(normalized) ||
+      (normalized.includes("sslip.io") && env.corsOrigins.some((o) => o.includes("sslip.io")))
+    ) {
       return callback(null, true);
     }
     return callback(new AppError("Request origin is not allowed", 403, "CORS_ORIGIN_DENIED"));
