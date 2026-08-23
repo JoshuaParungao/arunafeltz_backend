@@ -80,6 +80,9 @@ const seedProduction = async () => {
     "prisma/seedServiceRules.js",
     "prisma/seedIncentiveRules.js",
     "prisma/seedInventoryRules.js",
+    "prisma/seedItemCatalog.js",
+    "prisma/seedCustomers.js",
+    "phase10-module2-seed-default-cash-boxes.js",
   ];
 
   for (const s of seeds) {
