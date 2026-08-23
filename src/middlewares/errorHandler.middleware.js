@@ -28,7 +28,7 @@ const globalErrorHandler = (error, req, res, next) => {
     error: {
       code: error.code || "INTERNAL_SERVER_ERROR",
       message:
-        error.isOperational === true
+        error.isOperational === true || (statusCode >= 400 && statusCode < 500)
           ? error.message
           : "Something went wrong. Please try again later.",
     },
