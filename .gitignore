@@ -4,6 +4,9 @@ node_modules
 !.env.example
 .DS_Store
 npm-debug.log
+*.log
 dist
 coverage
+*.backup*
+inspection-*
 /src/generated/prisma
