@@ -1,4 +1,4 @@
-﻿const prisma = require("../../../config/prisma");
+const prisma = require("../../../config/prisma");
 
 const { createAuditLog } = require("../../../utils/auditLogger");
 
@@ -659,68 +659,108 @@ const createStockIn = async (actor, payload) => {
   }
 
   return prisma.$transaction(async (tx) => {
-    const existingBatch = await tx.inventoryBatch.findUnique({
-      where: {
-        branchId_batchCode: {
-          branchId,
-          batchCode: payload.batchCode,
-        },
-      },
-    });
-
-    if (existingBatch && existingBatch.itemId !== item.id) {
-      const error = new Error("BATCH_ITEM_MISMATCH");
-      error.statusCode = 409;
-      throw error;
-    }
-
-    if (existingBatch) {
-      const error = new Error("BATCH_CODE_ALREADY_EXISTS");
-      error.statusCode = 409;
-      throw error;
-    }
-
-    const previousQuantity = 0;
-    const newQuantity = quantity;
-    const resolvedUnitCost =
+    let batch;
+    let previousQuantity = 0;
+    let newQuantity = quantity;
+    let resolvedUnitCost =
       payload.unitCost !== undefined
         ? payload.unitCost.toString()
         : item.costPrice.toString();
 
-    let batch;
+    if (payload.batchId) {
+      batch = await tx.inventoryBatch.findUnique({
+        where: {
+          id: payload.batchId,
+        },
+      });
 
-    try {
-      batch = await tx.inventoryBatch.create({
+      if (!batch || batch.branchId !== branchId) {
+        const error = new Error("BATCH_NOT_FOUND");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (batch.itemId !== item.id) {
+        const error = new Error("BATCH_ITEM_MISMATCH");
+        error.statusCode = 409;
+        throw error;
+      }
+
+      if (batch.status !== "ACTIVE") {
+        const error = new Error("BATCH_NOT_ACTIVE");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      previousQuantity = Number(batch.quantityAvailable || 0);
+      newQuantity = previousQuantity + quantity;
+      resolvedUnitCost = batch.unitCost ? batch.unitCost.toString() : resolvedUnitCost;
+
+      batch = await tx.inventoryBatch.update({
+        where: {
+          id: batch.id,
+        },
         data: {
-          branchId,
-          itemId: item.id,
-          batchCode: payload.batchCode,
-          quantityIn: quantity.toString(),
-          quantityAvailable: quantity.toString(),
-          unitCost: resolvedUnitCost,
-          operationalUnitCost: resolvedUnitCost,
-          sellingPrice1: payload.sellingPrice1 !== undefined ? payload.sellingPrice1.toString() : item.price1.toString(),
-          sellingPrice2: payload.sellingPrice2 !== undefined ? payload.sellingPrice2.toString() : item.price2.toString(),
-          sellingPrice3: payload.sellingPrice3 !== undefined ? payload.sellingPrice3.toString() : item.price3.toString(),
-          sellingPrice4: payload.sellingPrice4 !== undefined ? payload.sellingPrice4.toString() : item.price4.toString(),
-          sellingPrice5: payload.sellingPrice5 !== undefined ? payload.sellingPrice5.toString() : item.price5.toString(),
-          supplierName: payload.supplierName || null,
-          referenceNo: payload.referenceNo || null,
-          remarks: payload.remarks || null,
-          expiryDate: payload.expiryDate ? new Date(payload.expiryDate) : null,
-          status: "ACTIVE",
-          createdById: actor.id,
+          quantityIn: (Number(batch.quantityIn || 0) + quantity).toString(),
+          quantityAvailable: newQuantity.toString(),
           updatedById: actor.id,
         },
       });
-    } catch (error) {
-      if (error?.code === "P2002") {
-        const collisionError = new Error("BATCH_CODE_ALREADY_EXISTS");
-        collisionError.statusCode = 409;
-        throw collisionError;
+    } else {
+      const existingBatch = await tx.inventoryBatch.findUnique({
+        where: {
+          branchId_batchCode: {
+            branchId,
+            batchCode: payload.batchCode,
+          },
+        },
+      });
+
+      if (existingBatch && existingBatch.itemId !== item.id) {
+        const error = new Error("BATCH_ITEM_MISMATCH");
+        error.statusCode = 409;
+        throw error;
       }
 
-      throw error;
+      if (existingBatch) {
+        const error = new Error("BATCH_CODE_ALREADY_EXISTS");
+        error.statusCode = 409;
+        throw error;
+      }
+
+      try {
+        batch = await tx.inventoryBatch.create({
+          data: {
+            branchId,
+            itemId: item.id,
+            batchCode: payload.batchCode,
+            quantityIn: quantity.toString(),
+            quantityAvailable: quantity.toString(),
+            unitCost: resolvedUnitCost,
+            operationalUnitCost: resolvedUnitCost,
+            sellingPrice1: payload.sellingPrice1 !== undefined ? payload.sellingPrice1.toString() : item.price1.toString(),
+            sellingPrice2: payload.sellingPrice2 !== undefined ? payload.sellingPrice2.toString() : item.price2.toString(),
+            sellingPrice3: payload.sellingPrice3 !== undefined ? payload.sellingPrice3.toString() : item.price3.toString(),
+            sellingPrice4: payload.sellingPrice4 !== undefined ? payload.sellingPrice4.toString() : item.price4.toString(),
+            sellingPrice5: payload.sellingPrice5 !== undefined ? payload.sellingPrice5.toString() : item.price5.toString(),
+            supplierName: payload.supplierName || null,
+            referenceNo: payload.referenceNo || null,
+            remarks: payload.remarks || null,
+            expiryDate: payload.expiryDate ? new Date(payload.expiryDate) : null,
+            status: "ACTIVE",
+            createdById: actor.id,
+            updatedById: actor.id,
+          },
+        });
+      } catch (error) {
+        if (error?.code === "P2002") {
+          const collisionError = new Error("BATCH_CODE_ALREADY_EXISTS");
+          collisionError.statusCode = 409;
+          throw collisionError;
+        }
+
+        throw error;
+      }
     }
 
     const movementCode = await createMovementCode(item.branch.code, item.itemCode, "STOCKIN");

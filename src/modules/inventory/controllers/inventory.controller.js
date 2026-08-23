@@ -71,6 +71,7 @@ const handleInventoryMutationError = (error, res, next) => {
     BRANCH_ACCESS_DENIED: [403, "You cannot manage inventory for this branch."],
     ITEM_NOT_FOUND: [404, "Item not found for this branch."],
     BATCH_NOT_FOUND: [404, "Batch not found for this branch."],
+    BATCH_NOT_ACTIVE: [400, "Selected batch is not active."],
     BATCH_ITEM_MISMATCH: [409, "Batch code already belongs to another item in this branch."],
     BATCH_CODE_ALREADY_EXISTS: [409, "Batch code already exists in this branch and cannot be reused."],
     BATCH_NOT_ADJUSTABLE: [400, "Cancelled or expired batches cannot be adjusted."],
