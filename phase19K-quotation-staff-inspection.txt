@@ -1,0 +1,971 @@
+=== PHASE 19K QUOTATION STAFF INSPECTION ===
+Generated: 08/12/2026 13:01:55
+
+=== QUOTATION VALIDATION ===
+const { z } = require("zod");
+
+const optionalString = z
+  .string()
+  .trim()
+  .optional()
+  .or(z.literal(""));
+
+const positiveNumber = z.coerce
+  .number()
+  .positive("Value must be greater than zero");
+
+const nonNegativeNumber = z.coerce
+  .number()
+  .min(0, "Value cannot be negative");
+
+const quotationItemSchema = z.object({
+  itemId: z.string().trim().min(1).optional(),
+  description: z.string().trim().min(1).optional(),
+  priceTier: z.coerce.number().int().min(1).max(5),
+  quantity: positiveNumber,
+  unitPrice: nonNegativeNumber.optional(),
+  discountAmount: nonNegativeNumber.optional().default(0),
+  isPcBuildPart: z.boolean().optional().default(false),
+  remarks: optionalString,
+});
+
+const createQuotationSchema = z.object({
+  body: z.object({
+    branchId: z.string().trim().min(1).optional(),
+    customerId: z.string().trim().min(1).optional(),
+    preparedById: z.string().trim().min(1).optional(),
+    title: optionalString,
+    notes: optionalString,
+    internalNotes: optionalString,
+    isPcBuild: z.boolean().optional().default(false),
+    validUntil: z.string().datetime().optional(),
+    items: z.array(quotationItemSchema).min(1, "At least one quotation item is required"),
+  }),
+});
+
+
+const updateQuotationSchema = z.object({
+  body: z.object({
+    customerId: z.string().trim().min(1).optional().or(z.literal("")),
+    preparedById: z.string().trim().min(1).optional().or(z.literal("")),
+    title: optionalString,
+    notes: optionalString,
+    internalNotes: optionalString,
+    isPcBuild: z.boolean().optional(),
+    validUntil: z.string().datetime().optional().or(z.literal("")),
+    items: z.array(quotationItemSchema).min(1, "At least one quotation item is required").optional(),
+  }),
+});
+
+
+const updateQuotationStatusSchema = z.object({
+  body: z.object({
+    status: z.enum(["SENT", "APPROVED", "CANCELLED"]),
+    remarks: optionalString,
+  }),
+});
+
+module.exports = {
+  createQuotationSchema,
+  updateQuotationSchema,
+  updateQuotationStatusSchema,
+};
+
+
+=== QUOTATION SERVICE FIRST 360 LINES ===
+const prisma = require("../../../config/prisma");
+
+const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
+
+const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+
+const toMoney = (value) => {
+  return Math.round(Number(value) * 100) / 100;
+};
+
+const toMoneyString = (value) => {
+  return toMoney(value).toFixed(2);
+};
+
+const getItemPriceByTier = (item, tier) => {
+  const priceMap = {
+    1: item.price1,
+    2: item.price2,
+    3: item.price3,
+    4: item.price4,
+    5: item.price5,
+  };
+
+  return Number(priceMap[tier]);
+};
+
+const resolveBranchIdForCreate = (actor, requestedBranchId) => {
+  if (isSuperOwner(actor)) {
+    if (!requestedBranchId) {
+      const error = new Error("BRANCH_REQUIRED");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return requestedBranchId;
+  }
+
+  if (!actor.branchId) {
+    const error = new Error("BRANCH_REQUIRED");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (requestedBranchId && requestedBranchId !== actor.branchId) {
+    const error = new Error("BRANCH_ACCESS_DENIED");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return actor.branchId;
+};
+
+const generateQuotationCode = async (tx, branchCode, branchId) => {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const datePart = `${yyyy}${mm}${dd}`;
+  const prefix = `QT-${branchCode}-${datePart}`;
+
+  const count = await tx.quotation.count({
+    where: {
+      branchId,
+      quotationCode: {
+        startsWith: prefix,
+      },
+    },
+  });
+
+  return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+};
+
+const ensureBranchExists = async (tx, branchId) => {
+  const branch = await tx.branch.findUnique({
+    where: {
+      id: branchId,
+    },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      status: true,
+    },
+  });
+
+  if (!branch) {
+    const error = new Error("BRANCH_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (branch.status !== "ACTIVE") {
+    const error = new Error("BRANCH_INACTIVE");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return branch;
+};
+
+const ensureCustomerBelongsToBranch = async (tx, customerId, branchId) => {
+  if (!customerId) {
+    return null;
+  }
+
+  const customer = await tx.customer.findFirst({
+    where: {
+      id: customerId,
+      branchId,
+    },
+    select: {
+      id: true,
+      customerCode: true,
+      fullName: true,
+      status: true,
+    },
+  });
+
+  if (!customer) {
+    const error = new Error("CUSTOMER_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (customer.status !== "ACTIVE") {
+    const error = new Error("CUSTOMER_INACTIVE");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return customer;
+};
+
+const ensurePreparedByBelongsToBranch = async (tx, preparedById, branchId) => {
+  if (!preparedById) {
+    return null;
+  }
+
+  const preparedBy = await tx.user.findFirst({
+    where: {
+      id: preparedById,
+      branchId,
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+      username: true,
+      fullName: true,
+      role: true,
+      branchId: true,
+    },
+  });
+
+  if (!preparedBy) {
+    const error = new Error("PREPARED_BY_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return preparedBy;
+};
+
+const buildQuotationItems = async (tx, actor, branchId, items) => {
+  const quotationItems = [];
+  let subtotal = 0;
+  let totalDiscount = 0;
+
+  for (let index = 0; index < items.length; index += 1) {
+    const itemPayload = items[index];
+    const quantity = toMoney(itemPayload.quantity);
+    const discountAmount = toMoney(itemPayload.discountAmount || 0);
+
+    let item = null;
+    let unitPrice = 0;
+    let description = itemPayload.description ? String(itemPayload.description).trim() : "";
+
+    if (itemPayload.itemId) {
+      item = await tx.item.findFirst({
+        where: {
+          id: itemPayload.itemId,
+          branchId,
+          status: "ACTIVE",
+        },
+      });
+
+      if (!item) {
+        const error = new Error("ITEM_NOT_FOUND");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      unitPrice = getItemPriceByTier(item, itemPayload.priceTier);
+      description = description || item.itemName;
+
+      if (STAFF_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+        const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      if (OWNER_ADMIN_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+        unitPrice = toMoney(itemPayload.unitPrice);
+      }
+    } else {
+      if (!description) {
+        const error = new Error("DESCRIPTION_REQUIRED");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (itemPayload.unitPrice === undefined) {
+        const error = new Error("UNIT_PRICE_REQUIRED");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      unitPrice = toMoney(itemPayload.unitPrice);
+    }
+
+    const grossLineTotal = toMoney(quantity * unitPrice);
+
+    if (discountAmount > grossLineTotal) {
+      const error = new Error("DISCOUNT_EXCEEDS_LINE_TOTAL");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const lineTotal = toMoney(grossLineTotal - discountAmount);
+
+    subtotal += grossLineTotal;
+    totalDiscount += discountAmount;
+
+    quotationItems.push({
+      lineNo: index + 1,
+      description,
+      itemCodeSnapshot: item ? item.itemCode : null,
+      itemNameSnapshot: item ? item.itemName : null,
+      brandSnapshot: item ? item.brand : null,
+      modelSnapshot: item ? item.modelName : null,
+      priceTier: itemPayload.priceTier,
+      quantity: toMoneyString(quantity),
+      unitPrice: toMoneyString(unitPrice),
+      discountAmount: toMoneyString(discountAmount),
+      lineTotal: toMoneyString(lineTotal),
+      isPcBuildPart: Boolean(itemPayload.isPcBuildPart),
+      remarks: itemPayload.remarks || null,
+      itemId: item ? item.id : null,
+    });
+  }
+
+  return {
+    quotationItems,
+    subtotal: toMoney(subtotal),
+    totalDiscount: toMoney(totalDiscount),
+    grandTotal: toMoney(subtotal - totalDiscount),
+  };
+};
+
+const createQuotation = async (actor, payload) => {
+  const branchId = resolveBranchIdForCreate(actor, payload.branchId);
+
+  return prisma.$transaction(async (tx) => {
+    const branch = await ensureBranchExists(tx, branchId);
+    await ensureCustomerBelongsToBranch(tx, payload.customerId, branchId);
+
+    const preparedById = payload.preparedById || (isSuperOwner(actor) ? null : actor.id);
+    await ensurePreparedByBelongsToBranch(tx, preparedById, branchId);
+
+    const { quotationItems, subtotal, totalDiscount, grandTotal } =
+      await buildQuotationItems(tx, actor, branchId, payload.items);
+
+    const quotationCode = await generateQuotationCode(tx, branch.code, branchId);
+
+    const quotation = await tx.quotation.create({
+      data: {
+        quotationCode,
+        title: payload.title || null,
+        notes: payload.notes || null,
+        internalNotes: payload.internalNotes || null,
+        status: "DRAFT",
+        subtotal: toMoneyString(subtotal),
+        totalDiscount: toMoneyString(totalDiscount),
+        grandTotal: toMoneyString(grandTotal),
+        isPcBuild: Boolean(payload.isPcBuild),
+        validUntil: payload.validUntil ? new Date(payload.validUntil) : null,
+        branchId,
+        customerId: payload.customerId || null,
+        preparedById,
+        createdById: actor.id,
+        updatedById: actor.id,
+        items: {
+          create: quotationItems,
+        },
+      },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+        customer: {
+          select: {
+            id: true,
+            customerCode: true,
+            fullName: true,
+            mobileNumber: true,
+            email: true,
+          },
+        },
+        preparedBy: {
+          select: {
+            id: true,
+            username: true,
+            fullName: true,
+            role: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+            fullName: true,
+            role: true,
+          },
+        },
+        items: {
+          orderBy: {
+            lineNo: "asc",
+          },
+        },
+      },
+    });
+
+    return quotation;
+  });
+};
+
+
+const canViewInternalNotes = (actor) => {
+  return OWNER_ADMIN_ROLES.has(actor.role);
+};
+
+const hideInternalNotesIfNeeded = (quotation, actor) => {
+  if (!quotation) {
+    return quotation;
+  }
+
+  if (canViewInternalNotes(actor)) {
+    return quotation;
+  }
+
+  const { internalNotes, ...safeQuotation } = quotation;
+  return safeQuotation;
+};
+
+const resolveBranchFilterForRead = (actor, requestedBranchId) => {
+  if (isSuperOwner(actor)) {
+
+
+=== QUOTATION MODEL ===
+
+> prisma\schema.prisma:1469:model Quotation {
+  prisma\schema.prisma:1470:  id String @id @default(cuid())
+  prisma\schema.prisma:1471:
+  prisma\schema.prisma:1472:  quotationCode String
+  prisma\schema.prisma:1473:  title         String?
+  prisma\schema.prisma:1474:  notes         String?
+  prisma\schema.prisma:1475:  internalNotes String?
+  prisma\schema.prisma:1476:
+  prisma\schema.prisma:1477:  status QuotationStatus @default(DRAFT)
+  prisma\schema.prisma:1478:
+  prisma\schema.prisma:1479:  subtotal      Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1480:  totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1481:  grandTotal    Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1482:
+  prisma\schema.prisma:1483:  isPcBuild Boolean @default(false)
+  prisma\schema.prisma:1484:
+  prisma\schema.prisma:1485:  validUntil  DateTime?
+  prisma\schema.prisma:1486:  sentAt      DateTime?
+  prisma\schema.prisma:1487:  approvedAt  DateTime?
+  prisma\schema.prisma:1488:  convertedAt DateTime?
+  prisma\schema.prisma:1489:  cancelledAt DateTime?
+  prisma\schema.prisma:1490:
+  prisma\schema.prisma:1491:  branchId String
+  prisma\schema.prisma:1492:  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  prisma\schema.prisma:1493:
+  prisma\schema.prisma:1494:  customerId String?
+  prisma\schema.prisma:1495:  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1496:
+  prisma\schema.prisma:1497:  preparedById String?
+  prisma\schema.prisma:1498:  preparedBy   User?   @relation("QuotationPreparedBy", fields: [preparedById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1499:
+  prisma\schema.prisma:1500:  createdById String?
+  prisma\schema.prisma:1501:  createdBy   User?   @relation("QuotationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1502:
+  prisma\schema.prisma:1503:  updatedById String?
+  prisma\schema.prisma:1504:  updatedBy   User?   @relation("QuotationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1505:
+  prisma\schema.prisma:1506:  items QuotationItem[]
+  prisma\schema.prisma:1507:
+  prisma\schema.prisma:1508:  createdAt DateTime @default(now())
+  prisma\schema.prisma:1509:  updatedAt DateTime @updatedAt
+  prisma\schema.prisma:1510:  sales     Sale[]
+  prisma\schema.prisma:1511:
+  prisma\schema.prisma:1512:  @@unique([branchId, quotationCode])
+  prisma\schema.prisma:1513:  @@index([branchId])
+  prisma\schema.prisma:1514:  @@index([customerId])
+  prisma\schema.prisma:1515:  @@index([preparedById])
+  prisma\schema.prisma:1516:  @@index([createdById])
+  prisma\schema.prisma:1517:  @@index([status])
+  prisma\schema.prisma:1518:  @@index([createdAt])
+  prisma\schema.prisma:1519:}
+  prisma\schema.prisma:1520:
+> prisma\schema.prisma:1521:model QuotationItem {
+  prisma\schema.prisma:1522:  id String @id @default(cuid())
+  prisma\schema.prisma:1523:
+  prisma\schema.prisma:1524:  lineNo           Int
+  prisma\schema.prisma:1525:  description      String
+  prisma\schema.prisma:1526:  itemCodeSnapshot String?
+  prisma\schema.prisma:1527:  itemNameSnapshot String?
+  prisma\schema.prisma:1528:  brandSnapshot    String?
+  prisma\schema.prisma:1529:  modelSnapshot    String?
+  prisma\schema.prisma:1530:
+  prisma\schema.prisma:1531:  priceTier      Int
+  prisma\schema.prisma:1532:  quantity       Decimal @db.Decimal(12, 2)
+  prisma\schema.prisma:1533:  unitPrice      Decimal @db.Decimal(12, 2)
+  prisma\schema.prisma:1534:  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1535:  lineTotal      Decimal @db.Decimal(12, 2)
+  prisma\schema.prisma:1536:
+  prisma\schema.prisma:1537:  isPcBuildPart Boolean @default(false)
+  prisma\schema.prisma:1538:  remarks       String?
+  prisma\schema.prisma:1539:
+  prisma\schema.prisma:1540:  quotationId String
+  prisma\schema.prisma:1541:  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  prisma\schema.prisma:1542:
+  prisma\schema.prisma:1543:  itemId String?
+  prisma\schema.prisma:1544:  item   Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1545:
+  prisma\schema.prisma:1546:  createdAt DateTime @default(now())
+  prisma\schema.prisma:1547:  updatedAt DateTime @updatedAt
+  prisma\schema.prisma:1548:
+  prisma\schema.prisma:1549:  @@index([quotationId])
+  prisma\schema.prisma:1550:  @@index([itemId])
+  prisma\schema.prisma:1551:  @@index([priceTier])
+  prisma\schema.prisma:1552:}
+  prisma\schema.prisma:1553:
+  prisma\schema.prisma:1554:model Sale {
+  prisma\schema.prisma:1555:  id String @id @default(cuid())
+  prisma\schema.prisma:1556:
+  prisma\schema.prisma:1557:  receiptCode   String
+  prisma\schema.prisma:1558:  status        SaleStatus        @default(COMPLETED)
+  prisma\schema.prisma:1559:  paymentStatus SalePaymentStatus @default(PAID)
+  prisma\schema.prisma:1560:
+  prisma\schema.prisma:1561:  saleDate DateTime @default(now())
+  prisma\schema.prisma:1562:
+  prisma\schema.prisma:1563:  subtotal      Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1564:  totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1565:  serviceCharge Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1566:  grandTotal    Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1567:  amountPaid    Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1568:  changeAmount  Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1569:
+  prisma\schema.prisma:1570:  remarks            String?
+  prisma\schema.prisma:1571:  cancellationReason String?
+  prisma\schema.prisma:1572:  cancelledAt        DateTime?
+  prisma\schema.prisma:1573:
+  prisma\schema.prisma:1574:  branchId String
+  prisma\schema.prisma:1575:  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  prisma\schema.prisma:1576:
+  prisma\schema.prisma:1577:  customerId String?
+  prisma\schema.prisma:1578:  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1579:
+  prisma\schema.prisma:1580:  quotationId String?
+  prisma\schema.prisma:1581:  quotation   Quotation? @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1582:
+  prisma\schema.prisma:1583:  cashierId String?
+  prisma\schema.prisma:1584:  cashier   User?   @relation("SaleCashier", fields: [cashierId], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1585:
+  prisma\schema.prisma:1586:  createdById String?
+  prisma\schema.prisma:1587:  createdBy   User?   @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1588:
+  prisma\schema.prisma:1589:  updatedById String?
+  prisma\schema.prisma:1590:  updatedBy   User?   @relation("SaleUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1591:
+  prisma\schema.prisma:1592:  cancelledById String?
+  prisma\schema.prisma:1593:  cancelledBy   User?   @relation("SaleCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1594:
+  prisma\schema.prisma:1595:  items         SaleItem[]
+  prisma\schema.prisma:1596:  payments      SalePayment[]
+  prisma\schema.prisma:1597:  creditAccount CreditAccount?
+  prisma\schema.prisma:1598:
+  prisma\schema.prisma:1599:  createdAt DateTime @default(now())
+  prisma\schema.prisma:1600:  updatedAt DateTime @updatedAt
+  prisma\schema.prisma:1601:
+
+
+
+
+=== QUOTATION ITEM MODEL ===
+
+> prisma\schema.prisma:1521:model QuotationItem {
+  prisma\schema.prisma:1522:  id String @id @default(cuid())
+  prisma\schema.prisma:1523:
+  prisma\schema.prisma:1524:  lineNo           Int
+  prisma\schema.prisma:1525:  description      String
+  prisma\schema.prisma:1526:  itemCodeSnapshot String?
+  prisma\schema.prisma:1527:  itemNameSnapshot String?
+  prisma\schema.prisma:1528:  brandSnapshot    String?
+  prisma\schema.prisma:1529:  modelSnapshot    String?
+  prisma\schema.prisma:1530:
+  prisma\schema.prisma:1531:  priceTier      Int
+  prisma\schema.prisma:1532:  quantity       Decimal @db.Decimal(12, 2)
+  prisma\schema.prisma:1533:  unitPrice      Decimal @db.Decimal(12, 2)
+  prisma\schema.prisma:1534:  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1535:  lineTotal      Decimal @db.Decimal(12, 2)
+  prisma\schema.prisma:1536:
+  prisma\schema.prisma:1537:  isPcBuildPart Boolean @default(false)
+  prisma\schema.prisma:1538:  remarks       String?
+  prisma\schema.prisma:1539:
+  prisma\schema.prisma:1540:  quotationId String
+  prisma\schema.prisma:1541:  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  prisma\schema.prisma:1542:
+  prisma\schema.prisma:1543:  itemId String?
+  prisma\schema.prisma:1544:  item   Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1545:
+  prisma\schema.prisma:1546:  createdAt DateTime @default(now())
+  prisma\schema.prisma:1547:  updatedAt DateTime @updatedAt
+  prisma\schema.prisma:1548:
+  prisma\schema.prisma:1549:  @@index([quotationId])
+  prisma\schema.prisma:1550:  @@index([itemId])
+  prisma\schema.prisma:1551:  @@index([priceTier])
+  prisma\schema.prisma:1552:}
+  prisma\schema.prisma:1553:
+  prisma\schema.prisma:1554:model Sale {
+  prisma\schema.prisma:1555:  id String @id @default(cuid())
+  prisma\schema.prisma:1556:
+  prisma\schema.prisma:1557:  receiptCode   String
+  prisma\schema.prisma:1558:  status        SaleStatus        @default(COMPLETED)
+  prisma\schema.prisma:1559:  paymentStatus SalePaymentStatus @default(PAID)
+  prisma\schema.prisma:1560:
+  prisma\schema.prisma:1561:  saleDate DateTime @default(now())
+  prisma\schema.prisma:1562:
+  prisma\schema.prisma:1563:  subtotal      Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1564:  totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1565:  serviceCharge Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1566:  grandTotal    Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1567:  amountPaid    Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1568:  changeAmount  Decimal @default(0) @db.Decimal(12, 2)
+  prisma\schema.prisma:1569:
+  prisma\schema.prisma:1570:  remarks            String?
+  prisma\schema.prisma:1571:  cancellationReason String?
+  prisma\schema.prisma:1572:  cancelledAt        DateTime?
+  prisma\schema.prisma:1573:
+  prisma\schema.prisma:1574:  branchId String
+  prisma\schema.prisma:1575:  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  prisma\schema.prisma:1576:
+  prisma\schema.prisma:1577:  customerId String?
+  prisma\schema.prisma:1578:  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1579:
+  prisma\schema.prisma:1580:  quotationId String?
+  prisma\schema.prisma:1581:  quotation   Quotation? @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1582:
+  prisma\schema.prisma:1583:  cashierId String?
+  prisma\schema.prisma:1584:  cashier   User?   @relation("SaleCashier", fields: [cashierId], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1585:
+  prisma\schema.prisma:1586:  createdById String?
+  prisma\schema.prisma:1587:  createdBy   User?   @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1588:
+  prisma\schema.prisma:1589:  updatedById String?
+  prisma\schema.prisma:1590:  updatedBy   User?   @relation("SaleUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1591:
+  prisma\schema.prisma:1592:  cancelledById String?
+  prisma\schema.prisma:1593:  cancelledBy   User?   @relation("SaleCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1594:
+  prisma\schema.prisma:1595:  items         SaleItem[]
+  prisma\schema.prisma:1596:  payments      SalePayment[]
+  prisma\schema.prisma:1597:  creditAccount CreditAccount?
+  prisma\schema.prisma:1598:
+  prisma\schema.prisma:1599:  createdAt DateTime @default(now())
+  prisma\schema.prisma:1600:  updatedAt DateTime @updatedAt
+  prisma\schema.prisma:1601:
+
+
+
+
+=== USER ROUTES ===
+const express = require("express");
+
+const validate = require("../../../middlewares/validate.middleware");
+const { protect } = require("../../../middlewares/auth.middleware");
+const { requirePermission } = require("../../../middlewares/permission.middleware");
+const { PERMISSIONS } = require("../../../constants/permissions");
+const userController = require("../controllers/user.controller");
+const {
+  createUserSchema,
+  updateUserSchema,
+  userIdParamSchema,
+} = require("../validations/user.validation");
+
+const router = express.Router();
+
+router.post("/", userController.createUser);
+
+router.get(
+  "/",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_USERS),
+  userController.listUsers
+);
+
+router.get(
+  "/:id",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_USERS),
+  validate(userIdParamSchema),
+  userController.getUserById
+);
+
+router.patch(
+  "/:id",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_USERS),
+  validate(updateUserSchema),
+  userController.updateUser
+);
+
+router.patch(
+  "/:id/approve",
+  protect,
+  requirePermission(PERMISSIONS.APPROVE_USERS),
+  validate(userIdParamSchema),
+  userController.approveUser
+);
+
+router.patch(
+  "/:id/reject",
+  protect,
+  requirePermission(PERMISSIONS.APPROVE_USERS),
+  validate(userIdParamSchema),
+  userController.rejectUser
+);
+
+router.patch(
+  "/:id/disable",
+  protect,
+  requirePermission(PERMISSIONS.DISABLE_USERS),
+  validate(userIdParamSchema),
+  userController.disableUser
+);
+
+module.exports = router;
+
+
+=== USER SERVICE FIRST 220 LINES ===
+const bcrypt = require("bcryptjs");
+
+const prisma = require("../../../config/prisma");
+const AppError = require("../../../utils/appError");
+const {
+  USER_ROLES,
+  BRANCH_SCOPED_ROLES,
+} = require("../../../constants/roles");
+
+const SAFE_USER_SELECT = {
+  id: true,
+  employeeCode: true,
+  username: true,
+  email: true,
+  firstName: true,
+  middleName: true,
+  lastName: true,
+  fullName: true,
+  role: true,
+  status: true,
+  branchId: true,
+  branch: {
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      status: true,
+    },
+  },
+  approvedById: true,
+  approvedAt: true,
+  rejectedAt: true,
+  disabledAt: true,
+  lastLoginAt: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
+const buildFullName = ({ firstName, middleName, lastName }) => {
+  return [firstName, middleName, lastName]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const normalizeNullableString = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  return value;
+};
+
+const normalizeUniqueInput = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  return value.trim().toLowerCase();
+};
+
+const assertUniqueUserFields = async ({ username, email, employeeCode }, excludeUserId = null) => {
+  const orConditions = [];
+
+  if (username) {
+    orConditions.push({ username });
+  }
+
+  if (email) {
+    orConditions.push({ email });
+  }
+
+  if (employeeCode) {
+    orConditions.push({ employeeCode });
+  }
+
+  if (orConditions.length === 0) {
+    return;
+  }
+
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: orConditions,
+      NOT: excludeUserId ? { id: excludeUserId } : undefined,
+    },
+  });
+
+  if (!existingUser) {
+    return;
+  }
+
+  if (existingUser.username === username) {
+    throw new AppError("Username already exists", 409, "USERNAME_EXISTS");
+  }
+
+  if (email && existingUser.email === email) {
+    throw new AppError("Email already exists", 409, "EMAIL_EXISTS");
+  }
+
+  if (employeeCode && existingUser.employeeCode === employeeCode) {
+    throw new AppError("Employee code already exists", 409, "EMPLOYEE_CODE_EXISTS");
+  }
+};
+
+const assertSuperOwnerRule = async ({ role }, excludeUserId = null) => {
+  if (role !== USER_ROLES.SUPER_OWNER) {
+    return;
+  }
+
+  const existingSuperOwner = await prisma.user.findFirst({
+    where: {
+      role: USER_ROLES.SUPER_OWNER,
+      NOT: excludeUserId ? { id: excludeUserId } : undefined,
+    },
+  });
+
+  if (existingSuperOwner) {
+    throw new AppError("Only one Super Owner is allowed", 409, "SUPER_OWNER_EXISTS");
+  }
+};
+
+const assertBranchRule = async ({ role, branchId }) => {
+  const isBranchScoped = BRANCH_SCOPED_ROLES.includes(role);
+
+  if (role === USER_ROLES.SUPER_OWNER) {
+    return;
+  }
+
+  if (isBranchScoped && !branchId) {
+    throw new AppError("Branch is required for this role", 400, "BRANCH_REQUIRED");
+  }
+
+  if (!branchId) {
+    return;
+  }
+
+  const branch = await prisma.branch.findUnique({
+    where: { id: branchId },
+  });
+
+  if (!branch) {
+    throw new AppError("Branch not found", 404, "BRANCH_NOT_FOUND");
+  }
+
+  if (branch.status !== "ACTIVE") {
+    throw new AppError("Branch is inactive", 400, "BRANCH_INACTIVE");
+  }
+};
+
+const getUserByIdOrThrow = async (id) => {
+  const user = await prisma.user.findUnique({
+    where: { id },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404, "USER_NOT_FOUND");
+  }
+
+  return user;
+};
+
+const createUser = async (payload) => {
+  const username = normalizeUniqueInput(payload.username);
+  const email = normalizeUniqueInput(payload.email);
+  const employeeCode = normalizeNullableString(payload.employeeCode);
+  const branchId = normalizeNullableString(payload.branchId);
+  const fullName = buildFullName(payload);
+
+  await assertUniqueUserFields({
+    username,
+    email,
+    employeeCode,
+  });
+
+  await assertSuperOwnerRule({
+    role: payload.role,
+  });
+
+  await assertBranchRule({
+    role: payload.role,
+    branchId,
+  });
+
+  const passwordHash = await bcrypt.hash(payload.password, 12);
+
+  return prisma.user.create({
+    data: {
+      employeeCode,
+      username,
+      email,
+      passwordHash,
+      firstName: payload.firstName,
+      middleName: normalizeNullableString(payload.middleName),
+      lastName: payload.lastName,
+      fullName,
+      role: payload.role,
+      status: payload.status || "PENDING",
+      branchId: payload.role === USER_ROLES.SUPER_OWNER ? null : branchId,
+    },
+    select: SAFE_USER_SELECT,
+  });
+};
+
+const listUsers = async ({ status, role, branchId } = {}) => {
+  return prisma.user.findMany({
+    where: {
+      status,
+      role,
+      branchId,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    select: SAFE_USER_SELECT,
+  });
+};
+
+const getUserById = async (id) => {
+  const user = await prisma.user.findUnique({
+
+
+=== API ROUTE REGISTRATION USERS ===
+
+  src\routes\api.routes.js:4:const branchRoutes = require("../modules/branches/routes/branch.routes");
+> src\routes\api.routes.js:5:const userRoutes = require("../modules/users/routes/user.routes");
+  src\routes\api.routes.js:6:const authRoutes = require("../modules/auth/routes/auth.routes");
+  src\routes\api.routes.js:7:const settingRoutes = require("../modules/settings/routes/setting.routes");
+  src\routes\api.routes.js:8:const customerRoutes = require("../modules/customers/routes/customer.routes");
+  src\routes\api.routes.js:30:router.use("/branches", branchRoutes);
+> src\routes\api.routes.js:31:router.use("/users", userRoutes);
+  src\routes\api.routes.js:32:router.use("/settings", settingRoutes);
+  src\routes\api.routes.js:33:router.use("/customers", customerRoutes);
+  src\routes\api.routes.js:34:router.use("/suppliers", supplierRoutes);
+
+
+
+
+DONE. Output saved to: .\phase19K-quotation-staff-inspection.txt

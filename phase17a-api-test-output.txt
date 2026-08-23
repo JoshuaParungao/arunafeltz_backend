@@ -1,0 +1,1778 @@
+TEST /api/items:
+{
+    "success":  true,
+    "message":  "Items retrieved successfully",
+    "data":  {
+                 "items":  [
+                               {
+                                   "id":  "cmsexhsy90001tcucs67wujbp",
+                                   "itemCode":  "FINAL13-NORMAL-ITEM",
+                                   "itemName":  "Final 13 Normal Item",
+                                   "description":  "Temporary Phase 13 final regression item",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  false,
+                                   "hasWarranty":  false,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyr2000blwucbl5lvblx",
+                                   "category":  {
+                                                    "id":  "cms4akyr2000blwucbl5lvblx",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c5cq0001lsucsa97bh9t"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-04T17:24:59.985Z",
+                                   "updatedAt":  "2026-08-04T17:24:59.985Z"
+                               },
+                               {
+                                   "id":  "cmsexhsyc0003tcucmewjc57m",
+                                   "itemCode":  "FINAL13-SERIAL-ITEM",
+                                   "itemName":  "Final 13 Serialized Item",
+                                   "description":  "Temporary Phase 13 final regression item",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyr2000blwucbl5lvblx",
+                                   "category":  {
+                                                    "id":  "cms4akyr2000blwucbl5lvblx",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c5cq0001lsucsa97bh9t"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-04T17:24:59.988Z",
+                                   "updatedAt":  "2026-08-04T17:24:59.988Z"
+                               },
+                               {
+                                   "id":  "cms4akyss000llwucwiqc4dim",
+                                   "itemCode":  "ITEM-MAB-001",
+                                   "itemName":  "Gigabyte B550M DS3H Motherboard",
+                                   "description":  "AM4 B550 micro-ATX motherboard.",
+                                   "barcode":  null,
+                                   "brand":  "Gigabyte",
+                                   "modelName":  "B550M DS3H",
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "4300",
+                                   "price1":  "5200",
+                                   "price2":  "5050",
+                                   "price3":  "4900",
+                                   "price4":  "4700",
+                                   "price5":  "4550",
+                                   "minimumStock":  "1",
+                                   "reorderLevel":  "2",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyr7000clwucrr4brhkw",
+                                   "category":  {
+                                                    "id":  "cms4akyr7000clwucrr4brhkw",
+                                                    "categoryCode":  "CAT-MOBO",
+                                                    "name":  "Motherboard",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c5cq0001lsucsa97bh9t"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.604Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.161Z"
+                               },
+                               {
+                                   "id":  "cms4akysz000mlwucu2y8isf5",
+                                   "itemCode":  "ITEM-MAB-002",
+                                   "itemName":  "TeamGroup T-Force 16GB DDR4 RAM",
+                                   "description":  "16GB DDR4 desktop memory module.",
+                                   "barcode":  null,
+                                   "brand":  "TeamGroup",
+                                   "modelName":  "T-Force 16GB DDR4",
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "1550",
+                                   "price1":  "2100",
+                                   "price2":  "2000",
+                                   "price3":  "1950",
+                                   "price4":  "1900",
+                                   "price5":  "1850",
+                                   "minimumStock":  "2",
+                                   "reorderLevel":  "3",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyrb000dlwucs2o3mq9r",
+                                   "category":  {
+                                                    "id":  "cms4akyrb000dlwucs2o3mq9r",
+                                                    "categoryCode":  "CAT-RAM",
+                                                    "name":  "RAM / Memory",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c5cq0001lsucsa97bh9t"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.611Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.168Z"
+                               },
+                               {
+                                   "id":  "cmsg7wu6k000138uc0vecp9ch",
+                                   "itemCode":  "PHASE14F-ITEM",
+                                   "itemName":  "Phase 14F Item",
+                                   "description":  "Temporary destination item for stock transfer audit test",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  false,
+                                   "hasWarranty":  false,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyr2000blwucbl5lvblx",
+                                   "category":  {
+                                                    "id":  "cms4akyr2000blwucbl5lvblx",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c5cq0001lsucsa97bh9t"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-05T15:04:23.756Z",
+                                   "updatedAt":  "2026-08-05T15:04:23.756Z"
+                               },
+                               {
+                                   "id":  "cmsexbsfh0001pkuctpf8kxgz",
+                                   "itemCode":  "TRMOVE-13L-ITEM",
+                                   "itemName":  "13L Transfer Movement Test Item",
+                                   "description":  "Temporary MAB item for Phase 13L transfer movement",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  false,
+                                   "hasWarranty":  false,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyr2000blwucbl5lvblx",
+                                   "category":  {
+                                                    "id":  "cms4akyr2000blwucbl5lvblx",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c5cq0001lsucsa97bh9t"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-04T17:20:19.373Z",
+                                   "updatedAt":  "2026-08-04T17:20:19.373Z"
+                               },
+                               {
+                                   "id":  "cmsexf4p30001swuc5zvnlocs",
+                                   "itemCode":  "TRSERIAL-13M-ITEM",
+                                   "itemName":  "13M Serialized Transfer Test Item",
+                                   "description":  "Temporary MAB serialized item for Phase 13M",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyr2000blwucbl5lvblx",
+                                   "category":  {
+                                                    "id":  "cms4akyr2000blwucbl5lvblx",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c5cq0001lsucsa97bh9t"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-04T17:22:55.239Z",
+                                   "updatedAt":  "2026-08-04T17:22:55.239Z"
+                               },
+                               {
+                                   "id":  "cmsexhsy40000tcucj52yln1x",
+                                   "itemCode":  "FINAL13-NORMAL-ITEM",
+                                   "itemName":  "Final 13 Normal Item",
+                                   "description":  "Temporary Phase 13 final regression item",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  false,
+                                   "hasWarranty":  false,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyq50004lwucvcymfw5d",
+                                   "category":  {
+                                                    "id":  "cms4akyq50004lwucvcymfw5d",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-04T17:24:59.980Z",
+                                   "updatedAt":  "2026-08-04T17:24:59.980Z"
+                               },
+                               {
+                                   "id":  "cmsexhsya0002tcucr33de84h",
+                                   "itemCode":  "FINAL13-SERIAL-ITEM",
+                                   "itemName":  "Final 13 Serialized Item",
+                                   "description":  "Temporary Phase 13 final regression item",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyq50004lwucvcymfw5d",
+                                   "category":  {
+                                                    "id":  "cms4akyq50004lwucvcymfw5d",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-04T17:24:59.986Z",
+                                   "updatedAt":  "2026-08-04T17:24:59.986Z"
+                               },
+                               {
+                                   "id":  "cms4akys3000ilwucb1e3ebqg",
+                                   "itemCode":  "ITEM-MAIN-001",
+                                   "itemName":  "AMD Ryzen 5 5600G Processor",
+                                   "description":  "6-core desktop processor with integrated graphics.",
+                                   "barcode":  null,
+                                   "brand":  "AMD",
+                                   "modelName":  "Ryzen 5 5600G",
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "6500",
+                                   "price1":  "7500",
+                                   "price2":  "7350",
+                                   "price3":  "7200",
+                                   "price4":  "7000",
+                                   "price5":  "6800",
+                                   "minimumStock":  "1",
+                                   "reorderLevel":  "2",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyq50004lwucvcymfw5d",
+                                   "category":  {
+                                                    "id":  "cms4akyq50004lwucvcymfw5d",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.579Z",
+                                   "updatedAt":  "2026-08-03T14:30:09.463Z"
+                               },
+                               {
+                                   "id":  "cms4akyse000jlwucqcap2anx",
+                                   "itemCode":  "ITEM-MAIN-002",
+                                   "itemName":  "MSI A320M-A PRO Motherboard",
+                                   "description":  "AM4 micro-ATX motherboard.",
+                                   "barcode":  null,
+                                   "brand":  "MSI",
+                                   "modelName":  "A320M-A PRO",
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "2200",
+                                   "price1":  "2900",
+                                   "price2":  "2800",
+                                   "price3":  "2700",
+                                   "price4":  "2600",
+                                   "price5":  "2500",
+                                   "minimumStock":  "1",
+                                   "reorderLevel":  "2",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyqb0005lwuchn8btwh4",
+                                   "category":  {
+                                                    "id":  "cms4akyqb0005lwuchn8btwh4",
+                                                    "categoryCode":  "CAT-MOBO",
+                                                    "name":  "Motherboard",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.590Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.147Z"
+                               },
+                               {
+                                   "id":  "cms4akysl000klwucwvb6o6js",
+                                   "itemCode":  "ITEM-MAIN-003",
+                                   "itemName":  "Kingston NV2 500GB NVMe SSD",
+                                   "description":  "500GB NVMe solid-state drive.",
+                                   "barcode":  null,
+                                   "brand":  "Kingston",
+                                   "modelName":  "NV2 500GB",
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "1450",
+                                   "price1":  "1900",
+                                   "price2":  "1850",
+                                   "price3":  "1800",
+                                   "price4":  "1750",
+                                   "price5":  "1700",
+                                   "minimumStock":  "2",
+                                   "reorderLevel":  "3",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyqh0007lwuc6mg29rj2",
+                                   "category":  {
+                                                    "id":  "cms4akyqh0007lwuc6mg29rj2",
+                                                    "categoryCode":  "CAT-STORAGE",
+                                                    "name":  "Storage",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.597Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.154Z"
+                               },
+                               {
+                                   "id":  "cms4huti00000wkucuz7tcqrs",
+                                   "itemCode":  "ITEM-MAIN-API",
+                                   "itemName":  "API Test Processor Updated",
+                                   "description":  "Updated by mainadmin during Phase 5 Module 7 test.",
+                                   "barcode":  "API-PROCESSOR-UPDATED",
+                                   "brand":  "AMD Updated",
+                                   "modelName":  "API Ryzen Test Updated",
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "5000",
+                                   "price1":  "6100",
+                                   "price2":  "5900",
+                                   "price3":  "5800",
+                                   "price4":  "5700",
+                                   "price5":  "5650",
+                                   "minimumStock":  "2",
+                                   "reorderLevel":  "4",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyqb0005lwuchn8btwh4",
+                                   "category":  {
+                                                    "id":  "cms4akyqb0005lwuchn8btwh4",
+                                                    "categoryCode":  "CAT-MOBO",
+                                                    "name":  "Motherboard",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4bjwou0000m8ucchrl2354",
+                                   "unit":  {
+                                                "id":  "cms4bjwou0000m8ucchrl2354",
+                                                "unitCode":  "PACK",
+                                                "name":  "Pack Updated",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T10:09:31.608Z",
+                                   "updatedAt":  "2026-07-28T10:40:21.878Z"
+                               },
+                               {
+                                   "id":  "cms4hvffj0001wkuc0v3z9cjh",
+                                   "itemCode":  "ITEM-MAIN-API-001",
+                                   "itemName":  "Admin Auto Code SSD",
+                                   "description":  "Created by mainadmin with auto item code.",
+                                   "barcode":  null,
+                                   "brand":  "Kingston",
+                                   "modelName":  "Admin Auto SSD",
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "1200",
+                                   "price1":  "1700",
+                                   "price2":  "1650",
+                                   "price3":  "1550",
+                                   "price4":  "1500",
+                                   "price5":  "1425",
+                                   "minimumStock":  "2",
+                                   "reorderLevel":  "3",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyqh0007lwuc6mg29rj2",
+                                   "category":  {
+                                                    "id":  "cms4akyqh0007lwuc6mg29rj2",
+                                                    "categoryCode":  "CAT-STORAGE",
+                                                    "name":  "Storage",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T10:10:00.031Z",
+                                   "updatedAt":  "2026-07-28T10:58:59.359Z"
+                               },
+                               {
+                                   "id":  "cmsg3bn2s00016sucemsezvwp",
+                                   "itemCode":  "PHASE14D-ITEM",
+                                   "itemName":  "Phase 14D Item",
+                                   "description":  "Temporary item for PO audit test",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  false,
+                                   "hasWarranty":  false,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyq50004lwucvcymfw5d",
+                                   "category":  {
+                                                    "id":  "cms4akyq50004lwucvcymfw5d",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-05T12:55:56.308Z",
+                                   "updatedAt":  "2026-08-05T12:55:56.308Z"
+                               },
+                               {
+                                   "id":  "cmsg4hcwk0001youc2us8auqo",
+                                   "itemCode":  "PHASE14E-ITEM",
+                                   "itemName":  "Phase 14E Item",
+                                   "description":  "Temporary item for receiving audit test",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  false,
+                                   "hasWarranty":  false,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyq50004lwucvcymfw5d",
+                                   "category":  {
+                                                    "id":  "cms4akyq50004lwucvcymfw5d",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-05T13:28:22.676Z",
+                                   "updatedAt":  "2026-08-05T13:28:22.676Z"
+                               },
+                               {
+                                   "id":  "cmsg7wu6g000038uckgf2gobj",
+                                   "itemCode":  "PHASE14F-ITEM",
+                                   "itemName":  "Phase 14F Item",
+                                   "description":  "Temporary source item for stock transfer audit test",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  false,
+                                   "hasWarranty":  false,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "0",
+                                   "reorderLevel":  "0",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyq50004lwucvcymfw5d",
+                                   "category":  {
+                                                    "id":  "cms4akyq50004lwucvcymfw5d",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-05T15:04:23.752Z",
+                                   "updatedAt":  "2026-08-05T15:04:23.752Z"
+                               },
+                               {
+                                   "id":  "cmsg9zhui0000ngucm2fyax6j",
+                                   "itemCode":  "PHASE14G-LOW",
+                                   "itemName":  "Phase 14G Low Stock Item",
+                                   "description":  "Temporary low stock item for reports test",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  false,
+                                   "hasWarranty":  false,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "3",
+                                   "reorderLevel":  "10",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyq50004lwucvcymfw5d",
+                                   "category":  {
+                                                    "id":  "cms4akyq50004lwucvcymfw5d",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-05T16:02:26.970Z",
+                                   "updatedAt":  "2026-08-05T16:02:26.970Z"
+                               },
+                               {
+                                   "id":  "cmsg9zhun0001nguca6hhtpw1",
+                                   "itemCode":  "PHASE14G-NORMAL",
+                                   "itemName":  "Phase 14G Normal Stock Item",
+                                   "description":  "Temporary normal stock item for reports test",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  false,
+                                   "hasWarranty":  false,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "3",
+                                   "reorderLevel":  "10",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyq50004lwucvcymfw5d",
+                                   "category":  {
+                                                    "id":  "cms4akyq50004lwucvcymfw5d",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-05T16:02:26.975Z",
+                                   "updatedAt":  "2026-08-05T16:02:26.975Z"
+                               },
+                               {
+                                   "id":  "cmsgbqcg000009wuc8dgyp3lg",
+                                   "itemCode":  "PHASE14HC-ITEM",
+                                   "itemName":  "Phase 14H-C Warranty Item",
+                                   "description":  "Temporary warranty report item",
+                                   "barcode":  null,
+                                   "brand":  null,
+                                   "modelName":  null,
+                                   "status":  "ACTIVE",
+                                   "isSerialized":  true,
+                                   "hasWarranty":  true,
+                                   "costPrice":  "1000",
+                                   "price1":  "1200",
+                                   "price2":  "1250",
+                                   "price3":  "1300",
+                                   "price4":  "1350",
+                                   "price5":  "1400",
+                                   "minimumStock":  "1",
+                                   "reorderLevel":  "1",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "categoryId":  "cms4akyq50004lwucvcymfw5d",
+                                   "category":  {
+                                                    "id":  "cms4akyq50004lwucvcymfw5d",
+                                                    "categoryCode":  "CAT-CPU",
+                                                    "name":  "CPU / Processor",
+                                                    "status":  "ACTIVE",
+                                                    "branchId":  "cms33c05s0000lsuc3vlai19z"
+                                                },
+                                   "unitId":  "cms4akypi0000lwucn64160e9",
+                                   "unit":  {
+                                                "id":  "cms4akypi0000lwucn64160e9",
+                                                "unitCode":  "PCS",
+                                                "name":  "Pieces",
+                                                "status":  "ACTIVE"
+                                            },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-08-05T16:51:19.296Z",
+                                   "updatedAt":  "2026-08-05T16:51:19.296Z"
+                               }
+                           ],
+                 "pagination":  {
+                                    "page":  1,
+                                    "limit":  20,
+                                    "totalItems":  27,
+                                    "totalPages":  2,
+                                    "hasNextPage":  true,
+                                    "hasPreviousPage":  false
+                                }
+             }
+}
+
+TEST /api/item-categories:
+{
+    "success":  true,
+    "message":  "Item categories retrieved successfully",
+    "data":  {
+                 "items":  [
+                               {
+                                   "id":  "cms4akyro000glwuc4h2agr9z",
+                                   "categoryCode":  "CAT-ACCESSORIES",
+                                   "name":  "Accessories",
+                                   "description":  "Computer accessories.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.564Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.125Z"
+                               },
+                               {
+                                   "id":  "cms4akyr2000blwucbl5lvblx",
+                                   "categoryCode":  "CAT-CPU",
+                                   "name":  "CPU / Processor",
+                                   "description":  "Processors for desktop computer builds.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.542Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.110Z"
+                               },
+                               {
+                                   "id":  "cms4akyrk000flwucuwk3xxkj",
+                                   "categoryCode":  "CAT-GPU",
+                                   "name":  "GPU / Graphics Card",
+                                   "description":  "Graphics cards.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.560Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.122Z"
+                               },
+                               {
+                                   "id":  "cms4akyr7000clwucrr4brhkw",
+                                   "categoryCode":  "CAT-MOBO",
+                                   "name":  "Motherboard",
+                                   "description":  "Desktop motherboards.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.547Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.113Z"
+                               },
+                               {
+                                   "id":  "cms4akyrt000hlwuc6fsmiebv",
+                                   "categoryCode":  "CAT-PERIPHERALS",
+                                   "name":  "Peripherals",
+                                   "description":  "Keyboard, mouse, monitor, and other peripherals.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.569Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.128Z"
+                               },
+                               {
+                                   "id":  "cms4akyrb000dlwucs2o3mq9r",
+                                   "categoryCode":  "CAT-RAM",
+                                   "name":  "RAM / Memory",
+                                   "description":  "Memory modules.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.551Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.116Z"
+                               },
+                               {
+                                   "id":  "cms4akyrf000elwuc2qtjpbmr",
+                                   "categoryCode":  "CAT-STORAGE",
+                                   "name":  "Storage",
+                                   "description":  "SSD, NVMe, and hard drives.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c5cq0001lsucsa97bh9t",
+                                   "branch":  {
+                                                  "id":  "cms33c5cq0001lsucsa97bh9t",
+                                                  "code":  "MAB",
+                                                  "name":  "Mabalacat Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.555Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.119Z"
+                               },
+                               {
+                                   "id":  "cms4akyqu0009lwucbt39b42p",
+                                   "categoryCode":  "CAT-ACCESSORIES",
+                                   "name":  "Accessories",
+                                   "description":  "Computer accessories.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.534Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.105Z"
+                               },
+                               {
+                                   "id":  "cms4akyq50004lwucvcymfw5d",
+                                   "categoryCode":  "CAT-CPU",
+                                   "name":  "CPU / Processor",
+                                   "description":  "Processors for desktop computer builds.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.509Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.087Z"
+                               },
+                               {
+                                   "id":  "cms4akyqn0008lwuc5d7lmvw0",
+                                   "categoryCode":  "CAT-GPU",
+                                   "name":  "GPU / Graphics Card",
+                                   "description":  "Graphics cards.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.527Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.101Z"
+                               },
+                               {
+                                   "id":  "cms4b8sae0000cwucopl3727a",
+                                   "categoryCode":  "CAT-MAIN-API",
+                                   "name":  "API Test Category Updated",
+                                   "description":  "Updated by mainadmin during Phase 5 Module 3 test.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T07:04:25.910Z",
+                                   "updatedAt":  "2026-07-28T07:04:53.564Z"
+                               },
+                               {
+                                   "id":  "cms4akyqb0005lwuchn8btwh4",
+                                   "categoryCode":  "CAT-MOBO",
+                                   "name":  "Motherboard",
+                                   "description":  "Desktop motherboards.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.515Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.092Z"
+                               },
+                               {
+                                   "id":  "cms4akyqy000alwucbbjhvftp",
+                                   "categoryCode":  "CAT-PERIPHERALS",
+                                   "name":  "Peripherals",
+                                   "description":  "Keyboard, mouse, monitor, and other peripherals.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.538Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.107Z"
+                               },
+                               {
+                                   "id":  "cms4akyqe0006lwucvcii7uem",
+                                   "categoryCode":  "CAT-RAM",
+                                   "name":  "RAM / Memory",
+                                   "description":  "Memory modules.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.518Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.095Z"
+                               },
+                               {
+                                   "id":  "cms4akyqh0007lwuc6mg29rj2",
+                                   "categoryCode":  "CAT-STORAGE",
+                                   "name":  "Storage",
+                                   "description":  "SSD, NVMe, and hard drives.",
+                                   "status":  "ACTIVE",
+                                   "branchId":  "cms33c05s0000lsuc3vlai19z",
+                                   "branch":  {
+                                                  "id":  "cms33c05s0000lsuc3vlai19z",
+                                                  "code":  "MAIN",
+                                                  "name":  "San Fernando Main Branch",
+                                                  "status":  "ACTIVE"
+                                              },
+                                   "createdById":  "cms3456xh0001mouczqauoh9j",
+                                   "createdBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.521Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.098Z"
+                               }
+                           ],
+                 "pagination":  {
+                                    "page":  1,
+                                    "limit":  20,
+                                    "totalItems":  15,
+                                    "totalPages":  1,
+                                    "hasNextPage":  false,
+                                    "hasPreviousPage":  false
+                                }
+             }
+}
+
+TEST /api/units:
+{
+    "success":  true,
+    "message":  "Units retrieved successfully",
+    "data":  {
+                 "items":  [
+                               {
+                                   "id":  "cms4akypr0002lwucsq6znpgv",
+                                   "unitCode":  "BOX",
+                                   "name":  "Box",
+                                   "description":  "Unit for boxed items.",
+                                   "status":  "ACTIVE",
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.495Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.074Z"
+                               },
+                               {
+                                   "id":  "cms4akypt0003lwuce92jpyvn",
+                                   "unitCode":  "METER",
+                                   "name":  "Meter",
+                                   "description":  "Unit for cables and items measured by length.",
+                                   "status":  "ACTIVE",
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.497Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.075Z"
+                               },
+                               {
+                                   "id":  "cms4bjwou0000m8ucchrl2354",
+                                   "unitCode":  "PACK",
+                                   "name":  "Pack Updated",
+                                   "description":  "Updated by mainadmin during Phase 5 Module 4 test.",
+                                   "status":  "ACTIVE",
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms3456xh0001mouczqauoh9j",
+                                   "updatedBy":  {
+                                                     "id":  "cms3456xh0001mouczqauoh9j",
+                                                     "username":  "mainadmin",
+                                                     "fullName":  "Main Admin",
+                                                     "role":  "ADMIN"
+                                                 },
+                                   "createdAt":  "2026-07-28T07:13:04.830Z",
+                                   "updatedAt":  "2026-07-28T07:13:21.252Z"
+                               },
+                               {
+                                   "id":  "cms4akypi0000lwucn64160e9",
+                                   "unitCode":  "PCS",
+                                   "name":  "Pieces",
+                                   "description":  "Default unit for individual products.",
+                                   "status":  "ACTIVE",
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.486Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.067Z"
+                               },
+                               {
+                                   "id":  "cms4akypp0001lwuchspfaw9w",
+                                   "unitCode":  "SET",
+                                   "name":  "Set",
+                                   "description":  "Unit for bundled items or complete sets.",
+                                   "status":  "ACTIVE",
+                                   "createdById":  "cms340cj00000moucq4r3g3cx",
+                                   "createdBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "updatedById":  "cms340cj00000moucq4r3g3cx",
+                                   "updatedBy":  {
+                                                     "id":  "cms340cj00000moucq4r3g3cx",
+                                                     "username":  "superowner",
+                                                     "fullName":  "Super Owner",
+                                                     "role":  "SUPER_OWNER"
+                                                 },
+                                   "createdAt":  "2026-07-28T06:45:54.493Z",
+                                   "updatedAt":  "2026-07-28T06:47:17.072Z"
+                               }
+                           ],
+                 "pagination":  {
+                                    "page":  1,
+                                    "limit":  20,
+                                    "totalItems":  5,
+                                    "totalPages":  1,
+                                    "hasNextPage":  false,
+                                    "hasPreviousPage":  false
+                                }
+             }
+}

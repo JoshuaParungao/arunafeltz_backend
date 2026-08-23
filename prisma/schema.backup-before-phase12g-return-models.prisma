@@ -1,0 +1,1312 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum UserRole {
+  SUPER_OWNER
+  BRANCH_OWNER
+  ADMIN
+  CASHIER
+  TECHNICIAN
+  CASH_CUSTODIAN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  DISABLED
+}
+
+enum SettingCategory {
+  BUSINESS_RULE
+  OPERATION
+  DOCUMENT
+  SYSTEM_ADMIN
+}
+
+enum SettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  ARRAY
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CatalogStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum InventoryBatchStatus {
+  ACTIVE
+  DEPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum InventoryMovementType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  TRANSFER_IN
+  TRANSFER_OUT
+  SALE_OUT
+  RETURN_IN
+  WARRANTY_OUT
+  WARRANTY_RETURN
+}
+
+enum InventoryMovementSource {
+  MANUAL
+  PURCHASE
+  SALE
+  TRANSFER
+  RETURN
+  WARRANTY
+  SERVICE
+  SYSTEM
+}
+
+enum ItemSerialStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  RETURNED
+  WARRANTY
+  DAMAGED
+  LOST
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  APPROVED
+  CONVERTED
+  CANCELLED
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum SalePaymentMethod {
+  CASH
+  GCASH
+  BANK_TRANSFER
+  CARD
+  CREDIT
+  OTHER
+}
+
+enum SalePaymentStatus {
+  PAID
+  PARTIALLY_PAID
+  UNPAID
+  REFUNDED
+}
+
+enum InstallmentTerm {
+  STRAIGHT
+  MONTH_3
+  MONTH_6
+  MONTH_9
+  MONTH_12
+  MONTH_18
+  MONTH_24
+}
+
+enum CreditAccountStatus {
+  ACTIVE
+  PAID
+  CANCELLED
+  DEFAULTED
+}
+
+enum CreditCollectionStatus {
+  POSTED
+  CANCELLED
+}
+
+enum ServiceJobStatus {
+  PENDING
+  IN_PROGRESS
+  READY_FOR_RELEASE
+  COMPLETED
+  CANCELLED
+}
+
+enum ServicePaymentMethod {
+  CASH
+  GCASH
+  BANK_TRANSFER
+  CARD
+  OTHER
+}
+
+enum ServicePaymentStatus {
+  POSTED
+}
+
+
+enum WarrantyClaimStatus {
+  IN
+  CHECKING
+  SENT_TO_SUPPLIER
+  APPROVED
+  REJECTED
+  REPAIRED
+  REPLACED
+  OUT
+}
+
+model WarrantyClaim {
+  id String @id @default(cuid())
+
+  claimCode String
+  status WarrantyClaimStatus @default(IN)
+
+  issueDescription String
+  customerComplaint String?
+  diagnosis String?
+  actionTaken String?
+  supplierName String?
+  supplierReferenceNo String?
+  remarks String?
+
+  receivedAt DateTime @default(now())
+  checkingAt DateTime?
+  sentToSupplierAt DateTime?
+  approvedAt DateTime?
+  rejectedAt DateTime?
+  repairedAt DateTime?
+  replacedAt DateTime?
+  releasedAt DateTime?
+
+  branchId String
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  customerId String?
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  itemId String?
+  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  serialId String?
+  serial ItemSerial? @relation(fields: [serialId], references: [id], onDelete: SetNull)
+
+  saleId String?
+  sale Sale? @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
+  saleItemId String?
+  saleItem SaleItem? @relation(fields: [saleItemId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy User? @relation("WarrantyClaimCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy User? @relation("WarrantyClaimUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  statusUpdatedById String?
+  statusUpdatedBy User? @relation("WarrantyClaimStatusUpdatedBy", fields: [statusUpdatedById], references: [id], onDelete: SetNull)
+
+  releasedById String?
+  releasedBy User? @relation("WarrantyClaimReleasedBy", fields: [releasedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, claimCode])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([itemId])
+  @@index([serialId])
+  @@index([saleId])
+  @@index([saleItemId])
+  @@index([status])
+  @@index([receivedAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([statusUpdatedById])
+  @@index([releasedById])
+}
+
+model ServicePayment {
+  id String @id @default(cuid())
+
+  paymentCode String
+  paymentMethod ServicePaymentMethod
+  status ServicePaymentStatus @default(POSTED)
+
+  amount Decimal @db.Decimal(12, 2)
+  referenceNo String?
+  remarks String?
+  paidAt DateTime @default(now())
+
+  serviceJobId String @unique
+  serviceJob ServiceJob @relation(fields: [serviceJobId], references: [id], onDelete: Restrict)
+
+  branchId String
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  customerId String?
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  collectedById String?
+  collectedBy User? @relation("ServicePaymentCollectedBy", fields: [collectedById], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy User? @relation("ServicePaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, paymentCode])
+  @@index([serviceJobId])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([paymentMethod])
+  @@index([status])
+  @@index([paidAt])
+  @@index([collectedById])
+  @@index([createdById])
+}
+
+model ServiceJob {
+  id String @id @default(cuid())
+
+  jobCode String
+  status  ServiceJobStatus @default(PENDING)
+
+  jobTitle           String
+  deviceDescription String?
+  problemDescription String?
+  diagnosis          String?
+  serviceNotes       String?
+
+  estimatedServiceCharge Decimal @default(0) @db.Decimal(12, 2)
+  finalServiceCharge     Decimal @default(0) @db.Decimal(12, 2)
+
+  receivedAt  DateTime @default(now())
+  startedAt   DateTime?
+  readyAt     DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  cancellationReason String?
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  assignedTechnicianId String?
+  assignedTechnician   User? @relation("ServiceJobAssignedTechnician", fields: [assignedTechnicianId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User? @relation("ServiceJobCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User? @relation("ServiceJobUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  cancelledById String?
+  cancelledBy   User? @relation("ServiceJobCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, jobCode])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([assignedTechnicianId])
+  @@index([status])
+  @@index([receivedAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([cancelledById])
+  payment ServicePayment?
+}
+
+model Branch {
+  id        String       @id @default(cuid())
+  code      String       @unique
+  name      String
+  address   String?
+  contactNo String?
+  status    BranchStatus @default(ACTIVE)
+
+  users            User[]
+  auditLogs        AuditLog[]
+  businessSettings BusinessSetting[]
+  itemCategories   ItemCategory[]
+  items            Item[]
+  customers        Customer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventoryBatches   InventoryBatch[]
+  inventoryMovements InventoryMovement[]
+  itemSerials        ItemSerial[]
+  quotations         Quotation[]
+  sales              Sale[]
+  creditAccounts     CreditAccount[]
+  creditCollections  CreditCollection[]
+
+  @@index([status])
+  @@index([name])
+  cashBoxes        CashBox[]
+  cashTransactions CashTransaction[]
+  cashHandovers    CashHandover[]
+  serviceJobs ServiceJob[]
+  servicePayments ServicePayment[]
+  warrantyClaims WarrantyClaim[]
+}
+
+model User {
+  createdItemCategories ItemCategory[] @relation("ItemCategoryCreatedBy")
+  updatedItemCategories ItemCategory[] @relation("ItemCategoryUpdatedBy")
+  createdUnits          Unit[]         @relation("UnitCreatedBy")
+  updatedUnits          Unit[]         @relation("UnitUpdatedBy")
+  createdItems          Item[]         @relation("ItemCreatedBy")
+  updatedItems          Item[]         @relation("ItemUpdatedBy")
+  id                    String         @id @default(cuid())
+  employeeCode          String?        @unique
+  username              String         @unique
+  email                 String?        @unique
+  passwordHash          String
+
+  firstName  String
+  middleName String?
+  lastName   String
+  fullName   String
+
+  role   UserRole
+  status UserStatus @default(PENDING)
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  approvedById  String?
+  approvedBy    User?   @relation("UserApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedUsers User[]  @relation("UserApprovals")
+
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  disabledAt  DateTime?
+  lastLoginAt DateTime?
+
+  auditLogs        AuditLog[]        @relation("AuditActor")
+  updatedSettings  BusinessSetting[] @relation("SettingUpdatedBy")
+  createdCustomers Customer[]        @relation("CustomerCreatedBy")
+  updatedCustomers Customer[]        @relation("CustomerUpdatedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdInventoryBatches    InventoryBatch[]    @relation("InventoryBatchCreatedBy")
+  updatedInventoryBatches    InventoryBatch[]    @relation("InventoryBatchUpdatedBy")
+  createdInventoryMovements  InventoryMovement[] @relation("InventoryMovementCreatedBy")
+  updatedInventoryMovements  InventoryMovement[] @relation("InventoryMovementUpdatedBy")
+  createdItemSerials         ItemSerial[]        @relation("ItemSerialCreatedBy")
+  updatedItemSerials         ItemSerial[]        @relation("ItemSerialUpdatedBy")
+  preparedQuotations         Quotation[]         @relation("QuotationPreparedBy")
+  createdQuotations          Quotation[]         @relation("QuotationCreatedBy")
+  updatedQuotations          Quotation[]         @relation("QuotationUpdatedBy")
+  cashierSales               Sale[]              @relation("SaleCashier")
+  createdSales               Sale[]              @relation("SaleCreatedBy")
+  updatedSales               Sale[]              @relation("SaleUpdatedBy")
+  cancelledSales             Sale[]              @relation("SaleCancelledBy")
+  createdSalePayments        SalePayment[]       @relation("SalePaymentCreatedBy")
+  createdCreditAccounts      CreditAccount[]     @relation("CreditAccountCreatedBy")
+  updatedCreditAccounts      CreditAccount[]     @relation("CreditAccountUpdatedBy")
+  cancelledCreditAccounts    CreditAccount[]     @relation("CreditAccountCancelledBy")
+  collectedCreditCollections CreditCollection[]  @relation("CreditCollectionCollectedBy")
+  createdCreditCollections   CreditCollection[]  @relation("CreditCollectionCreatedBy")
+  cancelledCreditCollections CreditCollection[]  @relation("CreditCollectionCancelledBy")
+
+  @@index([role])
+  @@index([status])
+  @@index([branchId])
+  @@index([fullName])
+  @@index([role, status])
+  @@index([branchId, role])
+  @@index([branchId, status])
+  createdCashBoxes              CashBox[]          @relation("CashBoxCreatedBy")
+  updatedCashBoxes              CashBox[]          @relation("CashBoxUpdatedBy")
+  createdCashTransactions        CashTransaction[] @relation("CashTransactionCreatedBy")
+  cancelledCashTransactions      CashTransaction[] @relation("CashTransactionCancelledBy")
+  cashHandoversFrom       CashHandover[] @relation("CashHandoverFromUser")
+  cashHandoversTo         CashHandover[] @relation("CashHandoverToUser")
+  createdCashHandovers    CashHandover[] @relation("CashHandoverCreatedBy")
+  receivedCashHandovers   CashHandover[] @relation("CashHandoverReceivedBy")
+  cancelledCashHandovers  CashHandover[] @relation("CashHandoverCancelledBy")
+  assignedServiceJobs  ServiceJob[] @relation("ServiceJobAssignedTechnician")
+  createdServiceJobs   ServiceJob[] @relation("ServiceJobCreatedBy")
+  updatedServiceJobs   ServiceJob[] @relation("ServiceJobUpdatedBy")
+  cancelledServiceJobs ServiceJob[] @relation("ServiceJobCancelledBy")
+  collectedServicePayments ServicePayment[] @relation("ServicePaymentCollectedBy")
+  createdServicePayments ServicePayment[] @relation("ServicePaymentCreatedBy")
+  createdWarrantyClaims WarrantyClaim[] @relation("WarrantyClaimCreatedBy")
+  updatedWarrantyClaims WarrantyClaim[] @relation("WarrantyClaimUpdatedBy")
+  statusUpdatedWarrantyClaims WarrantyClaim[] @relation("WarrantyClaimStatusUpdatedBy")
+  releasedWarrantyClaims WarrantyClaim[] @relation("WarrantyClaimReleasedBy")
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  actorId String?
+  actor   User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  action      String
+  entityType  String
+  entityId    String?
+  description String?
+  metadata    Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([branchId])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+  @@index([branchId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model BusinessSetting {
+  id String @id @default(cuid())
+
+  scopeKey  String           @unique
+  key       String
+  category  SettingCategory
+  valueType SettingValueType
+  value     Json
+
+  label       String
+  description String?
+
+  isEditable Boolean @default(true)
+  isActive   Boolean @default(true)
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  updatedById String?
+  updatedBy   User?   @relation("SettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+  @@index([category])
+  @@index([valueType])
+  @@index([branchId])
+  @@index([isActive])
+  @@index([updatedById])
+  @@index([category, isActive])
+}
+
+model Customer {
+  id           String         @id @default(cuid())
+  customerCode String
+  fullName     String
+  mobileNumber String?
+  email        String?
+  address      String?
+  companyName  String?
+  notes        String?
+  status       CustomerStatus @default(ACTIVE)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  createdById String?
+  createdBy   User?   @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  quotations        Quotation[]
+  sales             Sale[]
+  creditAccounts    CreditAccount[]
+  creditCollections CreditCollection[]
+
+  @@unique([branchId, customerCode])
+  @@index([branchId])
+  @@index([status])
+  @@index([fullName])
+  @@index([mobileNumber])
+  @@index([email])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([branchId, status])
+  serviceJobs ServiceJob[]
+  servicePayments ServicePayment[]
+  warrantyClaims WarrantyClaim[]
+}
+
+model ItemCategory {
+  id           String        @id @default(cuid())
+  categoryCode String
+  name         String
+  description  String?
+  status       CatalogStatus @default(ACTIVE)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  createdById String?
+  createdBy   User?   @relation("ItemCategoryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("ItemCategoryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  items Item[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, categoryCode])
+  @@unique([branchId, name])
+  @@index([branchId])
+  @@index([status])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model Unit {
+  id          String        @id @default(cuid())
+  unitCode    String        @unique
+  name        String        @unique
+  description String?
+  status      CatalogStatus @default(ACTIVE)
+
+  createdById String?
+  createdBy   User?   @relation("UnitCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("UnitUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  items Item[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model Item {
+  id          String        @id @default(cuid())
+  itemCode    String
+  itemName    String
+  description String?
+  barcode     String?
+  brand       String?
+  modelName   String?
+  status      CatalogStatus @default(ACTIVE)
+
+  isSerialized Boolean @default(false)
+  hasWarranty  Boolean @default(false)
+
+  costPrice Decimal @default(0) @db.Decimal(12, 2)
+  price1    Decimal @default(0) @db.Decimal(12, 2)
+  price2    Decimal @default(0) @db.Decimal(12, 2)
+  price3    Decimal @default(0) @db.Decimal(12, 2)
+  price4    Decimal @default(0) @db.Decimal(12, 2)
+  price5    Decimal @default(0) @db.Decimal(12, 2)
+
+  minimumStock Decimal @default(0) @db.Decimal(12, 2)
+  reorderLevel Decimal @default(0) @db.Decimal(12, 2)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  categoryId String
+  category   ItemCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  createdById String?
+  createdBy   User?   @relation("ItemCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("ItemUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  inventoryBatches   InventoryBatch[]
+  inventoryMovements InventoryMovement[]
+  itemSerials        ItemSerial[]
+  quotationItems     QuotationItem[]
+  saleItems          SaleItem[]
+
+  @@unique([branchId, itemCode])
+  @@index([branchId])
+  @@index([categoryId])
+  @@index([unitId])
+  @@index([status])
+  @@index([barcode])
+  @@index([brand])
+  @@index([itemName])
+  @@index([isSerialized])
+  @@index([hasWarranty])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([branchId, status])
+  warrantyClaims WarrantyClaim[]
+}
+
+model InventoryBatch {
+  id String @id @default(cuid())
+
+  batchCode         String
+  quantityIn        Decimal @db.Decimal(12, 2)
+  quantityAvailable Decimal @default(0) @db.Decimal(12, 2)
+
+  unitCost      Decimal @default(0) @db.Decimal(12, 2)
+  sellingPrice1 Decimal @default(0) @db.Decimal(12, 2)
+  sellingPrice2 Decimal @default(0) @db.Decimal(12, 2)
+  sellingPrice3 Decimal @default(0) @db.Decimal(12, 2)
+  sellingPrice4 Decimal @default(0) @db.Decimal(12, 2)
+  sellingPrice5 Decimal @default(0) @db.Decimal(12, 2)
+
+  supplierName String?
+  referenceNo  String?
+  remarks      String?
+
+  receivedAt DateTime  @default(now())
+  expiryDate DateTime?
+
+  status InventoryBatchStatus @default(ACTIVE)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  createdById String?
+  createdBy   User?   @relation("InventoryBatchCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("InventoryBatchUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  movements InventoryMovement[]
+  serials   ItemSerial[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  saleItems SaleItem[]
+
+  @@unique([branchId, batchCode])
+  @@index([branchId])
+  @@index([itemId])
+  @@index([branchId, itemId])
+  @@index([status])
+  @@index([expiryDate])
+}
+
+model InventoryMovement {
+  id String @id @default(cuid())
+
+  movementCode String
+
+  type   InventoryMovementType
+  source InventoryMovementSource @default(MANUAL)
+
+  quantity Decimal @db.Decimal(12, 2)
+
+  previousQuantity Decimal? @db.Decimal(12, 2)
+  newQuantity      Decimal? @db.Decimal(12, 2)
+
+  unitCost    Decimal? @db.Decimal(12, 2)
+  referenceNo String?
+  remarks     String?
+
+  movementDate DateTime @default(now())
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  batchId String?
+  batch   InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  serialId String?
+  serial   ItemSerial? @relation(fields: [serialId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("InventoryMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("InventoryMovementUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, movementCode])
+  @@index([branchId])
+  @@index([itemId])
+  @@index([batchId])
+  @@index([serialId])
+  @@index([type])
+  @@index([source])
+  @@index([movementDate])
+}
+
+model ItemSerial {
+  id String @id @default(cuid())
+
+  serialNumber String
+  status       ItemSerialStatus @default(AVAILABLE)
+
+  remarks String?
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  batchId String?
+  batch   InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("ItemSerialCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("ItemSerialUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  movements InventoryMovement[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  saleItems SaleItem[]
+
+  @@unique([branchId, serialNumber])
+  @@index([branchId])
+  @@index([itemId])
+  @@index([batchId])
+  @@index([status])
+  warrantyClaims WarrantyClaim[]
+}
+
+model Quotation {
+  id String @id @default(cuid())
+
+  quotationCode String
+  title         String?
+  notes         String?
+  internalNotes String?
+
+  status QuotationStatus @default(DRAFT)
+
+  subtotal      Decimal @default(0) @db.Decimal(12, 2)
+  totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+  grandTotal    Decimal @default(0) @db.Decimal(12, 2)
+
+  isPcBuild Boolean @default(false)
+
+  validUntil  DateTime?
+  sentAt      DateTime?
+  approvedAt  DateTime?
+  convertedAt DateTime?
+  cancelledAt DateTime?
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  preparedById String?
+  preparedBy   User?   @relation("QuotationPreparedBy", fields: [preparedById], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("QuotationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("QuotationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  items QuotationItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sales     Sale[]
+
+  @@unique([branchId, quotationCode])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([preparedById])
+  @@index([createdById])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model QuotationItem {
+  id String @id @default(cuid())
+
+  lineNo           Int
+  description      String
+  itemCodeSnapshot String?
+  itemNameSnapshot String?
+  brandSnapshot    String?
+  modelSnapshot    String?
+
+  priceTier      Int
+  quantity       Decimal @db.Decimal(12, 2)
+  unitPrice      Decimal @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  lineTotal      Decimal @db.Decimal(12, 2)
+
+  isPcBuildPart Boolean @default(false)
+  remarks       String?
+
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  itemId String?
+  item   Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quotationId])
+  @@index([itemId])
+  @@index([priceTier])
+}
+
+model Sale {
+  id String @id @default(cuid())
+
+  receiptCode   String
+  status        SaleStatus        @default(COMPLETED)
+  paymentStatus SalePaymentStatus @default(PAID)
+
+  saleDate DateTime @default(now())
+
+  subtotal      Decimal @default(0) @db.Decimal(12, 2)
+  totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+  serviceCharge Decimal @default(0) @db.Decimal(12, 2)
+  grandTotal    Decimal @default(0) @db.Decimal(12, 2)
+  amountPaid    Decimal @default(0) @db.Decimal(12, 2)
+  changeAmount  Decimal @default(0) @db.Decimal(12, 2)
+
+  remarks            String?
+  cancellationReason String?
+  cancelledAt        DateTime?
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  quotationId String?
+  quotation   Quotation? @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+
+  cashierId String?
+  cashier   User?   @relation("SaleCashier", fields: [cashierId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("SaleUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  cancelledById String?
+  cancelledBy   User?   @relation("SaleCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  items         SaleItem[]
+  payments      SalePayment[]
+  creditAccount CreditAccount?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, receiptCode])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([quotationId])
+  @@index([cashierId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([saleDate])
+  warrantyClaims WarrantyClaim[]
+}
+
+model SaleItem {
+  id String @id @default(cuid())
+
+  lineNo      Int
+  description String
+
+  itemCodeSnapshot String?
+  itemNameSnapshot String?
+  brandSnapshot    String?
+  modelSnapshot    String?
+
+  priceTier      Int?
+  quantity       Decimal @db.Decimal(12, 2)
+  unitPrice      Decimal @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  lineTotal      Decimal @db.Decimal(12, 2)
+
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  itemId String?
+  item   Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  batchId String?
+  batch   InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  serialId String?
+  serial   ItemSerial? @relation(fields: [serialId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([itemId])
+  @@index([batchId])
+  @@index([serialId])
+  warrantyClaims WarrantyClaim[]
+}
+
+model SalePayment {
+  id String @id @default(cuid())
+
+  paymentMethod SalePaymentMethod
+  amount        Decimal           @db.Decimal(12, 2)
+  referenceNo   String?
+  remarks       String?
+  paidAt        DateTime          @default(now())
+
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   User?   @relation("SalePaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([paymentMethod])
+  @@index([paidAt])
+}
+
+enum CashBoxStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CashTransactionType {
+  CASH_IN
+  CASH_OUT
+  SALE_PAYMENT
+  CREDIT_COLLECTION
+  HANDOVER_OUT
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  SERVICE_PAYMENT
+}
+
+enum CashTransactionStatus {
+  POSTED
+  CANCELLED
+}
+
+enum CashTransactionSource {
+  MANUAL
+  SALE
+  CREDIT_COLLECTION
+  SYSTEM_ADJUSTMENT
+  SERVICE_JOB
+}
+
+enum CashHandoverStatus {
+  PENDING
+  RECEIVED
+  CANCELLED
+}
+
+model CashHandover {
+  id String @id @default(cuid())
+
+  handoverCode String
+  status       CashHandoverStatus @default(PENDING)
+
+  amount Decimal @db.Decimal(12, 2)
+
+  remarks            String?
+  cancellationReason String?
+
+  receivedAt  DateTime?
+  cancelledAt DateTime?
+
+  cashBoxId String
+  cashBox   CashBox @relation(fields: [cashBoxId], references: [id], onDelete: Restrict)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  fromUserId String?
+  fromUser   User? @relation("CashHandoverFromUser", fields: [fromUserId], references: [id], onDelete: SetNull)
+
+  toUserId String?
+  toUser   User? @relation("CashHandoverToUser", fields: [toUserId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User? @relation("CashHandoverCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  receivedById String?
+  receivedBy   User? @relation("CashHandoverReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+
+  cancelledById String?
+  cancelledBy   User? @relation("CashHandoverCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, handoverCode])
+  @@index([cashBoxId])
+  @@index([branchId])
+  @@index([status])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([createdById])
+  @@index([receivedById])
+  @@index([cancelledById])
+}
+
+model CashBox {
+  id String @id @default(cuid())
+
+  boxCode String
+  name    String
+  status  CashBoxStatus @default(ACTIVE)
+
+  currentBalance Decimal @default(0) @db.Decimal(12, 2)
+  remarks        String?
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  createdById String?
+  createdBy   User? @relation("CashBoxCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User? @relation("CashBoxUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  transactions CashTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, boxCode])
+  @@index([branchId])
+  @@index([status])
+  @@index([createdById])
+  @@index([updatedById])
+  cashHandovers CashHandover[]
+}
+
+model CashTransaction {
+  id String @id @default(cuid())
+
+  transactionCode String
+  type            CashTransactionType
+  status          CashTransactionStatus @default(POSTED)
+  source          CashTransactionSource @default(MANUAL)
+
+  amount        Decimal @db.Decimal(12, 2)
+  balanceBefore Decimal @db.Decimal(12, 2)
+  balanceAfter  Decimal @db.Decimal(12, 2)
+
+  description String
+  referenceNo String?
+  sourceId    String?
+  sourceCode  String?
+
+  transactionDate DateTime @default(now())
+
+  cancelledAt        DateTime?
+  cancellationReason String?
+
+  cashBoxId String
+  cashBox   CashBox @relation(fields: [cashBoxId], references: [id], onDelete: Restrict)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  createdById String?
+  createdBy   User? @relation("CashTransactionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  cancelledById String?
+  cancelledBy   User? @relation("CashTransactionCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, transactionCode])
+  @@index([cashBoxId])
+  @@index([branchId])
+  @@index([type])
+  @@index([status])
+  @@index([source])
+  @@index([transactionDate])
+  @@index([createdById])
+  @@index([cancelledById])
+}
+
+model CreditAccount {
+  id String @id @default(cuid())
+
+  creditCode String
+  status     CreditAccountStatus @default(ACTIVE)
+
+  term      InstallmentTerm
+  termBasis Decimal         @db.Decimal(8, 4)
+
+  cashPromoTotalAmount    Decimal @db.Decimal(12, 2)
+  regularPriceTotalAmount Decimal @db.Decimal(12, 2)
+  downpaymentAmount       Decimal @default(0) @db.Decimal(12, 2)
+
+  balanceAmount    Decimal  @db.Decimal(12, 2)
+  monthlyDueAmount Decimal? @db.Decimal(12, 2)
+  totalCollected   Decimal  @default(0) @db.Decimal(12, 2)
+  remainingBalance Decimal  @db.Decimal(12, 2)
+
+  dueDay       Int?
+  firstDueDate DateTime?
+  nextDueDate  DateTime?
+
+  paidAt             DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  remarks            String?
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  saleId String? @unique
+  sale   Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("CreditAccountCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("CreditAccountUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  cancelledById String?
+  cancelledBy   User?   @relation("CreditAccountCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  collections CreditCollection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, creditCode])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([saleId])
+  @@index([status])
+  @@index([term])
+  @@index([nextDueDate])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([cancelledById])
+}
+
+model CreditCollection {
+  id String @id @default(cuid())
+
+  collectionCode String
+  status         CreditCollectionStatus @default(POSTED)
+
+  amount          Decimal @db.Decimal(12, 2)
+  previousBalance Decimal @db.Decimal(12, 2)
+  newBalance      Decimal @db.Decimal(12, 2)
+
+  paymentMethod SalePaymentMethod @default(CASH)
+  referenceNo   String?
+  remarks       String?
+  paidAt        DateTime          @default(now())
+
+  cancelledAt        DateTime?
+  cancellationReason String?
+
+  creditAccountId String
+  creditAccount   CreditAccount @relation(fields: [creditAccountId], references: [id], onDelete: Restrict)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  collectedById String?
+  collectedBy   User?   @relation("CreditCollectionCollectedBy", fields: [collectedById], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("CreditCollectionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  cancelledById String?
+  cancelledBy   User?   @relation("CreditCollectionCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, collectionCode])
+  @@index([creditAccountId])
+  @@index([branchId])
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([paidAt])
+  @@index([collectedById])
+  @@index([createdById])
+  @@index([cancelledById])
+}

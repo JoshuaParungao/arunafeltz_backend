@@ -1,0 +1,47 @@
+const express = require("express");
+
+const healthRoutes = require("../modules/health/routes/health.routes");
+const branchRoutes = require("../modules/branches/routes/branch.routes");
+const userRoutes = require("../modules/users/routes/user.routes");
+const authRoutes = require("../modules/auth/routes/auth.routes");
+const settingRoutes = require("../modules/settings/routes/setting.routes");
+const customerRoutes = require("../modules/customers/routes/customer.routes");
+const supplierRoutes = require("../modules/suppliers/routes/supplier.routes");
+const purchaseOrderRoutes = require("../modules/purchase-orders/routes/purchaseOrder.routes");
+const purchaseReceivingRoutes = require("../modules/purchase-receivings/routes/purchaseReceiving.routes");
+const stockTransferRoutes = require("../modules/stock-transfers/routes/stockTransfer.routes");
+const itemCategoryRoutes = require("../modules/item-categories/routes/itemCategory.routes");
+const unitRoutes = require("../modules/units/routes/unit.routes");
+const itemRoutes = require("../modules/items/routes/item.routes");
+const inventoryRoutes = require("../modules/inventory/routes/inventory.routes");
+const quotationRoutes = require("../modules/quotations/routes/quotation.routes");
+const saleRoutes = require("../modules/sales/routes/sale.routes");
+const creditAccountRoutes = require("../modules/credit-accounts/routes/creditAccount.routes");
+const cashBoxRoutes = require("../modules/cash-boxes/routes/cashBox.routes");
+const serviceJobRoutes = require("../modules/service-jobs/routes/serviceJob.routes");
+const warrantyClaimRoutes = require("../modules/warranty-claims/routes/warrantyClaim.routes");
+
+const router = express.Router();
+
+router.use("/health", healthRoutes);
+router.use("/auth", authRoutes);
+router.use("/branches", branchRoutes);
+router.use("/users", userRoutes);
+router.use("/settings", settingRoutes);
+router.use("/customers", customerRoutes);
+router.use("/suppliers", supplierRoutes);
+router.use("/purchase-orders", purchaseOrderRoutes);
+router.use("/purchase-receivings", purchaseReceivingRoutes);
+router.use("/stock-transfers", stockTransferRoutes);
+router.use("/item-categories", itemCategoryRoutes);
+router.use("/units", unitRoutes);
+router.use("/items", itemRoutes);
+router.use("/inventory", inventoryRoutes);
+router.use("/quotations", quotationRoutes);
+router.use("/sales", saleRoutes);
+router.use("/credit-accounts", creditAccountRoutes);
+router.use("/cash-boxes", cashBoxRoutes);
+router.use("/service-jobs", serviceJobRoutes);
+router.use("/warranty-claims", warrantyClaimRoutes);
+
+module.exports = router;

@@ -1,0 +1,1704 @@
+﻿PHASE 16G - INCENTIVE LOGIC INSPECTION
+Generated: 08/07/2026 19:10:57
+
+============================================================
+FILE: .\src\modules\incentives\services\incentive.service.js
+============================================================
+FILE NOT FOUND
+
+============================================================
+FILE: .\src\modules\incentives\controllers\incentive.controller.js
+============================================================
+FILE NOT FOUND
+
+============================================================
+FILE: .\src\modules\incentives\routes\incentive.routes.js
+============================================================
+FILE NOT FOUND
+
+============================================================
+FILE: .\src\modules\incentives\validations\incentive.validation.js
+============================================================
+FILE NOT FOUND
+
+============================================================
+FILE: .\src\modules\sales\services\sale.service.js
+============================================================
+
+  src\modules\sales\services\sale.service.js:3:const cashLinkService = require("../../cash-boxes/services/cashLink.service");
+  src\modules\sales\services\sale.service.js:4:
+  src\modules\sales\services\sale.service.js:5:const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+> src\modules\sales\services\sale.service.js:6:const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
+  src\modules\sales\services\sale.service.js:7:
+  src\modules\sales\services\sale.service.js:8:const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+  src\modules\sales\services\sale.service.js:9:
+  src\modules\sales\services\sale.service.js:10:const toMoney = (value) => {
+  src\modules\sales\services\sale.service.js:11:  return Math.round(Number(value) * 100) / 100;
+  src\modules\sales\services\sale.service.js:25:  MONTH_24: 24,
+  src\modules\sales\services\sale.service.js:26:};
+  src\modules\sales\services\sale.service.js:27:
+> src\modules\sales\services\sale.service.js:28:const getItemPriceByTier = (item, tier) => {
+  src\modules\sales\services\sale.service.js:29:  const priceMap = {
+> src\modules\sales\services\sale.service.js:30:    1: item.price1,
+> src\modules\sales\services\sale.service.js:31:    2: item.price2,
+> src\modules\sales\services\sale.service.js:32:    3: item.price3,
+> src\modules\sales\services\sale.service.js:33:    4: item.price4,
+> src\modules\sales\services\sale.service.js:34:    5: item.price5,
+  src\modules\sales\services\sale.service.js:35:  };
+  src\modules\sales\services\sale.service.js:36:
+  src\modules\sales\services\sale.service.js:37:  return Number(priceMap[tier]);
+  src\modules\sales\services\sale.service.js:38:};
+  src\modules\sales\services\sale.service.js:39:
+> src\modules\sales\services\sale.service.js:40:const resolveBranchIdForCreate = (actor, requestedBranchId) => {
+  src\modules\sales\services\sale.service.js:41:  if (isSuperOwner(actor)) {
+  src\modules\sales\services\sale.service.js:42:    if (!requestedBranchId) {
+  src\modules\sales\services\sale.service.js:43:      const error = new Error("BRANCH_REQUIRED");
+> src\modules\sales\services\sale.service.js:44:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:45:      throw error;
+  src\modules\sales\services\sale.service.js:46:    }
+  src\modules\sales\services\sale.service.js:47:
+  src\modules\sales\services\sale.service.js:48:    return requestedBranchId;
+  src\modules\sales\services\sale.service.js:49:  }
+  src\modules\sales\services\sale.service.js:50:
+  src\modules\sales\services\sale.service.js:51:  if (!actor.branchId) {
+  src\modules\sales\services\sale.service.js:52:    const error = new Error("BRANCH_REQUIRED");
+> src\modules\sales\services\sale.service.js:53:    error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:54:    throw error;
+  src\modules\sales\services\sale.service.js:55:  }
+  src\modules\sales\services\sale.service.js:56:
+  src\modules\sales\services\sale.service.js:57:  if (requestedBranchId && requestedBranchId !== actor.branchId) {
+  src\modules\sales\services\sale.service.js:58:    const error = new Error("BRANCH_ACCESS_DENIED");
+> src\modules\sales\services\sale.service.js:59:    error.statusCode = 403;
+  src\modules\sales\services\sale.service.js:60:    throw error;
+  src\modules\sales\services\sale.service.js:61:  }
+  src\modules\sales\services\sale.service.js:62:
+  src\modules\sales\services\sale.service.js:63:  return actor.branchId;
+  src\modules\sales\services\sale.service.js:64:};
+  src\modules\sales\services\sale.service.js:72:      id: true,
+  src\modules\sales\services\sale.service.js:73:      code: true,
+  src\modules\sales\services\sale.service.js:74:      name: true,
+> src\modules\sales\services\sale.service.js:75:      status: true,
+  src\modules\sales\services\sale.service.js:76:    },
+  src\modules\sales\services\sale.service.js:77:  });
+  src\modules\sales\services\sale.service.js:78:
+  src\modules\sales\services\sale.service.js:79:  if (!branch) {
+  src\modules\sales\services\sale.service.js:80:    const error = new Error("BRANCH_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:81:    error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:82:    throw error;
+  src\modules\sales\services\sale.service.js:83:  }
+  src\modules\sales\services\sale.service.js:84:
+> src\modules\sales\services\sale.service.js:85:  if (branch.status !== "ACTIVE") {
+  src\modules\sales\services\sale.service.js:86:    const error = new Error("BRANCH_INACTIVE");
+> src\modules\sales\services\sale.service.js:87:    error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:88:    throw error;
+  src\modules\sales\services\sale.service.js:89:  }
+  src\modules\sales\services\sale.service.js:90:
+  src\modules\sales\services\sale.service.js:91:  return branch;
+  src\modules\sales\services\sale.service.js:92:};
+  src\modules\sales\services\sale.service.js:105:      id: true,
+  src\modules\sales\services\sale.service.js:106:      customerCode: true,
+  src\modules\sales\services\sale.service.js:107:      fullName: true,
+> src\modules\sales\services\sale.service.js:108:      status: true,
+  src\modules\sales\services\sale.service.js:109:    },
+  src\modules\sales\services\sale.service.js:110:  });
+  src\modules\sales\services\sale.service.js:111:
+  src\modules\sales\services\sale.service.js:112:  if (!customer) {
+  src\modules\sales\services\sale.service.js:113:    const error = new Error("CUSTOMER_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:114:    error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:115:    throw error;
+  src\modules\sales\services\sale.service.js:116:  }
+  src\modules\sales\services\sale.service.js:117:
+> src\modules\sales\services\sale.service.js:118:  if (customer.status !== "ACTIVE") {
+  src\modules\sales\services\sale.service.js:119:    const error = new Error("CUSTOMER_INACTIVE");
+> src\modules\sales\services\sale.service.js:120:    error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:121:    throw error;
+  src\modules\sales\services\sale.service.js:122:  }
+  src\modules\sales\services\sale.service.js:123:
+  src\modules\sales\services\sale.service.js:124:  return customer;
+  src\modules\sales\services\sale.service.js:125:};
+  src\modules\sales\services\sale.service.js:137:    select: {
+  src\modules\sales\services\sale.service.js:138:      id: true,
+  src\modules\sales\services\sale.service.js:139:      quotationCode: true,
+> src\modules\sales\services\sale.service.js:140:      status: true,
+  src\modules\sales\services\sale.service.js:141:      branchId: true,
+  src\modules\sales\services\sale.service.js:142:    },
+  src\modules\sales\services\sale.service.js:143:  });
+  src\modules\sales\services\sale.service.js:144:
+  src\modules\sales\services\sale.service.js:145:  if (!quotation) {
+  src\modules\sales\services\sale.service.js:146:    const error = new Error("QUOTATION_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:147:    error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:148:    throw error;
+  src\modules\sales\services\sale.service.js:149:  }
+  src\modules\sales\services\sale.service.js:150:
+> src\modules\sales\services\sale.service.js:151:  if (quotation.status === "CONVERTED") {
+  src\modules\sales\services\sale.service.js:152:    const error = new Error("QUOTATION_ALREADY_CONVERTED");
+> src\modules\sales\services\sale.service.js:153:    error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:154:    throw error;
+  src\modules\sales\services\sale.service.js:155:  }
+  src\modules\sales\services\sale.service.js:156:
+> src\modules\sales\services\sale.service.js:157:  if (quotation.status !== "APPROVED") {
+> src\modules\sales\services\sale.service.js:158:    const error = new Error("QUOTATION_NOT_APPROVED");
+> src\modules\sales\services\sale.service.js:159:    error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:160:    throw error;
+  src\modules\sales\services\sale.service.js:161:  }
+  src\modules\sales\services\sale.service.js:162:
+  src\modules\sales\services\sale.service.js:163:  return quotation;
+  src\modules\sales\services\sale.service.js:164:};
+  src\modules\sales\services\sale.service.js:165:
+> src\modules\sales\services\sale.service.js:166:const generateReceiptCode = async (tx, branchCode, branchId) => {
+  src\modules\sales\services\sale.service.js:167:  const now = new Date();
+  src\modules\sales\services\sale.service.js:168:  const yyyy = now.getFullYear();
+  src\modules\sales\services\sale.service.js:169:  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  src\modules\sales\services\sale.service.js:170:  const dd = String(now.getDate()).padStart(2, "0");
+  src\modules\sales\services\sale.service.js:171:  const datePart = `${yyyy}${mm}${dd}`;
+  src\modules\sales\services\sale.service.js:172:  const prefix = `RCPT-${branchCode}-${datePart}`;
+  src\modules\sales\services\sale.service.js:173:
+> src\modules\sales\services\sale.service.js:174:  const count = await tx.sale.count({
+  src\modules\sales\services\sale.service.js:175:    where: {
+  src\modules\sales\services\sale.service.js:176:      branchId,
+  src\modules\sales\services\sale.service.js:177:      receiptCode: {
+  src\modules\sales\services\sale.service.js:178:        startsWith: prefix,
+  src\modules\sales\services\sale.service.js:179:      },
+  src\modules\sales\services\sale.service.js:183:  return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+  src\modules\sales\services\sale.service.js:184:};
+  src\modules\sales\services\sale.service.js:185:
+> src\modules\sales\services\sale.service.js:186:const generateSaleInventoryMovementCode = async (tx, branchCode, itemCode, branchId) => {
+> src\modules\sales\services\sale.service.js:187:  const prefix = `MOV-${branchCode}-${itemCode}-SALEOUT-`;
+  src\modules\sales\services\sale.service.js:188:
+  src\modules\sales\services\sale.service.js:189:  const count = await tx.inventoryMovement.count({
+  src\modules\sales\services\sale.service.js:190:    where: {
+  src\modules\sales\services\sale.service.js:191:      branchId,
+  src\modules\sales\services\sale.service.js:192:      movementCode: {
+  src\modules\sales\services\sale.service.js:202:  tx,
+  src\modules\sales\services\sale.service.js:203:  actor,
+  src\modules\sales\services\sale.service.js:204:  branchId,
+> src\modules\sales\services\sale.service.js:205:  item,
+  src\modules\sales\services\sale.service.js:206:  batchId,
+  src\modules\sales\services\sale.service.js:207:  quantity,
+  src\modules\sales\services\sale.service.js:208:}) => {
+  src\modules\sales\services\sale.service.js:209:  const batch = await tx.inventoryBatch.findFirst({
+  src\modules\sales\services\sale.service.js:210:    where: {
+  src\modules\sales\services\sale.service.js:211:      id: batchId,
+  src\modules\sales\services\sale.service.js:212:      branchId,
+> src\modules\sales\services\sale.service.js:213:      itemId: item.id,
+> src\modules\sales\services\sale.service.js:214:      status: "ACTIVE",
+  src\modules\sales\services\sale.service.js:215:    },
+  src\modules\sales\services\sale.service.js:216:  });
+  src\modules\sales\services\sale.service.js:217:
+  src\modules\sales\services\sale.service.js:218:  if (!batch) {
+  src\modules\sales\services\sale.service.js:219:    const error = new Error("BATCH_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:220:    error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:221:    throw error;
+  src\modules\sales\services\sale.service.js:222:  }
+  src\modules\sales\services\sale.service.js:223:
+  src\modules\sales\services\sale.service.js:224:  const previousQuantity = Number(batch.quantityAvailable);
+  src\modules\sales\services\sale.service.js:225:  const newQuantity = toMoney(previousQuantity - quantity);
+  src\modules\sales\services\sale.service.js:226:
+  src\modules\sales\services\sale.service.js:227:  if (newQuantity < 0) {
+  src\modules\sales\services\sale.service.js:228:    const error = new Error("INSUFFICIENT_BATCH_QUANTITY");
+> src\modules\sales\services\sale.service.js:229:    error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:230:    throw error;
+  src\modules\sales\services\sale.service.js:231:  }
+  src\modules\sales\services\sale.service.js:232:
+> src\modules\sales\services\sale.service.js:233:  await tx.inventoryBatch.update({
+  src\modules\sales\services\sale.service.js:234:    where: {
+  src\modules\sales\services\sale.service.js:235:      id: batch.id,
+  src\modules\sales\services\sale.service.js:236:    },
+  src\modules\sales\services\sale.service.js:237:    data: {
+  src\modules\sales\services\sale.service.js:238:      quantityAvailable: toMoneyString(newQuantity),
+> src\modules\sales\services\sale.service.js:239:      status: newQuantity === 0 ? "DEPLETED" : "ACTIVE",
+> src\modules\sales\services\sale.service.js:240:      updatedById: actor.id,
+  src\modules\sales\services\sale.service.js:241:    },
+  src\modules\sales\services\sale.service.js:242:  });
+  src\modules\sales\services\sale.service.js:243:
+  src\modules\sales\services\sale.service.js:244:  return {
+  src\modules\sales\services\sale.service.js:245:    batch,
+  src\modules\sales\services\sale.service.js:248:  };
+  src\modules\sales\services\sale.service.js:249:};
+  src\modules\sales\services\sale.service.js:250:
+> src\modules\sales\services\sale.service.js:251:const buildSaleItems = async (tx, actor, branchId, items) => {
+> src\modules\sales\services\sale.service.js:252:  const saleItems = [];
+  src\modules\sales\services\sale.service.js:253:  const stockDeductions = [];
+  src\modules\sales\services\sale.service.js:254:  let subtotal = 0;
+  src\modules\sales\services\sale.service.js:255:  let totalDiscount = 0;
+  src\modules\sales\services\sale.service.js:256:
+> src\modules\sales\services\sale.service.js:257:  for (let index = 0; index < items.length; index += 1) {
+> src\modules\sales\services\sale.service.js:258:    const itemPayload = items[index];
+> src\modules\sales\services\sale.service.js:259:    const quantity = toMoney(itemPayload.quantity);
+> src\modules\sales\services\sale.service.js:260:    const discountAmount = toMoney(itemPayload.discountAmount || 0);
+  src\modules\sales\services\sale.service.js:261:
+> src\modules\sales\services\sale.service.js:262:    let item = null;
+  src\modules\sales\services\sale.service.js:263:    let unitPrice = 0;
+> src\modules\sales\services\sale.service.js:264:    let description = itemPayload.description ? String(itemPayload.description).trim() : "";
+> src\modules\sales\services\sale.service.js:265:    let priceTier = itemPayload.priceTier || null;
+> src\modules\sales\services\sale.service.js:266:    let resolvedBatchId = itemPayload.batchId || null;
+> src\modules\sales\services\sale.service.js:267:    let resolvedSerialId = itemPayload.serialId || null;
+  src\modules\sales\services\sale.service.js:268:    let stockDeduction = null;
+  src\modules\sales\services\sale.service.js:269:
+> src\modules\sales\services\sale.service.js:270:    if (itemPayload.itemId) {
+> src\modules\sales\services\sale.service.js:271:      item = await tx.item.findFirst({
+  src\modules\sales\services\sale.service.js:272:        where: {
+> src\modules\sales\services\sale.service.js:273:          id: itemPayload.itemId,
+  src\modules\sales\services\sale.service.js:274:          branchId,
+> src\modules\sales\services\sale.service.js:275:          status: "ACTIVE",
+  src\modules\sales\services\sale.service.js:276:        },
+  src\modules\sales\services\sale.service.js:277:      });
+  src\modules\sales\services\sale.service.js:278:
+> src\modules\sales\services\sale.service.js:279:      if (!item) {
+> src\modules\sales\services\sale.service.js:280:        const error = new Error("ITEM_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:281:        error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:282:        throw error;
+  src\modules\sales\services\sale.service.js:283:      }
+  src\modules\sales\services\sale.service.js:284:
+  src\modules\sales\services\sale.service.js:285:      if (!priceTier) {
+  src\modules\sales\services\sale.service.js:286:        const error = new Error("PRICE_TIER_REQUIRED");
+> src\modules\sales\services\sale.service.js:287:        error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:288:        throw error;
+  src\modules\sales\services\sale.service.js:289:      }
+  src\modules\sales\services\sale.service.js:290:
+> src\modules\sales\services\sale.service.js:291:      unitPrice = getItemPriceByTier(item, priceTier);
+> src\modules\sales\services\sale.service.js:292:      description = description || item.itemName;
+  src\modules\sales\services\sale.service.js:293:
+> src\modules\sales\services\sale.service.js:294:      if (STAFF_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+> src\modules\sales\services\sale.service.js:295:        const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
+> src\modules\sales\services\sale.service.js:296:        error.statusCode = 403;
+  src\modules\sales\services\sale.service.js:297:        throw error;
+  src\modules\sales\services\sale.service.js:298:      }
+  src\modules\sales\services\sale.service.js:299:
+> src\modules\sales\services\sale.service.js:300:      if (OWNER_ADMIN_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+> src\modules\sales\services\sale.service.js:301:        unitPrice = toMoney(itemPayload.unitPrice);
+  src\modules\sales\services\sale.service.js:302:      }
+  src\modules\sales\services\sale.service.js:303:
+> src\modules\sales\services\sale.service.js:304:      if (item.isSerialized) {
+  src\modules\sales\services\sale.service.js:305:        if (quantity !== 1) {
+  src\modules\sales\services\sale.service.js:306:          const error = new Error("SERIALIZED_QUANTITY_MUST_BE_ONE");
+> src\modules\sales\services\sale.service.js:307:          error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:308:          throw error;
+  src\modules\sales\services\sale.service.js:309:        }
+  src\modules\sales\services\sale.service.js:310:
+  src\modules\sales\services\sale.service.js:311:        if (!resolvedSerialId) {
+  src\modules\sales\services\sale.service.js:312:          const error = new Error("SERIAL_REQUIRED");
+> src\modules\sales\services\sale.service.js:313:          error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:314:          throw error;
+  src\modules\sales\services\sale.service.js:315:        }
+  src\modules\sales\services\sale.service.js:316:
+> src\modules\sales\services\sale.service.js:317:        const serial = await tx.itemSerial.findFirst({
+  src\modules\sales\services\sale.service.js:318:          where: {
+  src\modules\sales\services\sale.service.js:319:            id: resolvedSerialId,
+  src\modules\sales\services\sale.service.js:320:            branchId,
+> src\modules\sales\services\sale.service.js:321:            itemId: item.id,
+  src\modules\sales\services\sale.service.js:322:          },
+  src\modules\sales\services\sale.service.js:323:        });
+  src\modules\sales\services\sale.service.js:324:
+  src\modules\sales\services\sale.service.js:325:        if (!serial) {
+  src\modules\sales\services\sale.service.js:326:          const error = new Error("SERIAL_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:327:          error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:328:          throw error;
+  src\modules\sales\services\sale.service.js:329:        }
+  src\modules\sales\services\sale.service.js:330:
+> src\modules\sales\services\sale.service.js:331:        if (serial.status !== "AVAILABLE") {
+  src\modules\sales\services\sale.service.js:332:          const error = new Error("SERIAL_NOT_AVAILABLE");
+> src\modules\sales\services\sale.service.js:333:          error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:334:          throw error;
+  src\modules\sales\services\sale.service.js:335:        }
+  src\modules\sales\services\sale.service.js:336:
+  src\modules\sales\services\sale.service.js:337:        if (!serial.batchId) {
+  src\modules\sales\services\sale.service.js:338:          const error = new Error("SERIAL_BATCH_REQUIRED");
+> src\modules\sales\services\sale.service.js:339:          error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:340:          throw error;
+  src\modules\sales\services\sale.service.js:341:        }
+  src\modules\sales\services\sale.service.js:342:
+  src\modules\sales\services\sale.service.js:343:        if (resolvedBatchId && resolvedBatchId !== serial.batchId) {
+  src\modules\sales\services\sale.service.js:344:          const error = new Error("SERIAL_BATCH_MISMATCH");
+> src\modules\sales\services\sale.service.js:345:          error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:346:          throw error;
+  src\modules\sales\services\sale.service.js:347:        }
+  src\modules\sales\services\sale.service.js:348:
+  src\modules\sales\services\sale.service.js:349:        resolvedBatchId = serial.batchId;
+  src\modules\sales\services\sale.service.js:350:
+  src\modules\sales\services\sale.service.js:352:          tx,
+  src\modules\sales\services\sale.service.js:353:          actor,
+  src\modules\sales\services\sale.service.js:354:          branchId,
+> src\modules\sales\services\sale.service.js:355:          item,
+  src\modules\sales\services\sale.service.js:356:          batchId: resolvedBatchId,
+  src\modules\sales\services\sale.service.js:357:          quantity,
+  src\modules\sales\services\sale.service.js:358:        });
+  src\modules\sales\services\sale.service.js:359:
+> src\modules\sales\services\sale.service.js:360:        await tx.itemSerial.update({
+  src\modules\sales\services\sale.service.js:361:          where: {
+  src\modules\sales\services\sale.service.js:362:            id: serial.id,
+  src\modules\sales\services\sale.service.js:363:          },
+  src\modules\sales\services\sale.service.js:364:          data: {
+> src\modules\sales\services\sale.service.js:365:            status: "SOLD",
+> src\modules\sales\services\sale.service.js:366:            updatedById: actor.id,
+  src\modules\sales\services\sale.service.js:367:          },
+  src\modules\sales\services\sale.service.js:368:        });
+  src\modules\sales\services\sale.service.js:369:
+  src\modules\sales\services\sale.service.js:370:        stockDeduction = {
+  src\modules\sales\services\sale.service.js:371:          branchId,
+> src\modules\sales\services\sale.service.js:372:          itemId: item.id,
+> src\modules\sales\services\sale.service.js:373:          itemCode: item.itemCode,
+  src\modules\sales\services\sale.service.js:374:          batchId: deduction.batch.id,
+  src\modules\sales\services\sale.service.js:375:          serialId: serial.id,
+  src\modules\sales\services\sale.service.js:376:          quantity,
+  src\modules\sales\services\sale.service.js:377:          previousQuantity: deduction.previousQuantity,
+  src\modules\sales\services\sale.service.js:378:          newQuantity: deduction.newQuantity,
+  src\modules\sales\services\sale.service.js:380:        };
+  src\modules\sales\services\sale.service.js:381:      } else {
+  src\modules\sales\services\sale.service.js:382:        if (resolvedSerialId) {
+> src\modules\sales\services\sale.service.js:383:          const error = new Error("SERIAL_NOT_ALLOWED_FOR_NON_SERIALIZED_ITEM");
+> src\modules\sales\services\sale.service.js:384:          error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:385:          throw error;
+  src\modules\sales\services\sale.service.js:386:        }
+  src\modules\sales\services\sale.service.js:387:
+  src\modules\sales\services\sale.service.js:388:        if (!resolvedBatchId) {
+  src\modules\sales\services\sale.service.js:389:          const error = new Error("BATCH_REQUIRED");
+> src\modules\sales\services\sale.service.js:390:          error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:391:          throw error;
+  src\modules\sales\services\sale.service.js:392:        }
+  src\modules\sales\services\sale.service.js:393:
+  src\modules\sales\services\sale.service.js:394:        const deduction = await deductBatchStock({
+  src\modules\sales\services\sale.service.js:395:          tx,
+  src\modules\sales\services\sale.service.js:396:          actor,
+  src\modules\sales\services\sale.service.js:397:          branchId,
+> src\modules\sales\services\sale.service.js:398:          item,
+  src\modules\sales\services\sale.service.js:399:          batchId: resolvedBatchId,
+  src\modules\sales\services\sale.service.js:400:          quantity,
+  src\modules\sales\services\sale.service.js:401:        });
+  src\modules\sales\services\sale.service.js:402:
+  src\modules\sales\services\sale.service.js:403:        stockDeduction = {
+  src\modules\sales\services\sale.service.js:404:          branchId,
+> src\modules\sales\services\sale.service.js:405:          itemId: item.id,
+> src\modules\sales\services\sale.service.js:406:          itemCode: item.itemCode,
+  src\modules\sales\services\sale.service.js:407:          batchId: deduction.batch.id,
+  src\modules\sales\services\sale.service.js:408:          serialId: null,
+  src\modules\sales\services\sale.service.js:409:          quantity,
+  src\modules\sales\services\sale.service.js:410:          previousQuantity: deduction.previousQuantity,
+  src\modules\sales\services\sale.service.js:411:          newQuantity: deduction.newQuantity,
+  src\modules\sales\services\sale.service.js:415:    } else {
+  src\modules\sales\services\sale.service.js:416:      if (resolvedBatchId || resolvedSerialId) {
+  src\modules\sales\services\sale.service.js:417:        const error = new Error("CUSTOM_LINE_INVENTORY_LINK_NOT_ALLOWED");
+> src\modules\sales\services\sale.service.js:418:        error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:419:        throw error;
+  src\modules\sales\services\sale.service.js:420:      }
+  src\modules\sales\services\sale.service.js:421:
+  src\modules\sales\services\sale.service.js:422:      if (!description) {
+  src\modules\sales\services\sale.service.js:423:        const error = new Error("DESCRIPTION_REQUIRED");
+> src\modules\sales\services\sale.service.js:424:        error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:425:        throw error;
+  src\modules\sales\services\sale.service.js:426:      }
+  src\modules\sales\services\sale.service.js:427:
+> src\modules\sales\services\sale.service.js:428:      if (itemPayload.unitPrice === undefined) {
+  src\modules\sales\services\sale.service.js:429:        const error = new Error("UNIT_PRICE_REQUIRED");
+> src\modules\sales\services\sale.service.js:430:        error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:431:        throw error;
+  src\modules\sales\services\sale.service.js:432:      }
+  src\modules\sales\services\sale.service.js:433:
+> src\modules\sales\services\sale.service.js:434:      unitPrice = toMoney(itemPayload.unitPrice);
+  src\modules\sales\services\sale.service.js:435:    }
+  src\modules\sales\services\sale.service.js:436:
+  src\modules\sales\services\sale.service.js:437:    const grossLineTotal = toMoney(quantity * unitPrice);
+  src\modules\sales\services\sale.service.js:438:
+> src\modules\sales\services\sale.service.js:439:    if (discountAmount > grossLineTotal) {
+  src\modules\sales\services\sale.service.js:440:      const error = new Error("DISCOUNT_EXCEEDS_LINE_TOTAL");
+> src\modules\sales\services\sale.service.js:441:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:442:      throw error;
+  src\modules\sales\services\sale.service.js:443:    }
+  src\modules\sales\services\sale.service.js:444:
+> src\modules\sales\services\sale.service.js:445:    const lineTotal = toMoney(grossLineTotal - discountAmount);
+  src\modules\sales\services\sale.service.js:446:
+  src\modules\sales\services\sale.service.js:447:    subtotal += grossLineTotal;
+> src\modules\sales\services\sale.service.js:448:    totalDiscount += discountAmount;
+  src\modules\sales\services\sale.service.js:449:
+  src\modules\sales\services\sale.service.js:450:    if (stockDeduction) {
+  src\modules\sales\services\sale.service.js:451:      stockDeductions.push(stockDeduction);
+  src\modules\sales\services\sale.service.js:452:    }
+  src\modules\sales\services\sale.service.js:453:
+> src\modules\sales\services\sale.service.js:454:    saleItems.push({
+  src\modules\sales\services\sale.service.js:455:      lineNo: index + 1,
+  src\modules\sales\services\sale.service.js:456:      description,
+> src\modules\sales\services\sale.service.js:457:      itemCodeSnapshot: item ? item.itemCode : null,
+> src\modules\sales\services\sale.service.js:458:      itemNameSnapshot: item ? item.itemName : null,
+> src\modules\sales\services\sale.service.js:459:      brandSnapshot: item ? item.brand : null,
+> src\modules\sales\services\sale.service.js:460:      modelSnapshot: item ? item.modelName : null,
+  src\modules\sales\services\sale.service.js:461:      priceTier,
+  src\modules\sales\services\sale.service.js:462:      quantity: toMoneyString(quantity),
+  src\modules\sales\services\sale.service.js:463:      unitPrice: toMoneyString(unitPrice),
+> src\modules\sales\services\sale.service.js:464:      discountAmount: toMoneyString(discountAmount),
+  src\modules\sales\services\sale.service.js:465:      lineTotal: toMoneyString(lineTotal),
+> src\modules\sales\services\sale.service.js:466:      itemId: item ? item.id : null,
+  src\modules\sales\services\sale.service.js:467:      batchId: resolvedBatchId,
+  src\modules\sales\services\sale.service.js:468:      serialId: resolvedSerialId,
+  src\modules\sales\services\sale.service.js:469:    });
+  src\modules\sales\services\sale.service.js:470:  }
+  src\modules\sales\services\sale.service.js:471:
+  src\modules\sales\services\sale.service.js:472:  return {
+> src\modules\sales\services\sale.service.js:473:    saleItems,
+  src\modules\sales\services\sale.service.js:474:    stockDeductions,
+  src\modules\sales\services\sale.service.js:475:    subtotal: toMoney(subtotal),
+  src\modules\sales\services\sale.service.js:476:    totalDiscount: toMoney(totalDiscount),
+  src\modules\sales\services\sale.service.js:477:  };
+  src\modules\sales\services\sale.service.js:478:};
+  src\modules\sales\services\sale.service.js:479:
+> src\modules\sales\services\sale.service.js:480:const buildSalePayments = (actor, payments) => {
+> src\modules\sales\services\sale.service.js:481:  let amountPaid = 0;
+  src\modules\sales\services\sale.service.js:482:
+> src\modules\sales\services\sale.service.js:483:  const salePayments = payments.map((payment) => {
+> src\modules\sales\services\sale.service.js:484:    const amount = toMoney(payment.amount);
+> src\modules\sales\services\sale.service.js:485:    amountPaid += amount;
+  src\modules\sales\services\sale.service.js:486:
+  src\modules\sales\services\sale.service.js:487:    return {
+  src\modules\sales\services\sale.service.js:488:      paymentMethod: payment.paymentMethod,
+> src\modules\sales\services\sale.service.js:489:      amount: toMoneyString(amount),
+  src\modules\sales\services\sale.service.js:490:      referenceNo: payment.referenceNo || null,
+  src\modules\sales\services\sale.service.js:491:      remarks: payment.remarks || null,
+> src\modules\sales\services\sale.service.js:492:      createdById: actor.id,
+  src\modules\sales\services\sale.service.js:493:    };
+  src\modules\sales\services\sale.service.js:494:  });
+  src\modules\sales\services\sale.service.js:495:
+  src\modules\sales\services\sale.service.js:496:  return {
+> src\modules\sales\services\sale.service.js:497:    salePayments,
+> src\modules\sales\services\sale.service.js:498:    amountPaid: toMoney(amountPaid),
+  src\modules\sales\services\sale.service.js:499:  };
+  src\modules\sales\services\sale.service.js:500:};
+  src\modules\sales\services\sale.service.js:501:
+> src\modules\sales\services\sale.service.js:502:const computePaymentStatus = (amountPaid, grandTotal) => {
+> src\modules\sales\services\sale.service.js:503:  if (amountPaid <= 0) {
+  src\modules\sales\services\sale.service.js:504:    return "UNPAID";
+  src\modules\sales\services\sale.service.js:505:  }
+  src\modules\sales\services\sale.service.js:506:
+> src\modules\sales\services\sale.service.js:507:  if (amountPaid < grandTotal) {
+  src\modules\sales\services\sale.service.js:508:    return "PARTIALLY_PAID";
+  src\modules\sales\services\sale.service.js:509:  }
+  src\modules\sales\services\sale.service.js:510:
+  src\modules\sales\services\sale.service.js:511:  return "PAID";
+  src\modules\sales\services\sale.service.js:512:};
+  src\modules\sales\services\sale.service.js:513:
+> src\modules\sales\services\sale.service.js:514:const createSale = async (actor, payload) => {
+> src\modules\sales\services\sale.service.js:515:  const branchId = resolveBranchIdForCreate(actor, payload.branchId);
+  src\modules\sales\services\sale.service.js:516:
+  src\modules\sales\services\sale.service.js:517:  return prisma.$transaction(async (tx) => {
+  src\modules\sales\services\sale.service.js:518:    const branch = await ensureBranchExists(tx, branchId);
+  src\modules\sales\services\sale.service.js:519:    await ensureCustomerBelongsToBranch(tx, payload.customerId, branchId);
+  src\modules\sales\services\sale.service.js:520:    const quotation = await ensureQuotationBelongsToBranch(tx, payload.quotationId, branchId);
+  src\modules\sales\services\sale.service.js:521:
+> src\modules\sales\services\sale.service.js:522:    const { saleItems, stockDeductions, subtotal, totalDiscount } = await buildSaleItems(
+  src\modules\sales\services\sale.service.js:523:      tx,
+  src\modules\sales\services\sale.service.js:524:      actor,
+  src\modules\sales\services\sale.service.js:525:      branchId,
+> src\modules\sales\services\sale.service.js:526:      payload.items
+  src\modules\sales\services\sale.service.js:527:    );
+  src\modules\sales\services\sale.service.js:528:
+  src\modules\sales\services\sale.service.js:529:    const serviceCharge = toMoney(payload.serviceCharge || 0);
+  src\modules\sales\services\sale.service.js:530:    const grandTotal = toMoney(subtotal - totalDiscount + serviceCharge);
+  src\modules\sales\services\sale.service.js:531:
+> src\modules\sales\services\sale.service.js:532:    const { salePayments, amountPaid } = buildSalePayments(actor, payload.payments);
+> src\modules\sales\services\sale.service.js:533:    const paymentStatus = computePaymentStatus(amountPaid, grandTotal);
+> src\modules\sales\services\sale.service.js:534:    const changeAmount = toMoney(Math.max(amountPaid - grandTotal, 0));
+> src\modules\sales\services\sale.service.js:535:    const receiptCode = await generateReceiptCode(tx, branch.code, branchId);
+  src\modules\sales\services\sale.service.js:536:
+  src\modules\sales\services\sale.service.js:537:    for (const deduction of stockDeductions) {
+> src\modules\sales\services\sale.service.js:538:      const movementCode = await generateSaleInventoryMovementCode(
+  src\modules\sales\services\sale.service.js:539:        tx,
+  src\modules\sales\services\sale.service.js:540:        branch.code,
+> src\modules\sales\services\sale.service.js:541:        deduction.itemCode,
+  src\modules\sales\services\sale.service.js:542:        branchId
+  src\modules\sales\services\sale.service.js:543:      );
+  src\modules\sales\services\sale.service.js:544:
+> src\modules\sales\services\sale.service.js:545:      await tx.inventoryMovement.create({
+  src\modules\sales\services\sale.service.js:546:        data: {
+  src\modules\sales\services\sale.service.js:547:          branchId,
+> src\modules\sales\services\sale.service.js:548:          itemId: deduction.itemId,
+  src\modules\sales\services\sale.service.js:549:          batchId: deduction.batchId,
+  src\modules\sales\services\sale.service.js:550:          serialId: deduction.serialId,
+  src\modules\sales\services\sale.service.js:551:          movementCode,
+> src\modules\sales\services\sale.service.js:552:          type: "SALE_OUT",
+> src\modules\sales\services\sale.service.js:553:          source: "SALE",
+  src\modules\sales\services\sale.service.js:554:          quantity: toMoneyString(deduction.quantity),
+  src\modules\sales\services\sale.service.js:555:          previousQuantity: toMoneyString(deduction.previousQuantity),
+  src\modules\sales\services\sale.service.js:556:          newQuantity: toMoneyString(deduction.newQuantity),
+  src\modules\sales\services\sale.service.js:557:          unitCost: deduction.unitCost.toString(),
+  src\modules\sales\services\sale.service.js:558:          referenceNo: receiptCode,
+> src\modules\sales\services\sale.service.js:559:          remarks: `Sale stock deduction for ${receiptCode}.`,
+> src\modules\sales\services\sale.service.js:560:          createdById: actor.id,
+> src\modules\sales\services\sale.service.js:561:          updatedById: actor.id,
+  src\modules\sales\services\sale.service.js:562:        },
+  src\modules\sales\services\sale.service.js:563:      });
+  src\modules\sales\services\sale.service.js:564:    }
+  src\modules\sales\services\sale.service.js:565:
+> src\modules\sales\services\sale.service.js:566:    const sale = await tx.sale.create({
+  src\modules\sales\services\sale.service.js:567:      data: {
+  src\modules\sales\services\sale.service.js:568:        receiptCode,
+> src\modules\sales\services\sale.service.js:569:        status: "COMPLETED",
+> src\modules\sales\services\sale.service.js:570:        paymentStatus,
+  src\modules\sales\services\sale.service.js:571:        subtotal: toMoneyString(subtotal),
+  src\modules\sales\services\sale.service.js:572:        totalDiscount: toMoneyString(totalDiscount),
+  src\modules\sales\services\sale.service.js:573:        serviceCharge: toMoneyString(serviceCharge),
+  src\modules\sales\services\sale.service.js:574:        grandTotal: toMoneyString(grandTotal),
+> src\modules\sales\services\sale.service.js:575:        amountPaid: toMoneyString(amountPaid),
+> src\modules\sales\services\sale.service.js:576:        changeAmount: toMoneyString(changeAmount),
+  src\modules\sales\services\sale.service.js:577:        remarks: payload.remarks || null,
+  src\modules\sales\services\sale.service.js:578:        branchId,
+  src\modules\sales\services\sale.service.js:579:        customerId: payload.customerId || null,
+  src\modules\sales\services\sale.service.js:580:        quotationId: payload.quotationId || null,
+> src\modules\sales\services\sale.service.js:581:        cashierId: actor.id,
+> src\modules\sales\services\sale.service.js:582:        createdById: actor.id,
+> src\modules\sales\services\sale.service.js:583:        updatedById: actor.id,
+> src\modules\sales\services\sale.service.js:584:        items: {
+> src\modules\sales\services\sale.service.js:585:          create: saleItems,
+  src\modules\sales\services\sale.service.js:586:        },
+  src\modules\sales\services\sale.service.js:587:        payments: {
+> src\modules\sales\services\sale.service.js:588:          create: salePayments,
+  src\modules\sales\services\sale.service.js:589:        },
+  src\modules\sales\services\sale.service.js:590:      },
+  src\modules\sales\services\sale.service.js:591:      include: {
+  src\modules\sales\services\sale.service.js:592:        branch: {
+  src\modules\sales\services\sale.service.js:593:          select: {
+  src\modules\sales\services\sale.service.js:609:          select: {
+  src\modules\sales\services\sale.service.js:610:            id: true,
+  src\modules\sales\services\sale.service.js:611:            quotationCode: true,
+> src\modules\sales\services\sale.service.js:612:            status: true,
+  src\modules\sales\services\sale.service.js:613:          },
+  src\modules\sales\services\sale.service.js:614:        },
+> src\modules\sales\services\sale.service.js:615:        cashier: {
+  src\modules\sales\services\sale.service.js:616:          select: {
+  src\modules\sales\services\sale.service.js:617:            id: true,
+  src\modules\sales\services\sale.service.js:618:            username: true,
+  src\modules\sales\services\sale.service.js:619:            fullName: true,
+  src\modules\sales\services\sale.service.js:620:            role: true,
+  src\modules\sales\services\sale.service.js:621:          },
+  src\modules\sales\services\sale.service.js:622:        },
+> src\modules\sales\services\sale.service.js:623:        items: {
+  src\modules\sales\services\sale.service.js:624:          orderBy: {
+  src\modules\sales\services\sale.service.js:625:            lineNo: "asc",
+  src\modules\sales\services\sale.service.js:626:          },
+  src\modules\sales\services\sale.service.js:627:        },
+  src\modules\sales\services\sale.service.js:628:        payments: {
+  src\modules\sales\services\sale.service.js:634:    });
+  src\modules\sales\services\sale.service.js:635:
+  src\modules\sales\services\sale.service.js:636:    if (quotation) {
+> src\modules\sales\services\sale.service.js:637:      await tx.quotation.update({
+  src\modules\sales\services\sale.service.js:638:        where: {
+  src\modules\sales\services\sale.service.js:639:          id: quotation.id,
+  src\modules\sales\services\sale.service.js:640:        },
+  src\modules\sales\services\sale.service.js:641:        data: {
+> src\modules\sales\services\sale.service.js:642:          status: "CONVERTED",
+  src\modules\sales\services\sale.service.js:643:          convertedAt: new Date(),
+> src\modules\sales\services\sale.service.js:644:          updatedById: actor.id,
+  src\modules\sales\services\sale.service.js:645:        },
+  src\modules\sales\services\sale.service.js:646:      });
+  src\modules\sales\services\sale.service.js:647:
+> src\modules\sales\services\sale.service.js:648:      sale.quotation.status = "CONVERTED";
+  src\modules\sales\services\sale.service.js:649:    }
+  src\modules\sales\services\sale.service.js:650:
+  src\modules\sales\services\sale.service.js:651:
+> src\modules\sales\services\sale.service.js:652:    const cashPaymentTotal = salePayments
+  src\modules\sales\services\sale.service.js:653:      .filter((payment) => payment.paymentMethod === "CASH")
+> src\modules\sales\services\sale.service.js:654:      .reduce((sum, payment) => sum + Number(payment.amount), 0);
+  src\modules\sales\services\sale.service.js:655:
+  src\modules\sales\services\sale.service.js:656:    if (cashPaymentTotal > 0) {
+  src\modules\sales\services\sale.service.js:657:      await cashLinkService.postSystemCashIn(tx, actor, branch, {
+> src\modules\sales\services\sale.service.js:658:        type: "SALE_PAYMENT",
+> src\modules\sales\services\sale.service.js:659:        source: "SALE",
+> src\modules\sales\services\sale.service.js:660:        amount: cashPaymentTotal,
+> src\modules\sales\services\sale.service.js:661:        description: `Cash payment from sale ${receiptCode}.`,
+  src\modules\sales\services\sale.service.js:662:        referenceNo: null,
+> src\modules\sales\services\sale.service.js:663:        sourceId: sale.id,
+  src\modules\sales\services\sale.service.js:664:        sourceCode: receiptCode,
+> src\modules\sales\services\sale.service.js:665:        transactionDate: sale.saleDate,
+  src\modules\sales\services\sale.service.js:666:      });
+  src\modules\sales\services\sale.service.js:667:    }
+  src\modules\sales\services\sale.service.js:668:
+> src\modules\sales\services\sale.service.js:669:    return sale;
+  src\modules\sales\services\sale.service.js:670:  });
+  src\modules\sales\services\sale.service.js:671:};
+  src\modules\sales\services\sale.service.js:672:
+  src\modules\sales\services\sale.service.js:673:
+  src\modules\sales\services\sale.service.js:674:const parsePagination = (query) => {
+  src\modules\sales\services\sale.service.js:691:  return actor.branchId;
+  src\modules\sales\services\sale.service.js:692:};
+  src\modules\sales\services\sale.service.js:693:
+> src\modules\sales\services\sale.service.js:694:const ensureCanAccessSaleBranch = (actor, sale) => {
+  src\modules\sales\services\sale.service.js:695:  if (isSuperOwner(actor)) {
+  src\modules\sales\services\sale.service.js:696:    return;
+  src\modules\sales\services\sale.service.js:697:  }
+  src\modules\sales\services\sale.service.js:698:
+> src\modules\sales\services\sale.service.js:699:  if (!actor.branchId || sale.branchId !== actor.branchId) {
+> src\modules\sales\services\sale.service.js:700:    const error = new Error("SALE_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:701:    error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:702:    throw error;
+  src\modules\sales\services\sale.service.js:703:  }
+  src\modules\sales\services\sale.service.js:704:};
+  src\modules\sales\services\sale.service.js:705:
+> src\modules\sales\services\sale.service.js:706:const getSales = async (actor, query) => {
+  src\modules\sales\services\sale.service.js:707:  const { page, limit, skip } = parsePagination(query);
+  src\modules\sales\services\sale.service.js:708:  const branchId = resolveBranchFilterForRead(actor, query.branchId);
+  src\modules\sales\services\sale.service.js:709:
+  src\modules\sales\services\sale.service.js:710:  const where = {};
+  src\modules\sales\services\sale.service.js:711:
+  src\modules\sales\services\sale.service.js:713:    where.branchId = branchId;
+  src\modules\sales\services\sale.service.js:714:  }
+  src\modules\sales\services\sale.service.js:715:
+> src\modules\sales\services\sale.service.js:716:  if (query.status) {
+> src\modules\sales\services\sale.service.js:717:    where.status = query.status;
+  src\modules\sales\services\sale.service.js:718:  }
+  src\modules\sales\services\sale.service.js:719:
+> src\modules\sales\services\sale.service.js:720:  if (query.paymentStatus) {
+> src\modules\sales\services\sale.service.js:721:    where.paymentStatus = query.paymentStatus;
+  src\modules\sales\services\sale.service.js:722:  }
+  src\modules\sales\services\sale.service.js:723:
+  src\modules\sales\services\sale.service.js:724:  if (query.customerId) {
+  src\modules\sales\services\sale.service.js:725:    where.customerId = query.customerId;
+  src\modules\sales\services\sale.service.js:726:  }
+  src\modules\sales\services\sale.service.js:727:
+> src\modules\sales\services\sale.service.js:728:  if (query.cashierId) {
+> src\modules\sales\services\sale.service.js:729:    where.cashierId = query.cashierId;
+  src\modules\sales\services\sale.service.js:730:  }
+  src\modules\sales\services\sale.service.js:731:
+  src\modules\sales\services\sale.service.js:732:  if (query.search) {
+  src\modules\sales\services\sale.service.js:733:    const search = String(query.search).trim();
+  src\modules\sales\services\sale.service.js:734:
+  src\modules\sales\services\sale.service.js:748:    ];
+  src\modules\sales\services\sale.service.js:749:  }
+  src\modules\sales\services\sale.service.js:750:
+> src\modules\sales\services\sale.service.js:751:  const [sales, total] = await Promise.all([
+> src\modules\sales\services\sale.service.js:752:    prisma.sale.findMany({
+  src\modules\sales\services\sale.service.js:753:      where,
+  src\modules\sales\services\sale.service.js:754:      skip,
+  src\modules\sales\services\sale.service.js:755:      take: limit,
+  src\modules\sales\services\sale.service.js:756:      orderBy: {
+> src\modules\sales\services\sale.service.js:757:        saleDate: "desc",
+  src\modules\sales\services\sale.service.js:758:      },
+  src\modules\sales\services\sale.service.js:759:      include: {
+  src\modules\sales\services\sale.service.js:760:        branch: {
+  src\modules\sales\services\sale.service.js:761:          select: {
+  src\modules\sales\services\sale.service.js:762:            id: true,
+  src\modules\sales\services\sale.service.js:777:          select: {
+  src\modules\sales\services\sale.service.js:778:            id: true,
+  src\modules\sales\services\sale.service.js:779:            quotationCode: true,
+> src\modules\sales\services\sale.service.js:780:            status: true,
+  src\modules\sales\services\sale.service.js:781:          },
+  src\modules\sales\services\sale.service.js:782:        },
+> src\modules\sales\services\sale.service.js:783:        cashier: {
+  src\modules\sales\services\sale.service.js:784:          select: {
+  src\modules\sales\services\sale.service.js:785:            id: true,
+  src\modules\sales\services\sale.service.js:786:            username: true,
+  src\modules\sales\services\sale.service.js:787:            fullName: true,
+  src\modules\sales\services\sale.service.js:788:            role: true,
+  src\modules\sales\services\sale.service.js:790:        },
+  src\modules\sales\services\sale.service.js:791:        _count: {
+  src\modules\sales\services\sale.service.js:792:          select: {
+> src\modules\sales\services\sale.service.js:793:            items: true,
+  src\modules\sales\services\sale.service.js:794:            payments: true,
+  src\modules\sales\services\sale.service.js:795:          },
+  src\modules\sales\services\sale.service.js:796:        },
+  src\modules\sales\services\sale.service.js:797:      },
+  src\modules\sales\services\sale.service.js:798:    }),
+> src\modules\sales\services\sale.service.js:799:    prisma.sale.count({
+  src\modules\sales\services\sale.service.js:800:      where,
+  src\modules\sales\services\sale.service.js:801:    }),
+  src\modules\sales\services\sale.service.js:802:  ]);
+  src\modules\sales\services\sale.service.js:803:
+  src\modules\sales\services\sale.service.js:804:  return {
+> src\modules\sales\services\sale.service.js:805:    data: sales,
+  src\modules\sales\services\sale.service.js:806:    meta: {
+  src\modules\sales\services\sale.service.js:807:      page,
+  src\modules\sales\services\sale.service.js:808:      limit,
+  src\modules\sales\services\sale.service.js:809:      total,
+  src\modules\sales\services\sale.service.js:810:      totalPages: Math.ceil(total / limit),
+  src\modules\sales\services\sale.service.js:812:  };
+  src\modules\sales\services\sale.service.js:813:};
+  src\modules\sales\services\sale.service.js:814:
+> src\modules\sales\services\sale.service.js:815:const getSaleById = async (actor, saleId) => {
+> src\modules\sales\services\sale.service.js:816:  const sale = await prisma.sale.findUnique({
+  src\modules\sales\services\sale.service.js:817:    where: {
+> src\modules\sales\services\sale.service.js:818:      id: saleId,
+  src\modules\sales\services\sale.service.js:819:    },
+  src\modules\sales\services\sale.service.js:820:    include: {
+  src\modules\sales\services\sale.service.js:821:      branch: {
+  src\modules\sales\services\sale.service.js:822:        select: {
+  src\modules\sales\services\sale.service.js:823:          id: true,
+  src\modules\sales\services\sale.service.js:838:        select: {
+  src\modules\sales\services\sale.service.js:839:          id: true,
+  src\modules\sales\services\sale.service.js:840:          quotationCode: true,
+> src\modules\sales\services\sale.service.js:841:          status: true,
+  src\modules\sales\services\sale.service.js:842:        },
+  src\modules\sales\services\sale.service.js:843:      },
+> src\modules\sales\services\sale.service.js:844:      cashier: {
+  src\modules\sales\services\sale.service.js:845:        select: {
+  src\modules\sales\services\sale.service.js:846:          id: true,
+  src\modules\sales\services\sale.service.js:847:          username: true,
+  src\modules\sales\services\sale.service.js:848:          fullName: true,
+  src\modules\sales\services\sale.service.js:849:          role: true,
+  src\modules\sales\services\sale.service.js:850:        },
+  src\modules\sales\services\sale.service.js:851:      },
+> src\modules\sales\services\sale.service.js:852:      createdBy: {
+  src\modules\sales\services\sale.service.js:853:        select: {
+  src\modules\sales\services\sale.service.js:854:          id: true,
+  src\modules\sales\services\sale.service.js:855:          username: true,
+  src\modules\sales\services\sale.service.js:856:          fullName: true,
+  src\modules\sales\services\sale.service.js:857:          role: true,
+  src\modules\sales\services\sale.service.js:858:        },
+  src\modules\sales\services\sale.service.js:859:      },
+> src\modules\sales\services\sale.service.js:860:      updatedBy: {
+  src\modules\sales\services\sale.service.js:861:        select: {
+  src\modules\sales\services\sale.service.js:862:          id: true,
+  src\modules\sales\services\sale.service.js:863:          username: true,
+  src\modules\sales\services\sale.service.js:864:          fullName: true,
+  src\modules\sales\services\sale.service.js:865:          role: true,
+  src\modules\sales\services\sale.service.js:866:        },
+  src\modules\sales\services\sale.service.js:867:      },
+> src\modules\sales\services\sale.service.js:868:      cancelledBy: {
+  src\modules\sales\services\sale.service.js:869:        select: {
+  src\modules\sales\services\sale.service.js:870:          id: true,
+  src\modules\sales\services\sale.service.js:871:          username: true,
+  src\modules\sales\services\sale.service.js:872:          fullName: true,
+  src\modules\sales\services\sale.service.js:873:          role: true,
+  src\modules\sales\services\sale.service.js:874:        },
+  src\modules\sales\services\sale.service.js:875:      },
+> src\modules\sales\services\sale.service.js:876:      items: {
+  src\modules\sales\services\sale.service.js:877:        orderBy: {
+  src\modules\sales\services\sale.service.js:878:          lineNo: "asc",
+  src\modules\sales\services\sale.service.js:879:        },
+  src\modules\sales\services\sale.service.js:880:      },
+  src\modules\sales\services\sale.service.js:881:      payments: {
+  src\modules\sales\services\sale.service.js:886:    },
+  src\modules\sales\services\sale.service.js:887:  });
+  src\modules\sales\services\sale.service.js:888:
+> src\modules\sales\services\sale.service.js:889:  if (!sale) {
+> src\modules\sales\services\sale.service.js:890:    const error = new Error("SALE_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:891:    error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:892:    throw error;
+  src\modules\sales\services\sale.service.js:893:  }
+  src\modules\sales\services\sale.service.js:894:
+> src\modules\sales\services\sale.service.js:895:  ensureCanAccessSaleBranch(actor, sale);
+  src\modules\sales\services\sale.service.js:896:
+> src\modules\sales\services\sale.service.js:897:  return sale;
+  src\modules\sales\services\sale.service.js:898:};
+  src\modules\sales\services\sale.service.js:899:
+  src\modules\sales\services\sale.service.js:900:
+> src\modules\sales\services\sale.service.js:901:const generateSaleCancelMovementCode = async (tx, branchCode, itemCode, branchId) => {
+> src\modules\sales\services\sale.service.js:902:  const prefix = `MOV-${branchCode}-${itemCode}-CANCELIN-`;
+  src\modules\sales\services\sale.service.js:903:
+  src\modules\sales\services\sale.service.js:904:  const count = await tx.inventoryMovement.count({
+  src\modules\sales\services\sale.service.js:905:    where: {
+  src\modules\sales\services\sale.service.js:906:      branchId,
+  src\modules\sales\services\sale.service.js:907:      movementCode: {
+  src\modules\sales\services\sale.service.js:913:  return `${prefix}${String(count + 1).padStart(3, "0")}`;
+  src\modules\sales\services\sale.service.js:914:};
+  src\modules\sales\services\sale.service.js:915:
+> src\modules\sales\services\sale.service.js:916:const restoreSaleItemStock = async ({ tx, actor, sale, saleItem }) => {
+> src\modules\sales\services\sale.service.js:917:  if (!saleItem.itemId || !saleItem.batchId) {
+  src\modules\sales\services\sale.service.js:918:    return;
+  src\modules\sales\services\sale.service.js:919:  }
+  src\modules\sales\services\sale.service.js:920:
+  src\modules\sales\services\sale.service.js:921:  const batch = await tx.inventoryBatch.findUnique({
+  src\modules\sales\services\sale.service.js:922:    where: {
+> src\modules\sales\services\sale.service.js:923:      id: saleItem.batchId,
+  src\modules\sales\services\sale.service.js:924:    },
+  src\modules\sales\services\sale.service.js:925:  });
+  src\modules\sales\services\sale.service.js:926:
+  src\modules\sales\services\sale.service.js:927:  if (!batch) {
+  src\modules\sales\services\sale.service.js:928:    const error = new Error("BATCH_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:929:    error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:930:    throw error;
+  src\modules\sales\services\sale.service.js:931:  }
+  src\modules\sales\services\sale.service.js:932:
+  src\modules\sales\services\sale.service.js:933:  const previousQuantity = Number(batch.quantityAvailable);
+> src\modules\sales\services\sale.service.js:934:  const restoreQuantity = toMoney(saleItem.quantity);
+  src\modules\sales\services\sale.service.js:935:  const newQuantity = toMoney(previousQuantity + restoreQuantity);
+  src\modules\sales\services\sale.service.js:936:
+> src\modules\sales\services\sale.service.js:937:  await tx.inventoryBatch.update({
+  src\modules\sales\services\sale.service.js:938:    where: {
+  src\modules\sales\services\sale.service.js:939:      id: batch.id,
+  src\modules\sales\services\sale.service.js:940:    },
+  src\modules\sales\services\sale.service.js:941:    data: {
+  src\modules\sales\services\sale.service.js:942:      quantityAvailable: toMoneyString(newQuantity),
+> src\modules\sales\services\sale.service.js:943:      status: "ACTIVE",
+> src\modules\sales\services\sale.service.js:944:      updatedById: actor.id,
+  src\modules\sales\services\sale.service.js:945:    },
+  src\modules\sales\services\sale.service.js:946:  });
+  src\modules\sales\services\sale.service.js:947:
+> src\modules\sales\services\sale.service.js:948:  if (saleItem.serialId) {
+> src\modules\sales\services\sale.service.js:949:    const serial = await tx.itemSerial.findUnique({
+  src\modules\sales\services\sale.service.js:950:      where: {
+> src\modules\sales\services\sale.service.js:951:        id: saleItem.serialId,
+  src\modules\sales\services\sale.service.js:952:      },
+  src\modules\sales\services\sale.service.js:953:    });
+  src\modules\sales\services\sale.service.js:954:
+  src\modules\sales\services\sale.service.js:955:    if (!serial) {
+  src\modules\sales\services\sale.service.js:956:      const error = new Error("SERIAL_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:957:      error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:958:      throw error;
+  src\modules\sales\services\sale.service.js:959:    }
+  src\modules\sales\services\sale.service.js:960:
+> src\modules\sales\services\sale.service.js:961:    if (serial.status !== "SOLD") {
+> src\modules\sales\services\sale.service.js:962:      const error = new Error("SERIAL_CANCEL_STATUS_INVALID");
+> src\modules\sales\services\sale.service.js:963:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:964:      throw error;
+  src\modules\sales\services\sale.service.js:965:    }
+  src\modules\sales\services\sale.service.js:966:
+> src\modules\sales\services\sale.service.js:967:    await tx.itemSerial.update({
+  src\modules\sales\services\sale.service.js:968:      where: {
+  src\modules\sales\services\sale.service.js:969:        id: serial.id,
+  src\modules\sales\services\sale.service.js:970:      },
+  src\modules\sales\services\sale.service.js:971:      data: {
+> src\modules\sales\services\sale.service.js:972:        status: "AVAILABLE",
+> src\modules\sales\services\sale.service.js:973:        updatedById: actor.id,
+  src\modules\sales\services\sale.service.js:974:      },
+  src\modules\sales\services\sale.service.js:975:    });
+  src\modules\sales\services\sale.service.js:976:  }
+  src\modules\sales\services\sale.service.js:977:
+> src\modules\sales\services\sale.service.js:978:  const itemCode = saleItem.itemCodeSnapshot || "ITEM";
+> src\modules\sales\services\sale.service.js:979:  const movementCode = await generateSaleCancelMovementCode(
+  src\modules\sales\services\sale.service.js:980:    tx,
+> src\modules\sales\services\sale.service.js:981:    sale.branch.code,
+> src\modules\sales\services\sale.service.js:982:    itemCode,
+> src\modules\sales\services\sale.service.js:983:    sale.branchId
+  src\modules\sales\services\sale.service.js:984:  );
+  src\modules\sales\services\sale.service.js:985:
+> src\modules\sales\services\sale.service.js:986:  await tx.inventoryMovement.create({
+  src\modules\sales\services\sale.service.js:987:    data: {
+> src\modules\sales\services\sale.service.js:988:      branchId: sale.branchId,
+> src\modules\sales\services\sale.service.js:989:      itemId: saleItem.itemId,
+> src\modules\sales\services\sale.service.js:990:      batchId: saleItem.batchId,
+> src\modules\sales\services\sale.service.js:991:      serialId: saleItem.serialId || null,
+  src\modules\sales\services\sale.service.js:992:      movementCode,
+  src\modules\sales\services\sale.service.js:993:      type: "RETURN_IN",
+> src\modules\sales\services\sale.service.js:994:      source: "SALE",
+  src\modules\sales\services\sale.service.js:995:      quantity: toMoneyString(restoreQuantity),
+  src\modules\sales\services\sale.service.js:996:      previousQuantity: toMoneyString(previousQuantity),
+  src\modules\sales\services\sale.service.js:997:      newQuantity: toMoneyString(newQuantity),
+  src\modules\sales\services\sale.service.js:998:      unitCost: batch.unitCost.toString(),
+> src\modules\sales\services\sale.service.js:999:      referenceNo: sale.receiptCode,
+> src\modules\sales\services\sale.service.js:1000:      remarks: `Sale cancellation stock restore for ${sale.receiptCode}.`,
+> src\modules\sales\services\sale.service.js:1001:      createdById: actor.id,
+> src\modules\sales\services\sale.service.js:1002:      updatedById: actor.id,
+  src\modules\sales\services\sale.service.js:1003:    },
+  src\modules\sales\services\sale.service.js:1004:  });
+  src\modules\sales\services\sale.service.js:1005:};
+  src\modules\sales\services\sale.service.js:1006:
+  src\modules\sales\services\sale.service.js:1007:const parseOptionalDate = (value) => {
+  src\modules\sales\services\sale.service.js:1013:
+  src\modules\sales\services\sale.service.js:1014:  if (Number.isNaN(parsedDate.getTime())) {
+  src\modules\sales\services\sale.service.js:1015:    const error = new Error("INVALID_FIRST_DUE_DATE");
+> src\modules\sales\services\sale.service.js:1016:    error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:1017:    throw error;
+  src\modules\sales\services\sale.service.js:1018:  }
+  src\modules\sales\services\sale.service.js:1019:
+  src\modules\sales\services\sale.service.js:1020:  return parsedDate;
+  src\modules\sales\services\sale.service.js:1021:};
+  src\modules\sales\services\sale.service.js:1022:
+> src\modules\sales\services\sale.service.js:1023:const generateCreditCode = async (tx, branchCode, branchId) => {
+  src\modules\sales\services\sale.service.js:1024:  const date = new Date();
+  src\modules\sales\services\sale.service.js:1025:  const yyyy = date.getFullYear();
+  src\modules\sales\services\sale.service.js:1026:  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  src\modules\sales\services\sale.service.js:1027:  const dd = String(date.getDate()).padStart(2, "0");
+  src\modules\sales\services\sale.service.js:1028:
+  src\modules\sales\services\sale.service.js:1035:  const count = await tx.creditAccount.count({
+  src\modules\sales\services\sale.service.js:1036:    where: {
+  src\modules\sales\services\sale.service.js:1037:      branchId,
+> src\modules\sales\services\sale.service.js:1038:      createdAt: {
+  src\modules\sales\services\sale.service.js:1039:        gte: startOfDay,
+  src\modules\sales\services\sale.service.js:1040:        lt: endOfDay,
+  src\modules\sales\services\sale.service.js:1041:      },
+  src\modules\sales\services\sale.service.js:1042:    },
+  src\modules\sales\services\sale.service.js:1043:  });
+  src\modules\sales\services\sale.service.js:1045:  return `${prefix}${String(count + 1).padStart(4, "0")}`;
+  src\modules\sales\services\sale.service.js:1046:};
+  src\modules\sales\services\sale.service.js:1047:
+> src\modules\sales\services\sale.service.js:1048:const createCreditAccountFromSale = async (actor, saleId, payload) => {
+  src\modules\sales\services\sale.service.js:1049:  return prisma.$transaction(async (tx) => {
+> src\modules\sales\services\sale.service.js:1050:    const sale = await tx.sale.findUnique({
+  src\modules\sales\services\sale.service.js:1051:      where: {
+> src\modules\sales\services\sale.service.js:1052:        id: saleId,
+  src\modules\sales\services\sale.service.js:1053:      },
+  src\modules\sales\services\sale.service.js:1054:      include: {
+  src\modules\sales\services\sale.service.js:1055:        branch: {
+  src\modules\sales\services\sale.service.js:1056:          select: {
+  src\modules\sales\services\sale.service.js:1057:            id: true,
+  src\modules\sales\services\sale.service.js:1064:            id: true,
+  src\modules\sales\services\sale.service.js:1065:            customerCode: true,
+  src\modules\sales\services\sale.service.js:1066:            fullName: true,
+> src\modules\sales\services\sale.service.js:1067:            status: true,
+  src\modules\sales\services\sale.service.js:1068:          },
+  src\modules\sales\services\sale.service.js:1069:        },
+  src\modules\sales\services\sale.service.js:1070:        creditAccount: true,
+  src\modules\sales\services\sale.service.js:1071:      },
+  src\modules\sales\services\sale.service.js:1072:    });
+  src\modules\sales\services\sale.service.js:1073:
+> src\modules\sales\services\sale.service.js:1074:    if (!sale) {
+> src\modules\sales\services\sale.service.js:1075:      const error = new Error("SALE_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:1076:      error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:1077:      throw error;
+  src\modules\sales\services\sale.service.js:1078:    }
+  src\modules\sales\services\sale.service.js:1079:
+> src\modules\sales\services\sale.service.js:1080:    ensureCanAccessSaleBranch(actor, sale);
+  src\modules\sales\services\sale.service.js:1081:
+> src\modules\sales\services\sale.service.js:1082:    if (sale.status !== "COMPLETED") {
+> src\modules\sales\services\sale.service.js:1083:      const error = new Error("SALE_NOT_CREDITABLE");
+> src\modules\sales\services\sale.service.js:1084:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:1085:      throw error;
+  src\modules\sales\services\sale.service.js:1086:    }
+  src\modules\sales\services\sale.service.js:1087:
+> src\modules\sales\services\sale.service.js:1088:    if (!sale.customerId || !sale.customer) {
+> src\modules\sales\services\sale.service.js:1089:      const error = new Error("SALE_CUSTOMER_REQUIRED_FOR_CREDIT");
+> src\modules\sales\services\sale.service.js:1090:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:1091:      throw error;
+  src\modules\sales\services\sale.service.js:1092:    }
+  src\modules\sales\services\sale.service.js:1093:
+> src\modules\sales\services\sale.service.js:1094:    if (sale.customer.status !== "ACTIVE") {
+  src\modules\sales\services\sale.service.js:1095:      const error = new Error("CUSTOMER_INACTIVE");
+> src\modules\sales\services\sale.service.js:1096:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:1097:      throw error;
+  src\modules\sales\services\sale.service.js:1098:    }
+  src\modules\sales\services\sale.service.js:1099:
+> src\modules\sales\services\sale.service.js:1100:    if (sale.creditAccount) {
+> src\modules\sales\services\sale.service.js:1101:      const error = new Error("SALE_ALREADY_HAS_CREDIT_ACCOUNT");
+> src\modules\sales\services\sale.service.js:1102:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:1103:      throw error;
+  src\modules\sales\services\sale.service.js:1104:    }
+  src\modules\sales\services\sale.service.js:1105:
+> src\modules\sales\services\sale.service.js:1106:    const cashPromoTotalAmount = toMoney(Number(sale.grandTotal));
+> src\modules\sales\services\sale.service.js:1107:    const downpaymentAmount = toMoney(Number(sale.amountPaid));
+  src\modules\sales\services\sale.service.js:1108:
+> src\modules\sales\services\sale.service.js:1109:    if (downpaymentAmount > cashPromoTotalAmount) {
+  src\modules\sales\services\sale.service.js:1110:      const error = new Error("CREDIT_DOWNPAYMENT_EXCEEDS_TOTAL");
+> src\modules\sales\services\sale.service.js:1111:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:1112:      throw error;
+  src\modules\sales\services\sale.service.js:1113:    }
+  src\modules\sales\services\sale.service.js:1114:
+  src\modules\sales\services\sale.service.js:1115:    const installmentComputation = await settingService.computeInstallmentTest({
+> src\modules\sales\services\sale.service.js:1116:      cashPromoTotalAmount,
+> src\modules\sales\services\sale.service.js:1117:      cashDownpayment: downpaymentAmount,
+  src\modules\sales\services\sale.service.js:1118:      term: payload.term,
+  src\modules\sales\services\sale.service.js:1119:    });
+  src\modules\sales\services\sale.service.js:1120:
+  src\modules\sales\services\sale.service.js:1121:    const termBasis = Number(installmentComputation.basisUsed.termBasis);
+> src\modules\sales\services\sale.service.js:1122:    const regularPriceTotalAmount = toMoney(
+> src\modules\sales\services\sale.service.js:1123:      installmentComputation.result.regularPriceTotalAmount
+  src\modules\sales\services\sale.service.js:1124:    );
+> src\modules\sales\services\sale.service.js:1125:    const balanceAmount = toMoney(installmentComputation.result.balance);
+  src\modules\sales\services\sale.service.js:1126:    const months = INSTALLMENT_TERM_MONTHS[payload.term];
+  src\modules\sales\services\sale.service.js:1127:
+  src\modules\sales\services\sale.service.js:1128:    if (!months) {
+  src\modules\sales\services\sale.service.js:1129:      const error = new Error("INVALID_INSTALLMENT_TERM");
+> src\modules\sales\services\sale.service.js:1130:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:1131:      throw error;
+  src\modules\sales\services\sale.service.js:1132:    }
+  src\modules\sales\services\sale.service.js:1133:
+> src\modules\sales\services\sale.service.js:1134:    const monthlyDueAmount = toMoney(balanceAmount / months);
+> src\modules\sales\services\sale.service.js:1135:    const creditCode = await generateCreditCode(tx, sale.branch.code, sale.branchId);
+  src\modules\sales\services\sale.service.js:1136:    const firstDueDate = parseOptionalDate(payload.firstDueDate);
+  src\modules\sales\services\sale.service.js:1137:
+> src\modules\sales\services\sale.service.js:1138:    const creditAccount = await tx.creditAccount.create({
+  src\modules\sales\services\sale.service.js:1139:      data: {
+  src\modules\sales\services\sale.service.js:1140:        creditCode,
+> src\modules\sales\services\sale.service.js:1141:        status: balanceAmount <= 0 ? "PAID" : "ACTIVE",
+  src\modules\sales\services\sale.service.js:1142:        term: payload.term,
+  src\modules\sales\services\sale.service.js:1143:        termBasis: Number(termBasis).toFixed(4),
+> src\modules\sales\services\sale.service.js:1144:        cashPromoTotalAmount: toMoneyString(cashPromoTotalAmount),
+> src\modules\sales\services\sale.service.js:1145:        regularPriceTotalAmount: toMoneyString(regularPriceTotalAmount),
+> src\modules\sales\services\sale.service.js:1146:        downpaymentAmount: toMoneyString(downpaymentAmount),
+> src\modules\sales\services\sale.service.js:1147:        balanceAmount: toMoneyString(balanceAmount),
+> src\modules\sales\services\sale.service.js:1148:        monthlyDueAmount: toMoneyString(monthlyDueAmount),
+  src\modules\sales\services\sale.service.js:1149:        totalCollected: "0.00",
+> src\modules\sales\services\sale.service.js:1150:        remainingBalance: toMoneyString(balanceAmount),
+  src\modules\sales\services\sale.service.js:1151:        dueDay: payload.dueDay,
+  src\modules\sales\services\sale.service.js:1152:        firstDueDate,
+  src\modules\sales\services\sale.service.js:1153:        nextDueDate: firstDueDate,
+> src\modules\sales\services\sale.service.js:1154:        paidAt: balanceAmount <= 0 ? new Date() : null,
+  src\modules\sales\services\sale.service.js:1155:        remarks: payload.remarks || null,
+> src\modules\sales\services\sale.service.js:1156:        branchId: sale.branchId,
+> src\modules\sales\services\sale.service.js:1157:        customerId: sale.customerId,
+> src\modules\sales\services\sale.service.js:1158:        saleId: sale.id,
+> src\modules\sales\services\sale.service.js:1159:        createdById: actor.id,
+> src\modules\sales\services\sale.service.js:1160:        updatedById: actor.id,
+  src\modules\sales\services\sale.service.js:1161:      },
+  src\modules\sales\services\sale.service.js:1162:      include: {
+  src\modules\sales\services\sale.service.js:1163:        branch: {
+  src\modules\sales\services\sale.service.js:1164:          select: {
+  src\modules\sales\services\sale.service.js:1165:            id: true,
+  src\modules\sales\services\sale.service.js:1174:            fullName: true,
+  src\modules\sales\services\sale.service.js:1175:          },
+  src\modules\sales\services\sale.service.js:1176:        },
+> src\modules\sales\services\sale.service.js:1177:        sale: {
+  src\modules\sales\services\sale.service.js:1178:          select: {
+  src\modules\sales\services\sale.service.js:1179:            id: true,
+  src\modules\sales\services\sale.service.js:1180:            receiptCode: true,
+  src\modules\sales\services\sale.service.js:1181:            grandTotal: true,
+> src\modules\sales\services\sale.service.js:1182:            amountPaid: true,
+> src\modules\sales\services\sale.service.js:1183:            paymentStatus: true,
+  src\modules\sales\services\sale.service.js:1184:          },
+  src\modules\sales\services\sale.service.js:1185:        },
+> src\modules\sales\services\sale.service.js:1186:        createdBy: {
+  src\modules\sales\services\sale.service.js:1187:          select: {
+  src\modules\sales\services\sale.service.js:1188:            id: true,
+  src\modules\sales\services\sale.service.js:1189:            username: true,
+  src\modules\sales\services\sale.service.js:1190:            fullName: true,
+  src\modules\sales\services\sale.service.js:1191:            role: true,
+  src\modules\sales\services\sale.service.js:1198:  });
+  src\modules\sales\services\sale.service.js:1199:};
+  src\modules\sales\services\sale.service.js:1200:
+> src\modules\sales\services\sale.service.js:1201:const cancelSale = async (actor, saleId, payload) => {
+  src\modules\sales\services\sale.service.js:1202:  return prisma.$transaction(async (tx) => {
+> src\modules\sales\services\sale.service.js:1203:    const sale = await tx.sale.findUnique({
+  src\modules\sales\services\sale.service.js:1204:      where: {
+> src\modules\sales\services\sale.service.js:1205:        id: saleId,
+  src\modules\sales\services\sale.service.js:1206:      },
+  src\modules\sales\services\sale.service.js:1207:      include: {
+  src\modules\sales\services\sale.service.js:1208:        branch: {
+  src\modules\sales\services\sale.service.js:1209:          select: {
+  src\modules\sales\services\sale.service.js:1210:            id: true,
+  src\modules\sales\services\sale.service.js:1212:            name: true,
+  src\modules\sales\services\sale.service.js:1213:          },
+  src\modules\sales\services\sale.service.js:1214:        },
+> src\modules\sales\services\sale.service.js:1215:        items: {
+  src\modules\sales\services\sale.service.js:1216:          orderBy: {
+  src\modules\sales\services\sale.service.js:1217:            lineNo: "asc",
+  src\modules\sales\services\sale.service.js:1218:          },
+  src\modules\sales\services\sale.service.js:1219:        },
+  src\modules\sales\services\sale.service.js:1220:      },
+  src\modules\sales\services\sale.service.js:1221:    });
+  src\modules\sales\services\sale.service.js:1222:
+> src\modules\sales\services\sale.service.js:1223:    if (!sale) {
+> src\modules\sales\services\sale.service.js:1224:      const error = new Error("SALE_NOT_FOUND");
+> src\modules\sales\services\sale.service.js:1225:      error.statusCode = 404;
+  src\modules\sales\services\sale.service.js:1226:      throw error;
+  src\modules\sales\services\sale.service.js:1227:    }
+  src\modules\sales\services\sale.service.js:1228:
+> src\modules\sales\services\sale.service.js:1229:    ensureCanAccessSaleBranch(actor, sale);
+  src\modules\sales\services\sale.service.js:1230:
+  src\modules\sales\services\sale.service.js:1231:    if (!OWNER_ADMIN_ROLES.has(actor.role)) {
+> src\modules\sales\services\sale.service.js:1232:      const error = new Error("SALE_CANCEL_FORBIDDEN");
+> src\modules\sales\services\sale.service.js:1233:      error.statusCode = 403;
+  src\modules\sales\services\sale.service.js:1234:      throw error;
+  src\modules\sales\services\sale.service.js:1235:    }
+  src\modules\sales\services\sale.service.js:1236:
+> src\modules\sales\services\sale.service.js:1237:    if (sale.status !== "COMPLETED") {
+> src\modules\sales\services\sale.service.js:1238:      const error = new Error("SALE_NOT_CANCELLABLE");
+> src\modules\sales\services\sale.service.js:1239:      error.statusCode = 400;
+  src\modules\sales\services\sale.service.js:1240:      throw error;
+  src\modules\sales\services\sale.service.js:1241:    }
+  src\modules\sales\services\sale.service.js:1242:
+> src\modules\sales\services\sale.service.js:1243:    for (const saleItem of sale.items) {
+> src\modules\sales\services\sale.service.js:1244:      await restoreSaleItemStock({
+  src\modules\sales\services\sale.service.js:1245:        tx,
+  src\modules\sales\services\sale.service.js:1246:        actor,
+> src\modules\sales\services\sale.service.js:1247:        sale,
+> src\modules\sales\services\sale.service.js:1248:        saleItem,
+  src\modules\sales\services\sale.service.js:1249:      });
+  src\modules\sales\services\sale.service.js:1250:    }
+  src\modules\sales\services\sale.service.js:1251:
+> src\modules\sales\services\sale.service.js:1252:    const cancelledSale = await tx.sale.update({
+  src\modules\sales\services\sale.service.js:1253:      where: {
+> src\modules\sales\services\sale.service.js:1254:        id: sale.id,
+  src\modules\sales\services\sale.service.js:1255:      },
+  src\modules\sales\services\sale.service.js:1256:      data: {
+> src\modules\sales\services\sale.service.js:1257:        status: "CANCELLED",
+> src\modules\sales\services\sale.service.js:1258:        cancellationReason: payload.cancellationReason,
+> src\modules\sales\services\sale.service.js:1259:        cancelledAt: new Date(),
+> src\modules\sales\services\sale.service.js:1260:        cancelledById: actor.id,
+> src\modules\sales\services\sale.service.js:1261:        updatedById: actor.id,
+  src\modules\sales\services\sale.service.js:1262:      },
+  src\modules\sales\services\sale.service.js:1263:      include: {
+  src\modules\sales\services\sale.service.js:1264:        branch: {
+  src\modules\sales\services\sale.service.js:1265:          select: {
+  src\modules\sales\services\sale.service.js:1266:            id: true,
+  src\modules\sales\services\sale.service.js:1281:          select: {
+  src\modules\sales\services\sale.service.js:1282:            id: true,
+  src\modules\sales\services\sale.service.js:1283:            quotationCode: true,
+> src\modules\sales\services\sale.service.js:1284:            status: true,
+  src\modules\sales\services\sale.service.js:1285:          },
+  src\modules\sales\services\sale.service.js:1286:        },
+> src\modules\sales\services\sale.service.js:1287:        cashier: {
+  src\modules\sales\services\sale.service.js:1288:          select: {
+  src\modules\sales\services\sale.service.js:1289:            id: true,
+  src\modules\sales\services\sale.service.js:1290:            username: true,
+  src\modules\sales\services\sale.service.js:1291:            fullName: true,
+  src\modules\sales\services\sale.service.js:1292:            role: true,
+  src\modules\sales\services\sale.service.js:1293:          },
+  src\modules\sales\services\sale.service.js:1294:        },
+> src\modules\sales\services\sale.service.js:1295:        createdBy: {
+  src\modules\sales\services\sale.service.js:1296:          select: {
+  src\modules\sales\services\sale.service.js:1297:            id: true,
+  src\modules\sales\services\sale.service.js:1298:            username: true,
+  src\modules\sales\services\sale.service.js:1299:            fullName: true,
+  src\modules\sales\services\sale.service.js:1300:            role: true,
+  src\modules\sales\services\sale.service.js:1301:          },
+  src\modules\sales\services\sale.service.js:1302:        },
+> src\modules\sales\services\sale.service.js:1303:        updatedBy: {
+  src\modules\sales\services\sale.service.js:1304:          select: {
+  src\modules\sales\services\sale.service.js:1305:            id: true,
+  src\modules\sales\services\sale.service.js:1306:            username: true,
+  src\modules\sales\services\sale.service.js:1307:            fullName: true,
+  src\modules\sales\services\sale.service.js:1308:            role: true,
+  src\modules\sales\services\sale.service.js:1309:          },
+  src\modules\sales\services\sale.service.js:1310:        },
+> src\modules\sales\services\sale.service.js:1311:        cancelledBy: {
+  src\modules\sales\services\sale.service.js:1312:          select: {
+  src\modules\sales\services\sale.service.js:1313:            id: true,
+  src\modules\sales\services\sale.service.js:1314:            username: true,
+  src\modules\sales\services\sale.service.js:1315:            fullName: true,
+  src\modules\sales\services\sale.service.js:1316:            role: true,
+  src\modules\sales\services\sale.service.js:1317:          },
+  src\modules\sales\services\sale.service.js:1318:        },
+> src\modules\sales\services\sale.service.js:1319:        items: {
+  src\modules\sales\services\sale.service.js:1320:          orderBy: {
+  src\modules\sales\services\sale.service.js:1321:            lineNo: "asc",
+  src\modules\sales\services\sale.service.js:1322:          },
+  src\modules\sales\services\sale.service.js:1323:        },
+  src\modules\sales\services\sale.service.js:1324:        payments: {
+  src\modules\sales\services\sale.service.js:1331:
+  src\modules\sales\services\sale.service.js:1332:
+  src\modules\sales\services\sale.service.js:1333:    await cashLinkService.reverseSystemCashIn(tx, actor, {
+> src\modules\sales\services\sale.service.js:1334:      source: "SALE",
+> src\modules\sales\services\sale.service.js:1335:      sourceId: sale.id,
+> src\modules\sales\services\sale.service.js:1336:      type: "SALE_PAYMENT",
+> src\modules\sales\services\sale.service.js:1337:      cancellationReason: `Auto cash reversal from cancelled sale ${sale.receiptCode}. Reason: ${payload.cancellationReason}`,
+  src\modules\sales\services\sale.service.js:1338:    });
+  src\modules\sales\services\sale.service.js:1339:
+> src\modules\sales\services\sale.service.js:1340:    return cancelledSale;
+  src\modules\sales\services\sale.service.js:1341:  });
+  src\modules\sales\services\sale.service.js:1342:};
+  src\modules\sales\services\sale.service.js:1343:
+  src\modules\sales\services\sale.service.js:1344:module.exports = {
+> src\modules\sales\services\sale.service.js:1345:  createSale,
+> src\modules\sales\services\sale.service.js:1346:  getSales,
+> src\modules\sales\services\sale.service.js:1347:  getSaleById,
+> src\modules\sales\services\sale.service.js:1348:  createCreditAccountFromSale,
+> src\modules\sales\services\sale.service.js:1349:  cancelSale,
+  src\modules\sales\services\sale.service.js:1350:};
+
+
+
+
+============================================================
+FILE: .\src\modules\items\services\item.service.js
+============================================================
+
+  src\modules\items\services\item.service.js:1:const prisma = require("../../../config/prisma");
+  src\modules\items\services\item.service.js:2:const AppError = require("../../../utils/appError");
+  src\modules\items\services\item.service.js:3:
+> src\modules\items\services\item.service.js:4:const ITEM_SELECT = {
+  src\modules\items\services\item.service.js:5:  id: true,
+> src\modules\items\services\item.service.js:6:  itemCode: true,
+> src\modules\items\services\item.service.js:7:  itemName: true,
+  src\modules\items\services\item.service.js:8:  description: true,
+  src\modules\items\services\item.service.js:9:  barcode: true,
+  src\modules\items\services\item.service.js:10:  brand: true,
+  src\modules\items\services\item.service.js:11:  modelName: true,
+> src\modules\items\services\item.service.js:12:  status: true,
+  src\modules\items\services\item.service.js:13:  isSerialized: true,
+  src\modules\items\services\item.service.js:14:  hasWarranty: true,
+  src\modules\items\services\item.service.js:15:  costPrice: true,
+  src\modules\items\services\item.service.js:16:  price1: true,
+  src\modules\items\services\item.service.js:17:  price2: true,
+  src\modules\items\services\item.service.js:27:      id: true,
+  src\modules\items\services\item.service.js:28:      code: true,
+  src\modules\items\services\item.service.js:29:      name: true,
+> src\modules\items\services\item.service.js:30:      status: true,
+  src\modules\items\services\item.service.js:31:    },
+  src\modules\items\services\item.service.js:32:  },
+  src\modules\items\services\item.service.js:33:
+  src\modules\items\services\item.service.js:34:  categoryId: true,
+  src\modules\items\services\item.service.js:35:  category: {
+  src\modules\items\services\item.service.js:37:      id: true,
+  src\modules\items\services\item.service.js:38:      categoryCode: true,
+  src\modules\items\services\item.service.js:39:      name: true,
+> src\modules\items\services\item.service.js:40:      status: true,
+  src\modules\items\services\item.service.js:41:      branchId: true,
+  src\modules\items\services\item.service.js:42:    },
+  src\modules\items\services\item.service.js:43:  },
+  src\modules\items\services\item.service.js:44:
+  src\modules\items\services\item.service.js:45:  unitId: true,
+  src\modules\items\services\item.service.js:48:      id: true,
+  src\modules\items\services\item.service.js:49:      unitCode: true,
+  src\modules\items\services\item.service.js:50:      name: true,
+> src\modules\items\services\item.service.js:51:      status: true,
+  src\modules\items\services\item.service.js:52:    },
+  src\modules\items\services\item.service.js:53:  },
+  src\modules\items\services\item.service.js:54:
+> src\modules\items\services\item.service.js:55:  createdById: true,
+> src\modules\items\services\item.service.js:56:  createdBy: {
+  src\modules\items\services\item.service.js:57:    select: {
+  src\modules\items\services\item.service.js:58:      id: true,
+  src\modules\items\services\item.service.js:59:      username: true,
+  src\modules\items\services\item.service.js:60:      fullName: true,
+  src\modules\items\services\item.service.js:61:      role: true,
+  src\modules\items\services\item.service.js:62:    },
+  src\modules\items\services\item.service.js:63:  },
+  src\modules\items\services\item.service.js:64:
+> src\modules\items\services\item.service.js:65:  updatedById: true,
+> src\modules\items\services\item.service.js:66:  updatedBy: {
+  src\modules\items\services\item.service.js:67:    select: {
+  src\modules\items\services\item.service.js:68:      id: true,
+  src\modules\items\services\item.service.js:69:      username: true,
+  src\modules\items\services\item.service.js:70:      fullName: true,
+  src\modules\items\services\item.service.js:71:      role: true,
+  src\modules\items\services\item.service.js:72:    },
+  src\modules\items\services\item.service.js:73:  },
+  src\modules\items\services\item.service.js:74:
+> src\modules\items\services\item.service.js:75:  createdAt: true,
+> src\modules\items\services\item.service.js:76:  updatedAt: true,
+  src\modules\items\services\item.service.js:77:};
+  src\modules\items\services\item.service.js:78:
+  src\modules\items\services\item.service.js:79:const normalizeOptionalString = (value) => {
+  src\modules\items\services\item.service.js:80:  if (value === undefined || value === null) {
+  src\modules\items\services\item.service.js:81:    return null;
+  src\modules\items\services\item.service.js:102:  return value === "true";
+  src\modules\items\services\item.service.js:103:};
+  src\modules\items\services\item.service.js:104:
+> src\modules\items\services\item.service.js:105:const getActorBranchIdForCreate = (actor, requestedBranchId) => {
+  src\modules\items\services\item.service.js:106:  if (!actor) {
+  src\modules\items\services\item.service.js:107:    throw new AppError("Authentication required", 401, "AUTHENTICATION_REQUIRED");
+  src\modules\items\services\item.service.js:108:  }
+  src\modules\items\services\item.service.js:109:
+  src\modules\items\services\item.service.js:110:  if (actor.role === "SUPER_OWNER") {
+  src\modules\items\services\item.service.js:111:    if (!requestedBranchId) {
+  src\modules\items\services\item.service.js:112:      throw new AppError(
+> src\modules\items\services\item.service.js:113:        "Branch ID is required for Super Owner item creation",
+  src\modules\items\services\item.service.js:114:        400,
+  src\modules\items\services\item.service.js:115:        "BRANCH_ID_REQUIRED"
+  src\modules\items\services\item.service.js:116:      );
+  src\modules\items\services\item.service.js:117:    }
+  src\modules\items\services\item.service.js:118:
+  src\modules\items\services\item.service.js:129:
+  src\modules\items\services\item.service.js:130:  if (requestedBranchId && requestedBranchId !== actor.branchId) {
+  src\modules\items\services\item.service.js:131:    throw new AppError(
+> src\modules\items\services\item.service.js:132:      "You can only create items in your assigned branch",
+  src\modules\items\services\item.service.js:133:      403,
+  src\modules\items\services\item.service.js:134:      "BRANCH_ACCESS_DENIED"
+  src\modules\items\services\item.service.js:135:    );
+  src\modules\items\services\item.service.js:136:  }
+  src\modules\items\services\item.service.js:137:
+  src\modules\items\services\item.service.js:157:
+  src\modules\items\services\item.service.js:158:  if (requestedBranchId && requestedBranchId !== actor.branchId) {
+  src\modules\items\services\item.service.js:159:    throw new AppError(
+> src\modules\items\services\item.service.js:160:      "You can only view items in your assigned branch",
+  src\modules\items\services\item.service.js:161:      403,
+  src\modules\items\services\item.service.js:162:      "BRANCH_ACCESS_DENIED"
+  src\modules\items\services\item.service.js:163:    );
+  src\modules\items\services\item.service.js:164:  }
+  src\modules\items\services\item.service.js:165:
+  src\modules\items\services\item.service.js:166:  return actor.branchId;
+  src\modules\items\services\item.service.js:167:};
+  src\modules\items\services\item.service.js:168:
+> src\modules\items\services\item.service.js:169:const assertItemAccess = (item, actor) => {
+  src\modules\items\services\item.service.js:170:  if (!actor) {
+  src\modules\items\services\item.service.js:171:    throw new AppError("Authentication required", 401, "AUTHENTICATION_REQUIRED");
+  src\modules\items\services\item.service.js:172:  }
+  src\modules\items\services\item.service.js:173:
+  src\modules\items\services\item.service.js:174:  if (actor.role === "SUPER_OWNER") {
+  src\modules\items\services\item.service.js:183:    );
+  src\modules\items\services\item.service.js:184:  }
+  src\modules\items\services\item.service.js:185:
+> src\modules\items\services\item.service.js:186:  if (item.branchId !== actor.branchId) {
+  src\modules\items\services\item.service.js:187:    throw new AppError(
+> src\modules\items\services\item.service.js:188:      "You can only access items in your assigned branch",
+  src\modules\items\services\item.service.js:189:      403,
+  src\modules\items\services\item.service.js:190:      "BRANCH_ACCESS_DENIED"
+  src\modules\items\services\item.service.js:191:    );
+  src\modules\items\services\item.service.js:192:  }
+  src\modules\items\services\item.service.js:193:};
+  src\modules\items\services\item.service.js:201:      id: true,
+  src\modules\items\services\item.service.js:202:      code: true,
+  src\modules\items\services\item.service.js:203:      name: true,
+> src\modules\items\services\item.service.js:204:      status: true,
+  src\modules\items\services\item.service.js:205:    },
+  src\modules\items\services\item.service.js:206:  });
+  src\modules\items\services\item.service.js:207:
+  src\modules\items\services\item.service.js:208:  if (!branch) {
+  src\modules\items\services\item.service.js:209:    throw new AppError("Branch not found", 404, "BRANCH_NOT_FOUND");
+  src\modules\items\services\item.service.js:210:  }
+  src\modules\items\services\item.service.js:211:
+> src\modules\items\services\item.service.js:212:  if (branch.status !== "ACTIVE") {
+  src\modules\items\services\item.service.js:213:    throw new AppError("Branch is not active", 400, "BRANCH_NOT_ACTIVE");
+  src\modules\items\services\item.service.js:214:  }
+  src\modules\items\services\item.service.js:215:
+  src\modules\items\services\item.service.js:216:  return branch;
+  src\modules\items\services\item.service.js:217:};
+  src\modules\items\services\item.service.js:218:
+  src\modules\items\services\item.service.js:219:const getActiveCategoryOrThrow = async (categoryId) => {
+> src\modules\items\services\item.service.js:220:  const category = await prisma.itemCategory.findUnique({
+  src\modules\items\services\item.service.js:221:    where: {
+  src\modules\items\services\item.service.js:222:      id: categoryId,
+  src\modules\items\services\item.service.js:223:    },
+  src\modules\items\services\item.service.js:224:    select: {
+  src\modules\items\services\item.service.js:225:      id: true,
+  src\modules\items\services\item.service.js:226:      categoryCode: true,
+  src\modules\items\services\item.service.js:227:      name: true,
+> src\modules\items\services\item.service.js:228:      status: true,
+  src\modules\items\services\item.service.js:229:      branchId: true,
+  src\modules\items\services\item.service.js:230:      branch: {
+  src\modules\items\services\item.service.js:231:        select: {
+  src\modules\items\services\item.service.js:232:          id: true,
+  src\modules\items\services\item.service.js:233:          code: true,
+  src\modules\items\services\item.service.js:238:  });
+  src\modules\items\services\item.service.js:239:
+  src\modules\items\services\item.service.js:240:  if (!category) {
+> src\modules\items\services\item.service.js:241:    throw new AppError("Item category not found", 404, "CATEGORY_NOT_FOUND");
+  src\modules\items\services\item.service.js:242:  }
+  src\modules\items\services\item.service.js:243:
+> src\modules\items\services\item.service.js:244:  if (category.status !== "ACTIVE") {
+  src\modules\items\services\item.service.js:245:    throw new AppError(
+> src\modules\items\services\item.service.js:246:      "Item category is not active",
+  src\modules\items\services\item.service.js:247:      400,
+  src\modules\items\services\item.service.js:248:      "CATEGORY_NOT_ACTIVE"
+  src\modules\items\services\item.service.js:249:    );
+  src\modules\items\services\item.service.js:250:  }
+  src\modules\items\services\item.service.js:251:
+  src\modules\items\services\item.service.js:261:      id: true,
+  src\modules\items\services\item.service.js:262:      unitCode: true,
+  src\modules\items\services\item.service.js:263:      name: true,
+> src\modules\items\services\item.service.js:264:      status: true,
+  src\modules\items\services\item.service.js:265:    },
+  src\modules\items\services\item.service.js:266:  });
+  src\modules\items\services\item.service.js:267:
+  src\modules\items\services\item.service.js:268:  if (!unit) {
+  src\modules\items\services\item.service.js:269:    throw new AppError("Unit not found", 404, "UNIT_NOT_FOUND");
+  src\modules\items\services\item.service.js:270:  }
+  src\modules\items\services\item.service.js:271:
+> src\modules\items\services\item.service.js:272:  if (unit.status !== "ACTIVE") {
+  src\modules\items\services\item.service.js:273:    throw new AppError("Unit is not active", 400, "UNIT_NOT_ACTIVE");
+  src\modules\items\services\item.service.js:274:  }
+  src\modules\items\services\item.service.js:275:
+  src\modules\items\services\item.service.js:276:  return unit;
+  src\modules\items\services\item.service.js:277:};
+  src\modules\items\services\item.service.js:279:const assertCategoryBelongsToBranchId = (category, branchId) => {
+  src\modules\items\services\item.service.js:280:  if (category.branchId !== branchId) {
+  src\modules\items\services\item.service.js:281:    throw new AppError(
+> src\modules\items\services\item.service.js:282:      "Item category does not belong to the selected branch",
+  src\modules\items\services\item.service.js:283:      400,
+  src\modules\items\services\item.service.js:284:      "CATEGORY_BRANCH_MISMATCH"
+  src\modules\items\services\item.service.js:285:    );
+  src\modules\items\services\item.service.js:286:  }
+  src\modules\items\services\item.service.js:287:};
+  src\modules\items\services\item.service.js:288:
+> src\modules\items\services\item.service.js:289:const generateItemCode = async (branch) => {
+> src\modules\items\services\item.service.js:290:  const prefix = `ITEM-${branch.code}-API-`;
+  src\modules\items\services\item.service.js:291:
+> src\modules\items\services\item.service.js:292:  const existingItems = await prisma.item.findMany({
+  src\modules\items\services\item.service.js:293:    where: {
+  src\modules\items\services\item.service.js:294:      branchId: branch.id,
+> src\modules\items\services\item.service.js:295:      itemCode: {
+  src\modules\items\services\item.service.js:296:        startsWith: prefix,
+  src\modules\items\services\item.service.js:297:      },
+  src\modules\items\services\item.service.js:298:    },
+  src\modules\items\services\item.service.js:299:    select: {
+> src\modules\items\services\item.service.js:300:      itemCode: true,
+  src\modules\items\services\item.service.js:301:    },
+  src\modules\items\services\item.service.js:302:  });
+  src\modules\items\services\item.service.js:303:
+  src\modules\items\services\item.service.js:304:  let highestNumber = 0;
+  src\modules\items\services\item.service.js:305:
+> src\modules\items\services\item.service.js:306:  for (const item of existingItems) {
+> src\modules\items\services\item.service.js:307:    const suffix = item.itemCode.replace(prefix, "");
+  src\modules\items\services\item.service.js:308:    const parsedNumber = Number.parseInt(suffix, 10);
+  src\modules\items\services\item.service.js:309:
+  src\modules\items\services\item.service.js:310:    if (!Number.isNaN(parsedNumber) && parsedNumber > highestNumber) {
+  src\modules\items\services\item.service.js:311:      highestNumber = parsedNumber;
+  src\modules\items\services\item.service.js:312:    }
+  src\modules\items\services\item.service.js:317:  return `${prefix}${String(nextNumber).padStart(3, "0")}`;
+  src\modules\items\services\item.service.js:318:};
+  src\modules\items\services\item.service.js:319:
+> src\modules\items\services\item.service.js:320:const assertItemCodeIsUnique = async (branchId, itemCode) => {
+> src\modules\items\services\item.service.js:321:  const existingItem = await prisma.item.findUnique({
+  src\modules\items\services\item.service.js:322:    where: {
+> src\modules\items\services\item.service.js:323:      branchId_itemCode: {
+  src\modules\items\services\item.service.js:324:        branchId,
+> src\modules\items\services\item.service.js:325:        itemCode,
+  src\modules\items\services\item.service.js:326:      },
+  src\modules\items\services\item.service.js:327:    },
+  src\modules\items\services\item.service.js:328:    select: {
+  src\modules\items\services\item.service.js:329:      id: true,
+  src\modules\items\services\item.service.js:330:    },
+  src\modules\items\services\item.service.js:331:  });
+  src\modules\items\services\item.service.js:332:
+> src\modules\items\services\item.service.js:333:  if (existingItem) {
+  src\modules\items\services\item.service.js:334:    throw new AppError(
+> src\modules\items\services\item.service.js:335:      "Item code already exists in this branch",
+  src\modules\items\services\item.service.js:336:      409,
+> src\modules\items\services\item.service.js:337:      "ITEM_CODE_ALREADY_EXISTS"
+  src\modules\items\services\item.service.js:338:    );
+  src\modules\items\services\item.service.js:339:  }
+  src\modules\items\services\item.service.js:340:};
+  src\modules\items\services\item.service.js:341:
+> src\modules\items\services\item.service.js:342:const assertItemCodeIsUniqueForUpdate = async (
+  src\modules\items\services\item.service.js:343:  branchId,
+> src\modules\items\services\item.service.js:344:  itemCode,
+> src\modules\items\services\item.service.js:345:  currentItemId
+  src\modules\items\services\item.service.js:346:) => {
+> src\modules\items\services\item.service.js:347:  const existingItem = await prisma.item.findUnique({
+  src\modules\items\services\item.service.js:348:    where: {
+> src\modules\items\services\item.service.js:349:      branchId_itemCode: {
+  src\modules\items\services\item.service.js:350:        branchId,
+> src\modules\items\services\item.service.js:351:        itemCode,
+  src\modules\items\services\item.service.js:352:      },
+  src\modules\items\services\item.service.js:353:    },
+  src\modules\items\services\item.service.js:354:    select: {
+  src\modules\items\services\item.service.js:355:      id: true,
+  src\modules\items\services\item.service.js:356:    },
+  src\modules\items\services\item.service.js:357:  });
+  src\modules\items\services\item.service.js:358:
+> src\modules\items\services\item.service.js:359:  if (existingItem && existingItem.id !== currentItemId) {
+  src\modules\items\services\item.service.js:360:    throw new AppError(
+> src\modules\items\services\item.service.js:361:      "Item code already exists in this branch",
+  src\modules\items\services\item.service.js:362:      409,
+> src\modules\items\services\item.service.js:363:      "ITEM_CODE_ALREADY_EXISTS"
+  src\modules\items\services\item.service.js:364:    );
+  src\modules\items\services\item.service.js:365:  }
+  src\modules\items\services\item.service.js:366:};
+  src\modules\items\services\item.service.js:367:
+> src\modules\items\services\item.service.js:368:const createItem = async (payload, actor) => {
+> src\modules\items\services\item.service.js:369:  const branchId = getActorBranchIdForCreate(actor, payload.branchId);
+  src\modules\items\services\item.service.js:370:  const branch = await getActiveBranchOrThrow(branchId);
+  src\modules\items\services\item.service.js:371:  const category = await getActiveCategoryOrThrow(payload.categoryId);
+  src\modules\items\services\item.service.js:372:  const unit = await getActiveUnitOrThrow(payload.unitId);
+  src\modules\items\services\item.service.js:373:
+  src\modules\items\services\item.service.js:374:  assertCategoryBelongsToBranchId(category, branch.id);
+  src\modules\items\services\item.service.js:375:
+> src\modules\items\services\item.service.js:376:  const itemCode = payload.itemCode
+> src\modules\items\services\item.service.js:377:    ? payload.itemCode.trim().toUpperCase()
+> src\modules\items\services\item.service.js:378:    : await generateItemCode(branch);
+  src\modules\items\services\item.service.js:379:
+> src\modules\items\services\item.service.js:380:  await assertItemCodeIsUnique(branch.id, itemCode);
+  src\modules\items\services\item.service.js:381:
+> src\modules\items\services\item.service.js:382:  return prisma.item.create({
+  src\modules\items\services\item.service.js:383:    data: {
+> src\modules\items\services\item.service.js:384:      itemCode,
+> src\modules\items\services\item.service.js:385:      itemName: payload.itemName.trim(),
+  src\modules\items\services\item.service.js:386:      description: normalizeOptionalString(payload.description),
+  src\modules\items\services\item.service.js:387:      barcode: normalizeOptionalString(payload.barcode),
+  src\modules\items\services\item.service.js:388:      brand: normalizeOptionalString(payload.brand),
+  src\modules\items\services\item.service.js:389:      modelName: normalizeOptionalString(payload.modelName),
+> src\modules\items\services\item.service.js:390:      status: "ACTIVE",
+  src\modules\items\services\item.service.js:391:      isSerialized: Boolean(payload.isSerialized),
+  src\modules\items\services\item.service.js:392:      hasWarranty: Boolean(payload.hasWarranty),
+  src\modules\items\services\item.service.js:393:
+  src\modules\items\services\item.service.js:394:      costPrice: normalizeMoney(payload.costPrice),
+  src\modules\items\services\item.service.js:395:      price1: normalizeMoney(payload.price1),
+  src\modules\items\services\item.service.js:405:      categoryId: category.id,
+  src\modules\items\services\item.service.js:406:      unitId: unit.id,
+  src\modules\items\services\item.service.js:407:
+> src\modules\items\services\item.service.js:408:      createdById: actor.id,
+> src\modules\items\services\item.service.js:409:      updatedById: actor.id,
+  src\modules\items\services\item.service.js:410:    },
+> src\modules\items\services\item.service.js:411:    select: ITEM_SELECT,
+  src\modules\items\services\item.service.js:412:  });
+  src\modules\items\services\item.service.js:413:};
+  src\modules\items\services\item.service.js:414:
+> src\modules\items\services\item.service.js:415:const listItems = async (filters = {}, actor) => {
+  src\modules\items\services\item.service.js:416:  const page = Number.parseInt(filters.page || "1", 10);
+  src\modules\items\services\item.service.js:417:  const limit = Number.parseInt(filters.limit || "20", 10);
+  src\modules\items\services\item.service.js:418:  const safeLimit = Math.min(limit, 100);
+  src\modules\items\services\item.service.js:419:  const skip = (page - 1) * safeLimit;
+  src\modules\items\services\item.service.js:420:
+  src\modules\items\services\item.service.js:425:    branchId,
+  src\modules\items\services\item.service.js:426:    categoryId: filters.categoryId,
+  src\modules\items\services\item.service.js:427:    unitId: filters.unitId,
+> src\modules\items\services\item.service.js:428:    status: filters.status,
+  src\modules\items\services\item.service.js:429:    isSerialized: parseBooleanQuery(filters.isSerialized),
+  src\modules\items\services\item.service.js:430:    hasWarranty: parseBooleanQuery(filters.hasWarranty),
+  src\modules\items\services\item.service.js:431:  };
+  src\modules\items\services\item.service.js:432:
+  src\modules\items\services\item.service.js:433:  if (search) {
+  src\modules\items\services\item.service.js:434:    where.OR = [
+  src\modules\items\services\item.service.js:435:      {
+> src\modules\items\services\item.service.js:436:        itemCode: {
+  src\modules\items\services\item.service.js:437:          contains: search,
+  src\modules\items\services\item.service.js:438:          mode: "insensitive",
+  src\modules\items\services\item.service.js:439:        },
+  src\modules\items\services\item.service.js:440:      },
+  src\modules\items\services\item.service.js:441:      {
+> src\modules\items\services\item.service.js:442:        itemName: {
+  src\modules\items\services\item.service.js:443:          contains: search,
+  src\modules\items\services\item.service.js:444:          mode: "insensitive",
+  src\modules\items\services\item.service.js:445:        },
+  src\modules\items\services\item.service.js:446:      },
+  src\modules\items\services\item.service.js:447:      {
+  src\modules\items\services\item.service.js:471:    ];
+  src\modules\items\services\item.service.js:472:  }
+  src\modules\items\services\item.service.js:473:
+> src\modules\items\services\item.service.js:474:  const [items, totalItems] = await prisma.$transaction([
+> src\modules\items\services\item.service.js:475:    prisma.item.findMany({
+  src\modules\items\services\item.service.js:476:      where,
+> src\modules\items\services\item.service.js:477:      select: ITEM_SELECT,
+  src\modules\items\services\item.service.js:478:      orderBy: [
+  src\modules\items\services\item.service.js:479:        {
+  src\modules\items\services\item.service.js:480:          branch: {
+  src\modules\items\services\item.service.js:481:            code: "asc",
+  src\modules\items\services\item.service.js:482:          },
+  src\modules\items\services\item.service.js:483:        },
+  src\modules\items\services\item.service.js:484:        {
+> src\modules\items\services\item.service.js:485:          itemCode: "asc",
+  src\modules\items\services\item.service.js:486:        },
+  src\modules\items\services\item.service.js:487:      ],
+  src\modules\items\services\item.service.js:488:      skip,
+  src\modules\items\services\item.service.js:489:      take: safeLimit,
+  src\modules\items\services\item.service.js:490:    }),
+> src\modules\items\services\item.service.js:491:    prisma.item.count({
+  src\modules\items\services\item.service.js:492:      where,
+  src\modules\items\services\item.service.js:493:    }),
+  src\modules\items\services\item.service.js:494:  ]);
+  src\modules\items\services\item.service.js:495:
+> src\modules\items\services\item.service.js:496:  const totalPages = Math.ceil(totalItems / safeLimit) || 1;
+  src\modules\items\services\item.service.js:497:
+  src\modules\items\services\item.service.js:498:  return {
+> src\modules\items\services\item.service.js:499:    items,
+  src\modules\items\services\item.service.js:500:    pagination: {
+  src\modules\items\services\item.service.js:501:      page,
+  src\modules\items\services\item.service.js:502:      limit: safeLimit,
+> src\modules\items\services\item.service.js:503:      totalItems,
+  src\modules\items\services\item.service.js:504:      totalPages,
+  src\modules\items\services\item.service.js:505:      hasNextPage: page < totalPages,
+  src\modules\items\services\item.service.js:506:      hasPreviousPage: page > 1,
+  src\modules\items\services\item.service.js:507:    },
+  src\modules\items\services\item.service.js:508:  };
+  src\modules\items\services\item.service.js:509:};
+  src\modules\items\services\item.service.js:510:
+> src\modules\items\services\item.service.js:511:const getItemById = async (itemId, actor) => {
+> src\modules\items\services\item.service.js:512:  const item = await prisma.item.findUnique({
+  src\modules\items\services\item.service.js:513:    where: {
+> src\modules\items\services\item.service.js:514:      id: itemId,
+  src\modules\items\services\item.service.js:515:    },
+> src\modules\items\services\item.service.js:516:    select: ITEM_SELECT,
+  src\modules\items\services\item.service.js:517:  });
+  src\modules\items\services\item.service.js:518:
+> src\modules\items\services\item.service.js:519:  if (!item) {
+> src\modules\items\services\item.service.js:520:    throw new AppError("Item not found", 404, "ITEM_NOT_FOUND");
+  src\modules\items\services\item.service.js:521:  }
+  src\modules\items\services\item.service.js:522:
+> src\modules\items\services\item.service.js:523:  assertItemAccess(item, actor);
+  src\modules\items\services\item.service.js:524:
+> src\modules\items\services\item.service.js:525:  return item;
+  src\modules\items\services\item.service.js:526:};
+  src\modules\items\services\item.service.js:527:
+> src\modules\items\services\item.service.js:528:const updateItemById = async (itemId, payload, actor) => {
+> src\modules\items\services\item.service.js:529:  const existingItem = await prisma.item.findUnique({
+  src\modules\items\services\item.service.js:530:    where: {
+> src\modules\items\services\item.service.js:531:      id: itemId,
+  src\modules\items\services\item.service.js:532:    },
+> src\modules\items\services\item.service.js:533:    select: ITEM_SELECT,
+  src\modules\items\services\item.service.js:534:  });
+  src\modules\items\services\item.service.js:535:
+> src\modules\items\services\item.service.js:536:  if (!existingItem) {
+> src\modules\items\services\item.service.js:537:    throw new AppError("Item not found", 404, "ITEM_NOT_FOUND");
+  src\modules\items\services\item.service.js:538:  }
+  src\modules\items\services\item.service.js:539:
+> src\modules\items\services\item.service.js:540:  assertItemAccess(existingItem, actor);
+  src\modules\items\services\item.service.js:541:
+> src\modules\items\services\item.service.js:542:  const updateData = {
+> src\modules\items\services\item.service.js:543:    updatedById: actor.id,
+  src\modules\items\services\item.service.js:544:  };
+  src\modules\items\services\item.service.js:545:
+> src\modules\items\services\item.service.js:546:  if (payload.itemCode !== undefined) {
+> src\modules\items\services\item.service.js:547:    const itemCode = payload.itemCode.trim().toUpperCase();
+  src\modules\items\services\item.service.js:548:
+> src\modules\items\services\item.service.js:549:    await assertItemCodeIsUniqueForUpdate(
+> src\modules\items\services\item.service.js:550:      existingItem.branchId,
+> src\modules\items\services\item.service.js:551:      itemCode,
+> src\modules\items\services\item.service.js:552:      existingItem.id
+  src\modules\items\services\item.service.js:553:    );
+  src\modules\items\services\item.service.js:554:
+> src\modules\items\services\item.service.js:555:    updateData.itemCode = itemCode;
+  src\modules\items\services\item.service.js:556:  }
+  src\modules\items\services\item.service.js:557:
+> src\modules\items\services\item.service.js:558:  if (payload.itemName !== undefined) {
+> src\modules\items\services\item.service.js:559:    updateData.itemName = payload.itemName.trim();
+  src\modules\items\services\item.service.js:560:  }
+  src\modules\items\services\item.service.js:561:
+  src\modules\items\services\item.service.js:562:  if (payload.description !== undefined) {
+> src\modules\items\services\item.service.js:563:    updateData.description = normalizeOptionalString(payload.description);
+  src\modules\items\services\item.service.js:564:  }
+  src\modules\items\services\item.service.js:565:
+  src\modules\items\services\item.service.js:566:  if (payload.barcode !== undefined) {
+> src\modules\items\services\item.service.js:567:    updateData.barcode = normalizeOptionalString(payload.barcode);
+  src\modules\items\services\item.service.js:568:  }
+  src\modules\items\services\item.service.js:569:
+  src\modules\items\services\item.service.js:570:  if (payload.brand !== undefined) {
+> src\modules\items\services\item.service.js:571:    updateData.brand = normalizeOptionalString(payload.brand);
+  src\modules\items\services\item.service.js:572:  }
+  src\modules\items\services\item.service.js:573:
+  src\modules\items\services\item.service.js:574:  if (payload.modelName !== undefined) {
+> src\modules\items\services\item.service.js:575:    updateData.modelName = normalizeOptionalString(payload.modelName);
+  src\modules\items\services\item.service.js:576:  }
+  src\modules\items\services\item.service.js:577:
+> src\modules\items\services\item.service.js:578:  if (payload.status !== undefined) {
+> src\modules\items\services\item.service.js:579:    updateData.status = payload.status;
+  src\modules\items\services\item.service.js:580:  }
+  src\modules\items\services\item.service.js:581:
+  src\modules\items\services\item.service.js:582:  if (payload.isSerialized !== undefined) {
+> src\modules\items\services\item.service.js:583:    updateData.isSerialized = Boolean(payload.isSerialized);
+  src\modules\items\services\item.service.js:584:  }
+  src\modules\items\services\item.service.js:585:
+  src\modules\items\services\item.service.js:586:  if (payload.hasWarranty !== undefined) {
+> src\modules\items\services\item.service.js:587:    updateData.hasWarranty = Boolean(payload.hasWarranty);
+  src\modules\items\services\item.service.js:588:  }
+  src\modules\items\services\item.service.js:589:
+  src\modules\items\services\item.service.js:590:  if (payload.categoryId !== undefined) {
+  src\modules\items\services\item.service.js:591:    const category = await getActiveCategoryOrThrow(payload.categoryId);
+  src\modules\items\services\item.service.js:592:
+> src\modules\items\services\item.service.js:593:    assertCategoryBelongsToBranchId(category, existingItem.branchId);
+  src\modules\items\services\item.service.js:594:
+> src\modules\items\services\item.service.js:595:    updateData.categoryId = category.id;
+  src\modules\items\services\item.service.js:596:  }
+  src\modules\items\services\item.service.js:597:
+  src\modules\items\services\item.service.js:598:  if (payload.unitId !== undefined) {
+  src\modules\items\services\item.service.js:599:    const unit = await getActiveUnitOrThrow(payload.unitId);
+  src\modules\items\services\item.service.js:600:
+> src\modules\items\services\item.service.js:601:    updateData.unitId = unit.id;
+  src\modules\items\services\item.service.js:602:  }
+  src\modules\items\services\item.service.js:603:
+  src\modules\items\services\item.service.js:604:  if (payload.costPrice !== undefined) {
+> src\modules\items\services\item.service.js:605:    updateData.costPrice = normalizeMoney(payload.costPrice);
+  src\modules\items\services\item.service.js:606:  }
+  src\modules\items\services\item.service.js:607:
+  src\modules\items\services\item.service.js:608:  if (payload.price1 !== undefined) {
+> src\modules\items\services\item.service.js:609:    updateData.price1 = normalizeMoney(payload.price1);
+  src\modules\items\services\item.service.js:610:  }
+  src\modules\items\services\item.service.js:611:
+  src\modules\items\services\item.service.js:612:  if (payload.price2 !== undefined) {
+> src\modules\items\services\item.service.js:613:    updateData.price2 = normalizeMoney(payload.price2);
+  src\modules\items\services\item.service.js:614:  }
+  src\modules\items\services\item.service.js:615:
+  src\modules\items\services\item.service.js:616:  if (payload.price3 !== undefined) {
+> src\modules\items\services\item.service.js:617:    updateData.price3 = normalizeMoney(payload.price3);
+  src\modules\items\services\item.service.js:618:  }
+  src\modules\items\services\item.service.js:619:
+  src\modules\items\services\item.service.js:620:  if (payload.price4 !== undefined) {
+> src\modules\items\services\item.service.js:621:    updateData.price4 = normalizeMoney(payload.price4);
+  src\modules\items\services\item.service.js:622:  }
+  src\modules\items\services\item.service.js:623:
+  src\modules\items\services\item.service.js:624:  if (payload.price5 !== undefined) {
+> src\modules\items\services\item.service.js:625:    updateData.price5 = normalizeMoney(payload.price5);
+  src\modules\items\services\item.service.js:626:  }
+  src\modules\items\services\item.service.js:627:
+  src\modules\items\services\item.service.js:628:  if (payload.minimumStock !== undefined) {
+> src\modules\items\services\item.service.js:629:    updateData.minimumStock = normalizeMoney(payload.minimumStock);
+  src\modules\items\services\item.service.js:630:  }
+  src\modules\items\services\item.service.js:631:
+  src\modules\items\services\item.service.js:632:  if (payload.reorderLevel !== undefined) {
+> src\modules\items\services\item.service.js:633:    updateData.reorderLevel = normalizeMoney(payload.reorderLevel);
+  src\modules\items\services\item.service.js:634:  }
+  src\modules\items\services\item.service.js:635:
+> src\modules\items\services\item.service.js:636:  return prisma.item.update({
+  src\modules\items\services\item.service.js:637:    where: {
+> src\modules\items\services\item.service.js:638:      id: existingItem.id,
+  src\modules\items\services\item.service.js:639:    },
+> src\modules\items\services\item.service.js:640:    data: updateData,
+> src\modules\items\services\item.service.js:641:    select: ITEM_SELECT,
+  src\modules\items\services\item.service.js:642:  });
+  src\modules\items\services\item.service.js:643:};
+  src\modules\items\services\item.service.js:644:
+  src\modules\items\services\item.service.js:645:module.exports = {
+> src\modules\items\services\item.service.js:646:  ITEM_SELECT,
+> src\modules\items\services\item.service.js:647:  createItem,
+> src\modules\items\services\item.service.js:648:  listItems,
+> src\modules\items\services\item.service.js:649:  getItemById,
+> src\modules\items\services\item.service.js:650:  updateItemById,
+  src\modules\items\services\item.service.js:651:};
+
+
+
+

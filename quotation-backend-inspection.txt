@@ -1,0 +1,5326 @@
+﻿ARUNAFELTZ QUOTATION BACKEND INSPECTION
+Generated: 08/12/2026 13:41:03
+Root: D:\Arunafeltz\arunafeltz-backend
+
+============================================================
+QUOTATIONS MODULE FILE LIST
+============================================================
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\controllers\quotation.controller.backup-before-list-view.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\controllers\quotation.controller.backup-before-status.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\controllers\quotation.controller.backup-before-update.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\controllers\quotation.controller.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\routes\quotation.routes.backup-before-list-view.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\routes\quotation.routes.backup-before-status.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\routes\quotation.routes.backup-before-update.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\routes\quotation.routes.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\services\quotation.service.backup-before-list-view.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\services\quotation.service.backup-before-status.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\services\quotation.service.backup-before-update.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\services\quotation.service.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\validations\quotation.validation.backup-before-status.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\validations\quotation.validation.backup-before-update.js
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\validations\quotation.validation.js
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\controllers\quotation.controller.backup-before-list-view.js
+============================================================
+    1: const quotationService = require("../services/quotation.service");
+    2: 
+    3: const handleQuotationError = (error, res, next) => {
+    4:   const knownErrors = {
+    5:     BRANCH_REQUIRED: [400, "Branch is required."],
+    6:     BRANCH_ACCESS_DENIED: [403, "You cannot create quotation for this branch."],
+    7:     BRANCH_NOT_FOUND: [404, "Branch not found."],
+    8:     BRANCH_INACTIVE: [400, "Branch is inactive."],
+    9:     CUSTOMER_NOT_FOUND: [404, "Customer not found for this branch."],
+   10:     CUSTOMER_INACTIVE: [400, "Customer is inactive."],
+   11:     PREPARED_BY_NOT_FOUND: [404, "Prepared by user not found for this branch."],
+   12:     ITEM_NOT_FOUND: [404, "Item not found for this branch."],
+   13:     STAFF_CUSTOM_PRICE_NOT_ALLOWED: [403, "Staff cannot set custom price for inventory items."],
+   14:     DESCRIPTION_REQUIRED: [400, "Description is required for custom quotation line."],
+   15:     UNIT_PRICE_REQUIRED: [400, "Unit price is required for custom quotation line."],
+   16:     DISCOUNT_EXCEEDS_LINE_TOTAL: [400, "Discount cannot exceed line total."],
+   17:   };
+   18: 
+   19:   if (knownErrors[error.message]) {
+   20:     const [status, message] = knownErrors[error.message];
+   21: 
+   22:     return res.status(status).json({
+   23:       success: false,
+   24:       message,
+   25:       errorCode: error.message,
+   26:     });
+   27:   }
+   28: 
+   29:   return next(error);
+   30: };
+   31: 
+   32: const createQuotation = async (req, res, next) => {
+   33:   try {
+   34:     const quotation = await quotationService.createQuotation(req.user, req.body);
+   35: 
+   36:     return res.status(201).json({
+   37:       success: true,
+   38:       message: "Quotation created successfully",
+   39:       data: quotation,
+   40:     });
+   41:   } catch (error) {
+   42:     return handleQuotationError(error, res, next);
+   43:   }
+   44: };
+   45: 
+   46: module.exports = {
+   47:   createQuotation,
+   48: };
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\controllers\quotation.controller.backup-before-status.js
+============================================================
+    1: const quotationService = require("../services/quotation.service");
+    2: 
+    3: const handleQuotationError = (error, res, next) => {
+    4:   const knownErrors = {
+    5:     BRANCH_REQUIRED: [400, "Branch is required."],
+    6:     BRANCH_ACCESS_DENIED: [403, "You cannot create quotation for this branch."],
+    7:     BRANCH_NOT_FOUND: [404, "Branch not found."],
+    8:     BRANCH_INACTIVE: [400, "Branch is inactive."],
+    9:     CUSTOMER_NOT_FOUND: [404, "Customer not found for this branch."],
+   10:     CUSTOMER_INACTIVE: [400, "Customer is inactive."],
+   11:     PREPARED_BY_NOT_FOUND: [404, "Prepared by user not found for this branch."],
+   12:     ITEM_NOT_FOUND: [404, "Item not found for this branch."],
+   13:     STAFF_CUSTOM_PRICE_NOT_ALLOWED: [403, "Staff cannot set custom price for inventory items."],
+   14:     DESCRIPTION_REQUIRED: [400, "Description is required for custom quotation line."],
+   15:     UNIT_PRICE_REQUIRED: [400, "Unit price is required for custom quotation line."],
+   16:     DISCOUNT_EXCEEDS_LINE_TOTAL: [400, "Discount cannot exceed line total."],
+   17:     QUOTATION_NOT_FOUND: [404, "Quotation not found."],
+   18:     QUOTATION_NOT_EDITABLE: [400, "Only draft quotations can be updated."],
+   19:   };
+   20: 
+   21:   if (knownErrors[error.message]) {
+   22:     const [status, message] = knownErrors[error.message];
+   23: 
+   24:     return res.status(status).json({
+   25:       success: false,
+   26:       message,
+   27:       errorCode: error.message,
+   28:     });
+   29:   }
+   30: 
+   31:   return next(error);
+   32: };
+   33: 
+   34: const createQuotation = async (req, res, next) => {
+   35:   try {
+   36:     const quotation = await quotationService.createQuotation(req.user, req.body);
+   37: 
+   38:     return res.status(201).json({
+   39:       success: true,
+   40:       message: "Quotation created successfully",
+   41:       data: quotation,
+   42:     });
+   43:   } catch (error) {
+   44:     return handleQuotationError(error, res, next);
+   45:   }
+   46: };
+   47: 
+   48: 
+   49: const getQuotations = async (req, res, next) => {
+   50:   try {
+   51:     const result = await quotationService.getQuotations(req.user, req.query);
+   52: 
+   53:     return res.status(200).json({
+   54:       success: true,
+   55:       message: "Quotations fetched successfully",
+   56:       data: result,
+   57:     });
+   58:   } catch (error) {
+   59:     return handleQuotationError(error, res, next);
+   60:   }
+   61: };
+   62: 
+   63: const getQuotationById = async (req, res, next) => {
+   64:   try {
+   65:     const quotation = await quotationService.getQuotationById(req.user, req.params.id);
+   66: 
+   67:     return res.status(200).json({
+   68:       success: true,
+   69:       message: "Quotation fetched successfully",
+   70:       data: quotation,
+   71:     });
+   72:   } catch (error) {
+   73:     return handleQuotationError(error, res, next);
+   74:   }
+   75: };
+   76: 
+   77: 
+   78: const updateQuotation = async (req, res, next) => {
+   79:   try {
+   80:     const quotation = await quotationService.updateQuotation(
+   81:       req.user,
+   82:       req.params.id,
+   83:       req.body
+   84:     );
+   85: 
+   86:     return res.status(200).json({
+   87:       success: true,
+   88:       message: "Quotation updated successfully",
+   89:       data: quotation,
+   90:     });
+   91:   } catch (error) {
+   92:     return handleQuotationError(error, res, next);
+   93:   }
+   94: };
+   95: 
+   96: module.exports = {
+   97:   createQuotation,
+   98:   getQuotations,
+   99:   getQuotationById,
+  100:   updateQuotation,
+  101: };
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\controllers\quotation.controller.backup-before-update.js
+============================================================
+    1: const quotationService = require("../services/quotation.service");
+    2: 
+    3: const handleQuotationError = (error, res, next) => {
+    4:   const knownErrors = {
+    5:     BRANCH_REQUIRED: [400, "Branch is required."],
+    6:     BRANCH_ACCESS_DENIED: [403, "You cannot create quotation for this branch."],
+    7:     BRANCH_NOT_FOUND: [404, "Branch not found."],
+    8:     BRANCH_INACTIVE: [400, "Branch is inactive."],
+    9:     CUSTOMER_NOT_FOUND: [404, "Customer not found for this branch."],
+   10:     CUSTOMER_INACTIVE: [400, "Customer is inactive."],
+   11:     PREPARED_BY_NOT_FOUND: [404, "Prepared by user not found for this branch."],
+   12:     ITEM_NOT_FOUND: [404, "Item not found for this branch."],
+   13:     STAFF_CUSTOM_PRICE_NOT_ALLOWED: [403, "Staff cannot set custom price for inventory items."],
+   14:     DESCRIPTION_REQUIRED: [400, "Description is required for custom quotation line."],
+   15:     UNIT_PRICE_REQUIRED: [400, "Unit price is required for custom quotation line."],
+   16:     DISCOUNT_EXCEEDS_LINE_TOTAL: [400, "Discount cannot exceed line total."],
+   17:     QUOTATION_NOT_FOUND: [404, "Quotation not found."],
+   18:   };
+   19: 
+   20:   if (knownErrors[error.message]) {
+   21:     const [status, message] = knownErrors[error.message];
+   22: 
+   23:     return res.status(status).json({
+   24:       success: false,
+   25:       message,
+   26:       errorCode: error.message,
+   27:     });
+   28:   }
+   29: 
+   30:   return next(error);
+   31: };
+   32: 
+   33: const createQuotation = async (req, res, next) => {
+   34:   try {
+   35:     const quotation = await quotationService.createQuotation(req.user, req.body);
+   36: 
+   37:     return res.status(201).json({
+   38:       success: true,
+   39:       message: "Quotation created successfully",
+   40:       data: quotation,
+   41:     });
+   42:   } catch (error) {
+   43:     return handleQuotationError(error, res, next);
+   44:   }
+   45: };
+   46: 
+   47: 
+   48: const getQuotations = async (req, res, next) => {
+   49:   try {
+   50:     const result = await quotationService.getQuotations(req.user, req.query);
+   51: 
+   52:     return res.status(200).json({
+   53:       success: true,
+   54:       message: "Quotations fetched successfully",
+   55:       data: result,
+   56:     });
+   57:   } catch (error) {
+   58:     return handleQuotationError(error, res, next);
+   59:   }
+   60: };
+   61: 
+   62: const getQuotationById = async (req, res, next) => {
+   63:   try {
+   64:     const quotation = await quotationService.getQuotationById(req.user, req.params.id);
+   65: 
+   66:     return res.status(200).json({
+   67:       success: true,
+   68:       message: "Quotation fetched successfully",
+   69:       data: quotation,
+   70:     });
+   71:   } catch (error) {
+   72:     return handleQuotationError(error, res, next);
+   73:   }
+   74: };
+   75: 
+   76: module.exports = {
+   77:   createQuotation,
+   78:   getQuotations,
+   79:   getQuotationById,
+   80: };
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\controllers\quotation.controller.js
+============================================================
+    1: const quotationService = require("../services/quotation.service");
+    2: 
+    3: const handleQuotationError = (error, res, next) => {
+    4:   const knownErrors = {
+    5:     BRANCH_REQUIRED: [400, "Branch is required."],
+    6:     BRANCH_ACCESS_DENIED: [403, "You cannot create quotation for this branch."],
+    7:     BRANCH_NOT_FOUND: [404, "Branch not found."],
+    8:     BRANCH_INACTIVE: [400, "Branch is inactive."],
+    9:     CUSTOMER_NOT_FOUND: [404, "Customer not found for this branch."],
+   10:     CUSTOMER_INACTIVE: [400, "Customer is inactive."],
+   11:     PREPARED_BY_NOT_FOUND: [404, "Prepared by user not found for this branch."],
+   12:     ITEM_NOT_FOUND: [404, "Item not found for this branch."],
+   13:     STAFF_CUSTOM_PRICE_NOT_ALLOWED: [403, "Staff cannot set custom price for inventory items."],
+   14:     DESCRIPTION_REQUIRED: [400, "Description is required for custom quotation line."],
+   15:     UNIT_PRICE_REQUIRED: [400, "Unit price is required for custom quotation line."],
+   16:     DISCOUNT_EXCEEDS_LINE_TOTAL: [400, "Discount cannot exceed line total."],
+   17:     QUOTATION_NOT_FOUND: [404, "Quotation not found."],
+   18:     QUOTATION_NOT_EDITABLE: [400, "Only draft quotations can be updated."],
+   19:     INVALID_QUOTATION_STATUS_TRANSITION: [400, "Invalid quotation status transition."],
+   20:   };
+   21: 
+   22:   if (knownErrors[error.message]) {
+   23:     const [status, message] = knownErrors[error.message];
+   24: 
+   25:     return res.status(status).json({
+   26:       success: false,
+   27:       message,
+   28:       errorCode: error.message,
+   29:     });
+   30:   }
+   31: 
+   32:   return next(error);
+   33: };
+   34: 
+   35: const createQuotation = async (req, res, next) => {
+   36:   try {
+   37:     const quotation = await quotationService.createQuotation(req.user, req.body);
+   38: 
+   39:     return res.status(201).json({
+   40:       success: true,
+   41:       message: "Quotation created successfully",
+   42:       data: quotation,
+   43:     });
+   44:   } catch (error) {
+   45:     return handleQuotationError(error, res, next);
+   46:   }
+   47: };
+   48: 
+   49: 
+   50: const getQuotations = async (req, res, next) => {
+   51:   try {
+   52:     const result = await quotationService.getQuotations(req.user, req.query);
+   53: 
+   54:     return res.status(200).json({
+   55:       success: true,
+   56:       message: "Quotations fetched successfully",
+   57:       data: result,
+   58:     });
+   59:   } catch (error) {
+   60:     return handleQuotationError(error, res, next);
+   61:   }
+   62: };
+   63: 
+   64: const getQuotationById = async (req, res, next) => {
+   65:   try {
+   66:     const quotation = await quotationService.getQuotationById(req.user, req.params.id);
+   67: 
+   68:     return res.status(200).json({
+   69:       success: true,
+   70:       message: "Quotation fetched successfully",
+   71:       data: quotation,
+   72:     });
+   73:   } catch (error) {
+   74:     return handleQuotationError(error, res, next);
+   75:   }
+   76: };
+   77: 
+   78: 
+   79: const updateQuotation = async (req, res, next) => {
+   80:   try {
+   81:     const quotation = await quotationService.updateQuotation(
+   82:       req.user,
+   83:       req.params.id,
+   84:       req.body
+   85:     );
+   86: 
+   87:     return res.status(200).json({
+   88:       success: true,
+   89:       message: "Quotation updated successfully",
+   90:       data: quotation,
+   91:     });
+   92:   } catch (error) {
+   93:     return handleQuotationError(error, res, next);
+   94:   }
+   95: };
+   96: 
+   97: 
+   98: const updateQuotationStatus = async (req, res, next) => {
+   99:   try {
+  100:     const quotation = await quotationService.updateQuotationStatus(
+  101:       req.user,
+  102:       req.params.id,
+  103:       req.body
+  104:     );
+  105: 
+  106:     return res.status(200).json({
+  107:       success: true,
+  108:       message: "Quotation status updated successfully",
+  109:       data: quotation,
+  110:     });
+  111:   } catch (error) {
+  112:     return handleQuotationError(error, res, next);
+  113:   }
+  114: };
+  115: 
+  116: module.exports = {
+  117:   createQuotation,
+  118:   getQuotations,
+  119:   getQuotationById,
+  120:   updateQuotation,
+  121:   updateQuotationStatus,
+  122: };
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\routes\quotation.routes.backup-before-list-view.js
+============================================================
+    1: const express = require("express");
+    2: 
+    3: const quotationController = require("../controllers/quotation.controller");
+    4: const validate = require("../../../middlewares/validate.middleware");
+    5: const { protect } = require("../../../middlewares/auth.middleware");
+    6: const { requirePermission } = require("../../../middlewares/permission.middleware");
+    7: const { PERMISSIONS } = require("../../../constants/permissions");
+    8: const { createQuotationSchema } = require("../validations/quotation.validation");
+    9: 
+   10: const router = express.Router();
+   11: 
+   12: router.use(protect);
+   13: 
+   14: router.post(
+   15:   "/",
+   16:   requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+   17:   validate(createQuotationSchema),
+   18:   quotationController.createQuotation
+   19: );
+   20: 
+   21: module.exports = router;
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\routes\quotation.routes.backup-before-status.js
+============================================================
+    1: const express = require("express");
+    2: 
+    3: const quotationController = require("../controllers/quotation.controller");
+    4: const validate = require("../../../middlewares/validate.middleware");
+    5: const { protect } = require("../../../middlewares/auth.middleware");
+    6: const { requirePermission } = require("../../../middlewares/permission.middleware");
+    7: const { PERMISSIONS } = require("../../../constants/permissions");
+    8: const { createQuotationSchema, updateQuotationSchema } = require("../validations/quotation.validation");
+    9: 
+   10: const router = express.Router();
+   11: 
+   12: router.use(protect);
+   13: 
+   14: 
+   15: router.get(
+   16:   "/",
+   17:   requirePermission(PERMISSIONS.VIEW_QUOTATIONS),
+   18:   quotationController.getQuotations
+   19: );
+   20: 
+   21: router.get(
+   22:   "/:id",
+   23:   requirePermission(PERMISSIONS.VIEW_QUOTATIONS),
+   24:   quotationController.getQuotationById
+   25: );
+   26: 
+   27: 
+   28: router.patch(
+   29:   "/:id",
+   30:   requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+   31:   validate(updateQuotationSchema),
+   32:   quotationController.updateQuotation
+   33: );
+   34: 
+   35: router.post(
+   36:   "/",
+   37:   requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+   38:   validate(createQuotationSchema),
+   39:   quotationController.createQuotation
+   40: );
+   41: 
+   42: module.exports = router;
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\routes\quotation.routes.backup-before-update.js
+============================================================
+    1: const express = require("express");
+    2: 
+    3: const quotationController = require("../controllers/quotation.controller");
+    4: const validate = require("../../../middlewares/validate.middleware");
+    5: const { protect } = require("../../../middlewares/auth.middleware");
+    6: const { requirePermission } = require("../../../middlewares/permission.middleware");
+    7: const { PERMISSIONS } = require("../../../constants/permissions");
+    8: const { createQuotationSchema } = require("../validations/quotation.validation");
+    9: 
+   10: const router = express.Router();
+   11: 
+   12: router.use(protect);
+   13: 
+   14: 
+   15: router.get(
+   16:   "/",
+   17:   requirePermission(PERMISSIONS.VIEW_QUOTATIONS),
+   18:   quotationController.getQuotations
+   19: );
+   20: 
+   21: router.get(
+   22:   "/:id",
+   23:   requirePermission(PERMISSIONS.VIEW_QUOTATIONS),
+   24:   quotationController.getQuotationById
+   25: );
+   26: 
+   27: router.post(
+   28:   "/",
+   29:   requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+   30:   validate(createQuotationSchema),
+   31:   quotationController.createQuotation
+   32: );
+   33: 
+   34: module.exports = router;
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\routes\quotation.routes.js
+============================================================
+    1: const express = require("express");
+    2: 
+    3: const quotationController = require("../controllers/quotation.controller");
+    4: const validate = require("../../../middlewares/validate.middleware");
+    5: const { protect } = require("../../../middlewares/auth.middleware");
+    6: const { requirePermission } = require("../../../middlewares/permission.middleware");
+    7: const { PERMISSIONS } = require("../../../constants/permissions");
+    8: const { createQuotationSchema, updateQuotationSchema, updateQuotationStatusSchema } = require("../validations/quotation.validation");
+    9: 
+   10: const router = express.Router();
+   11: 
+   12: router.use(protect);
+   13: 
+   14: 
+   15: router.get(
+   16:   "/",
+   17:   requirePermission(PERMISSIONS.VIEW_QUOTATIONS),
+   18:   quotationController.getQuotations
+   19: );
+   20: 
+   21: router.get(
+   22:   "/:id",
+   23:   requirePermission(PERMISSIONS.VIEW_QUOTATIONS),
+   24:   quotationController.getQuotationById
+   25: );
+   26: 
+   27: 
+   28: 
+   29: router.patch(
+   30:   "/:id/status",
+   31:   requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+   32:   validate(updateQuotationStatusSchema),
+   33:   quotationController.updateQuotationStatus
+   34: );
+   35: 
+   36: router.patch(
+   37:   "/:id",
+   38:   requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+   39:   validate(updateQuotationSchema),
+   40:   quotationController.updateQuotation
+   41: );
+   42: 
+   43: router.post(
+   44:   "/",
+   45:   requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+   46:   validate(createQuotationSchema),
+   47:   quotationController.createQuotation
+   48: );
+   49: 
+   50: module.exports = router;
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\services\quotation.service.backup-before-list-view.js
+============================================================
+    1: const prisma = require("../../../config/prisma");
+    2: 
+    3: const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+    4: const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
+    5: 
+    6: const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+    7: 
+    8: const toMoney = (value) => {
+    9:   return Math.round(Number(value) * 100) / 100;
+   10: };
+   11: 
+   12: const toMoneyString = (value) => {
+   13:   return toMoney(value).toFixed(2);
+   14: };
+   15: 
+   16: const getItemPriceByTier = (item, tier) => {
+   17:   const priceMap = {
+   18:     1: item.price1,
+   19:     2: item.price2,
+   20:     3: item.price3,
+   21:     4: item.price4,
+   22:     5: item.price5,
+   23:   };
+   24: 
+   25:   return Number(priceMap[tier]);
+   26: };
+   27: 
+   28: const resolveBranchIdForCreate = (actor, requestedBranchId) => {
+   29:   if (isSuperOwner(actor)) {
+   30:     if (!requestedBranchId) {
+   31:       const error = new Error("BRANCH_REQUIRED");
+   32:       error.statusCode = 400;
+   33:       throw error;
+   34:     }
+   35: 
+   36:     return requestedBranchId;
+   37:   }
+   38: 
+   39:   if (!actor.branchId) {
+   40:     const error = new Error("BRANCH_REQUIRED");
+   41:     error.statusCode = 400;
+   42:     throw error;
+   43:   }
+   44: 
+   45:   if (requestedBranchId && requestedBranchId !== actor.branchId) {
+   46:     const error = new Error("BRANCH_ACCESS_DENIED");
+   47:     error.statusCode = 403;
+   48:     throw error;
+   49:   }
+   50: 
+   51:   return actor.branchId;
+   52: };
+   53: 
+   54: const generateQuotationCode = async (tx, branchCode, branchId) => {
+   55:   const now = new Date();
+   56:   const yyyy = now.getFullYear();
+   57:   const mm = String(now.getMonth() + 1).padStart(2, "0");
+   58:   const dd = String(now.getDate()).padStart(2, "0");
+   59:   const datePart = `${yyyy}${mm}${dd}`;
+   60:   const prefix = `QT-${branchCode}-${datePart}`;
+   61: 
+   62:   const count = await tx.quotation.count({
+   63:     where: {
+   64:       branchId,
+   65:       quotationCode: {
+   66:         startsWith: prefix,
+   67:       },
+   68:     },
+   69:   });
+   70: 
+   71:   return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+   72: };
+   73: 
+   74: const ensureBranchExists = async (tx, branchId) => {
+   75:   const branch = await tx.branch.findUnique({
+   76:     where: {
+   77:       id: branchId,
+   78:     },
+   79:     select: {
+   80:       id: true,
+   81:       code: true,
+   82:       name: true,
+   83:       status: true,
+   84:     },
+   85:   });
+   86: 
+   87:   if (!branch) {
+   88:     const error = new Error("BRANCH_NOT_FOUND");
+   89:     error.statusCode = 404;
+   90:     throw error;
+   91:   }
+   92: 
+   93:   if (branch.status !== "ACTIVE") {
+   94:     const error = new Error("BRANCH_INACTIVE");
+   95:     error.statusCode = 400;
+   96:     throw error;
+   97:   }
+   98: 
+   99:   return branch;
+  100: };
+  101: 
+  102: const ensureCustomerBelongsToBranch = async (tx, customerId, branchId) => {
+  103:   if (!customerId) {
+  104:     return null;
+  105:   }
+  106: 
+  107:   const customer = await tx.customer.findFirst({
+  108:     where: {
+  109:       id: customerId,
+  110:       branchId,
+  111:     },
+  112:     select: {
+  113:       id: true,
+  114:       customerCode: true,
+  115:       fullName: true,
+  116:       status: true,
+  117:     },
+  118:   });
+  119: 
+  120:   if (!customer) {
+  121:     const error = new Error("CUSTOMER_NOT_FOUND");
+  122:     error.statusCode = 404;
+  123:     throw error;
+  124:   }
+  125: 
+  126:   if (customer.status !== "ACTIVE") {
+  127:     const error = new Error("CUSTOMER_INACTIVE");
+  128:     error.statusCode = 400;
+  129:     throw error;
+  130:   }
+  131: 
+  132:   return customer;
+  133: };
+  134: 
+  135: const ensurePreparedByBelongsToBranch = async (tx, preparedById, branchId) => {
+  136:   if (!preparedById) {
+  137:     return null;
+  138:   }
+  139: 
+  140:   const preparedBy = await tx.user.findFirst({
+  141:     where: {
+  142:       id: preparedById,
+  143:       branchId,
+  144:       status: "ACTIVE",
+  145:     },
+  146:     select: {
+  147:       id: true,
+  148:       username: true,
+  149:       fullName: true,
+  150:       role: true,
+  151:       branchId: true,
+  152:     },
+  153:   });
+  154: 
+  155:   if (!preparedBy) {
+  156:     const error = new Error("PREPARED_BY_NOT_FOUND");
+  157:     error.statusCode = 404;
+  158:     throw error;
+  159:   }
+  160: 
+  161:   return preparedBy;
+  162: };
+  163: 
+  164: const buildQuotationItems = async (tx, actor, branchId, items) => {
+  165:   const quotationItems = [];
+  166:   let subtotal = 0;
+  167:   let totalDiscount = 0;
+  168: 
+  169:   for (let index = 0; index < items.length; index += 1) {
+  170:     const itemPayload = items[index];
+  171:     const quantity = toMoney(itemPayload.quantity);
+  172:     const discountAmount = toMoney(itemPayload.discountAmount || 0);
+  173: 
+  174:     let item = null;
+  175:     let unitPrice = 0;
+  176:     let description = itemPayload.description ? String(itemPayload.description).trim() : "";
+  177: 
+  178:     if (itemPayload.itemId) {
+  179:       item = await tx.item.findFirst({
+  180:         where: {
+  181:           id: itemPayload.itemId,
+  182:           branchId,
+  183:           status: "ACTIVE",
+  184:         },
+  185:       });
+  186: 
+  187:       if (!item) {
+  188:         const error = new Error("ITEM_NOT_FOUND");
+  189:         error.statusCode = 404;
+  190:         throw error;
+  191:       }
+  192: 
+  193:       unitPrice = getItemPriceByTier(item, itemPayload.priceTier);
+  194:       description = description || item.itemName;
+  195: 
+  196:       if (STAFF_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+  197:         const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
+  198:         error.statusCode = 403;
+  199:         throw error;
+  200:       }
+  201: 
+  202:       if (OWNER_ADMIN_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+  203:         unitPrice = toMoney(itemPayload.unitPrice);
+  204:       }
+  205:     } else {
+  206:       if (!description) {
+  207:         const error = new Error("DESCRIPTION_REQUIRED");
+  208:         error.statusCode = 400;
+  209:         throw error;
+  210:       }
+  211: 
+  212:       if (itemPayload.unitPrice === undefined) {
+  213:         const error = new Error("UNIT_PRICE_REQUIRED");
+  214:         error.statusCode = 400;
+  215:         throw error;
+  216:       }
+  217: 
+  218:       unitPrice = toMoney(itemPayload.unitPrice);
+  219:     }
+  220: 
+  221:     const grossLineTotal = toMoney(quantity * unitPrice);
+  222: 
+  223:     if (discountAmount > grossLineTotal) {
+  224:       const error = new Error("DISCOUNT_EXCEEDS_LINE_TOTAL");
+  225:       error.statusCode = 400;
+  226:       throw error;
+  227:     }
+  228: 
+  229:     const lineTotal = toMoney(grossLineTotal - discountAmount);
+  230: 
+  231:     subtotal += grossLineTotal;
+  232:     totalDiscount += discountAmount;
+  233: 
+  234:     quotationItems.push({
+  235:       lineNo: index + 1,
+  236:       description,
+  237:       itemCodeSnapshot: item ? item.itemCode : null,
+  238:       itemNameSnapshot: item ? item.itemName : null,
+  239:       brandSnapshot: item ? item.brand : null,
+  240:       modelSnapshot: item ? item.modelName : null,
+  241:       priceTier: itemPayload.priceTier,
+  242:       quantity: toMoneyString(quantity),
+  243:       unitPrice: toMoneyString(unitPrice),
+  244:       discountAmount: toMoneyString(discountAmount),
+  245:       lineTotal: toMoneyString(lineTotal),
+  246:       isPcBuildPart: Boolean(itemPayload.isPcBuildPart),
+  247:       remarks: itemPayload.remarks || null,
+  248:       itemId: item ? item.id : null,
+  249:     });
+  250:   }
+  251: 
+  252:   return {
+  253:     quotationItems,
+  254:     subtotal: toMoney(subtotal),
+  255:     totalDiscount: toMoney(totalDiscount),
+  256:     grandTotal: toMoney(subtotal - totalDiscount),
+  257:   };
+  258: };
+  259: 
+  260: const createQuotation = async (actor, payload) => {
+  261:   const branchId = resolveBranchIdForCreate(actor, payload.branchId);
+  262: 
+  263:   return prisma.$transaction(async (tx) => {
+  264:     const branch = await ensureBranchExists(tx, branchId);
+  265:     await ensureCustomerBelongsToBranch(tx, payload.customerId, branchId);
+  266: 
+  267:     const preparedById = payload.preparedById || (isSuperOwner(actor) ? null : actor.id);
+  268:     await ensurePreparedByBelongsToBranch(tx, preparedById, branchId);
+  269: 
+  270:     const { quotationItems, subtotal, totalDiscount, grandTotal } =
+  271:       await buildQuotationItems(tx, actor, branchId, payload.items);
+  272: 
+  273:     const quotationCode = await generateQuotationCode(tx, branch.code, branchId);
+  274: 
+  275:     const quotation = await tx.quotation.create({
+  276:       data: {
+  277:         quotationCode,
+  278:         title: payload.title || null,
+  279:         notes: payload.notes || null,
+  280:         internalNotes: payload.internalNotes || null,
+  281:         status: "DRAFT",
+  282:         subtotal: toMoneyString(subtotal),
+  283:         totalDiscount: toMoneyString(totalDiscount),
+  284:         grandTotal: toMoneyString(grandTotal),
+  285:         isPcBuild: Boolean(payload.isPcBuild),
+  286:         validUntil: payload.validUntil ? new Date(payload.validUntil) : null,
+  287:         branchId,
+  288:         customerId: payload.customerId || null,
+  289:         preparedById,
+  290:         createdById: actor.id,
+  291:         updatedById: actor.id,
+  292:         items: {
+  293:           create: quotationItems,
+  294:         },
+  295:       },
+  296:       include: {
+  297:         branch: {
+  298:           select: {
+  299:             id: true,
+  300:             code: true,
+  301:             name: true,
+  302:           },
+  303:         },
+  304:         customer: {
+  305:           select: {
+  306:             id: true,
+  307:             customerCode: true,
+  308:             fullName: true,
+  309:             mobileNumber: true,
+  310:             email: true,
+  311:           },
+  312:         },
+  313:         preparedBy: {
+  314:           select: {
+  315:             id: true,
+  316:             username: true,
+  317:             fullName: true,
+  318:             role: true,
+  319:           },
+  320:         },
+  321:         createdBy: {
+  322:           select: {
+  323:             id: true,
+  324:             username: true,
+  325:             fullName: true,
+  326:             role: true,
+  327:           },
+  328:         },
+  329:         items: {
+  330:           orderBy: {
+  331:             lineNo: "asc",
+  332:           },
+  333:         },
+  334:       },
+  335:     });
+  336: 
+  337:     return quotation;
+  338:   });
+  339: };
+  340: 
+  341: module.exports = {
+  342:   createQuotation,
+  343: };
+  344: 
+  345: 
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\services\quotation.service.backup-before-status.js
+============================================================
+    1: const prisma = require("../../../config/prisma");
+    2: 
+    3: const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+    4: const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
+    5: 
+    6: const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+    7: 
+    8: const toMoney = (value) => {
+    9:   return Math.round(Number(value) * 100) / 100;
+   10: };
+   11: 
+   12: const toMoneyString = (value) => {
+   13:   return toMoney(value).toFixed(2);
+   14: };
+   15: 
+   16: const getItemPriceByTier = (item, tier) => {
+   17:   const priceMap = {
+   18:     1: item.price1,
+   19:     2: item.price2,
+   20:     3: item.price3,
+   21:     4: item.price4,
+   22:     5: item.price5,
+   23:   };
+   24: 
+   25:   return Number(priceMap[tier]);
+   26: };
+   27: 
+   28: const resolveBranchIdForCreate = (actor, requestedBranchId) => {
+   29:   if (isSuperOwner(actor)) {
+   30:     if (!requestedBranchId) {
+   31:       const error = new Error("BRANCH_REQUIRED");
+   32:       error.statusCode = 400;
+   33:       throw error;
+   34:     }
+   35: 
+   36:     return requestedBranchId;
+   37:   }
+   38: 
+   39:   if (!actor.branchId) {
+   40:     const error = new Error("BRANCH_REQUIRED");
+   41:     error.statusCode = 400;
+   42:     throw error;
+   43:   }
+   44: 
+   45:   if (requestedBranchId && requestedBranchId !== actor.branchId) {
+   46:     const error = new Error("BRANCH_ACCESS_DENIED");
+   47:     error.statusCode = 403;
+   48:     throw error;
+   49:   }
+   50: 
+   51:   return actor.branchId;
+   52: };
+   53: 
+   54: const generateQuotationCode = async (tx, branchCode, branchId) => {
+   55:   const now = new Date();
+   56:   const yyyy = now.getFullYear();
+   57:   const mm = String(now.getMonth() + 1).padStart(2, "0");
+   58:   const dd = String(now.getDate()).padStart(2, "0");
+   59:   const datePart = `${yyyy}${mm}${dd}`;
+   60:   const prefix = `QT-${branchCode}-${datePart}`;
+   61: 
+   62:   const count = await tx.quotation.count({
+   63:     where: {
+   64:       branchId,
+   65:       quotationCode: {
+   66:         startsWith: prefix,
+   67:       },
+   68:     },
+   69:   });
+   70: 
+   71:   return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+   72: };
+   73: 
+   74: const ensureBranchExists = async (tx, branchId) => {
+   75:   const branch = await tx.branch.findUnique({
+   76:     where: {
+   77:       id: branchId,
+   78:     },
+   79:     select: {
+   80:       id: true,
+   81:       code: true,
+   82:       name: true,
+   83:       status: true,
+   84:     },
+   85:   });
+   86: 
+   87:   if (!branch) {
+   88:     const error = new Error("BRANCH_NOT_FOUND");
+   89:     error.statusCode = 404;
+   90:     throw error;
+   91:   }
+   92: 
+   93:   if (branch.status !== "ACTIVE") {
+   94:     const error = new Error("BRANCH_INACTIVE");
+   95:     error.statusCode = 400;
+   96:     throw error;
+   97:   }
+   98: 
+   99:   return branch;
+  100: };
+  101: 
+  102: const ensureCustomerBelongsToBranch = async (tx, customerId, branchId) => {
+  103:   if (!customerId) {
+  104:     return null;
+  105:   }
+  106: 
+  107:   const customer = await tx.customer.findFirst({
+  108:     where: {
+  109:       id: customerId,
+  110:       branchId,
+  111:     },
+  112:     select: {
+  113:       id: true,
+  114:       customerCode: true,
+  115:       fullName: true,
+  116:       status: true,
+  117:     },
+  118:   });
+  119: 
+  120:   if (!customer) {
+  121:     const error = new Error("CUSTOMER_NOT_FOUND");
+  122:     error.statusCode = 404;
+  123:     throw error;
+  124:   }
+  125: 
+  126:   if (customer.status !== "ACTIVE") {
+  127:     const error = new Error("CUSTOMER_INACTIVE");
+  128:     error.statusCode = 400;
+  129:     throw error;
+  130:   }
+  131: 
+  132:   return customer;
+  133: };
+  134: 
+  135: const ensurePreparedByBelongsToBranch = async (tx, preparedById, branchId) => {
+  136:   if (!preparedById) {
+  137:     return null;
+  138:   }
+  139: 
+  140:   const preparedBy = await tx.user.findFirst({
+  141:     where: {
+  142:       id: preparedById,
+  143:       branchId,
+  144:       status: "ACTIVE",
+  145:     },
+  146:     select: {
+  147:       id: true,
+  148:       username: true,
+  149:       fullName: true,
+  150:       role: true,
+  151:       branchId: true,
+  152:     },
+  153:   });
+  154: 
+  155:   if (!preparedBy) {
+  156:     const error = new Error("PREPARED_BY_NOT_FOUND");
+  157:     error.statusCode = 404;
+  158:     throw error;
+  159:   }
+  160: 
+  161:   return preparedBy;
+  162: };
+  163: 
+  164: const buildQuotationItems = async (tx, actor, branchId, items) => {
+  165:   const quotationItems = [];
+  166:   let subtotal = 0;
+  167:   let totalDiscount = 0;
+  168: 
+  169:   for (let index = 0; index < items.length; index += 1) {
+  170:     const itemPayload = items[index];
+  171:     const quantity = toMoney(itemPayload.quantity);
+  172:     const discountAmount = toMoney(itemPayload.discountAmount || 0);
+  173: 
+  174:     let item = null;
+  175:     let unitPrice = 0;
+  176:     let description = itemPayload.description ? String(itemPayload.description).trim() : "";
+  177: 
+  178:     if (itemPayload.itemId) {
+  179:       item = await tx.item.findFirst({
+  180:         where: {
+  181:           id: itemPayload.itemId,
+  182:           branchId,
+  183:           status: "ACTIVE",
+  184:         },
+  185:       });
+  186: 
+  187:       if (!item) {
+  188:         const error = new Error("ITEM_NOT_FOUND");
+  189:         error.statusCode = 404;
+  190:         throw error;
+  191:       }
+  192: 
+  193:       unitPrice = getItemPriceByTier(item, itemPayload.priceTier);
+  194:       description = description || item.itemName;
+  195: 
+  196:       if (STAFF_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+  197:         const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
+  198:         error.statusCode = 403;
+  199:         throw error;
+  200:       }
+  201: 
+  202:       if (OWNER_ADMIN_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+  203:         unitPrice = toMoney(itemPayload.unitPrice);
+  204:       }
+  205:     } else {
+  206:       if (!description) {
+  207:         const error = new Error("DESCRIPTION_REQUIRED");
+  208:         error.statusCode = 400;
+  209:         throw error;
+  210:       }
+  211: 
+  212:       if (itemPayload.unitPrice === undefined) {
+  213:         const error = new Error("UNIT_PRICE_REQUIRED");
+  214:         error.statusCode = 400;
+  215:         throw error;
+  216:       }
+  217: 
+  218:       unitPrice = toMoney(itemPayload.unitPrice);
+  219:     }
+  220: 
+  221:     const grossLineTotal = toMoney(quantity * unitPrice);
+  222: 
+  223:     if (discountAmount > grossLineTotal) {
+  224:       const error = new Error("DISCOUNT_EXCEEDS_LINE_TOTAL");
+  225:       error.statusCode = 400;
+  226:       throw error;
+  227:     }
+  228: 
+  229:     const lineTotal = toMoney(grossLineTotal - discountAmount);
+  230: 
+  231:     subtotal += grossLineTotal;
+  232:     totalDiscount += discountAmount;
+  233: 
+  234:     quotationItems.push({
+  235:       lineNo: index + 1,
+  236:       description,
+  237:       itemCodeSnapshot: item ? item.itemCode : null,
+  238:       itemNameSnapshot: item ? item.itemName : null,
+  239:       brandSnapshot: item ? item.brand : null,
+  240:       modelSnapshot: item ? item.modelName : null,
+  241:       priceTier: itemPayload.priceTier,
+  242:       quantity: toMoneyString(quantity),
+  243:       unitPrice: toMoneyString(unitPrice),
+  244:       discountAmount: toMoneyString(discountAmount),
+  245:       lineTotal: toMoneyString(lineTotal),
+  246:       isPcBuildPart: Boolean(itemPayload.isPcBuildPart),
+  247:       remarks: itemPayload.remarks || null,
+  248:       itemId: item ? item.id : null,
+  249:     });
+  250:   }
+  251: 
+  252:   return {
+  253:     quotationItems,
+  254:     subtotal: toMoney(subtotal),
+  255:     totalDiscount: toMoney(totalDiscount),
+  256:     grandTotal: toMoney(subtotal - totalDiscount),
+  257:   };
+  258: };
+  259: 
+  260: const createQuotation = async (actor, payload) => {
+  261:   const branchId = resolveBranchIdForCreate(actor, payload.branchId);
+  262: 
+  263:   return prisma.$transaction(async (tx) => {
+  264:     const branch = await ensureBranchExists(tx, branchId);
+  265:     await ensureCustomerBelongsToBranch(tx, payload.customerId, branchId);
+  266: 
+  267:     const preparedById = payload.preparedById || (isSuperOwner(actor) ? null : actor.id);
+  268:     await ensurePreparedByBelongsToBranch(tx, preparedById, branchId);
+  269: 
+  270:     const { quotationItems, subtotal, totalDiscount, grandTotal } =
+  271:       await buildQuotationItems(tx, actor, branchId, payload.items);
+  272: 
+  273:     const quotationCode = await generateQuotationCode(tx, branch.code, branchId);
+  274: 
+  275:     const quotation = await tx.quotation.create({
+  276:       data: {
+  277:         quotationCode,
+  278:         title: payload.title || null,
+  279:         notes: payload.notes || null,
+  280:         internalNotes: payload.internalNotes || null,
+  281:         status: "DRAFT",
+  282:         subtotal: toMoneyString(subtotal),
+  283:         totalDiscount: toMoneyString(totalDiscount),
+  284:         grandTotal: toMoneyString(grandTotal),
+  285:         isPcBuild: Boolean(payload.isPcBuild),
+  286:         validUntil: payload.validUntil ? new Date(payload.validUntil) : null,
+  287:         branchId,
+  288:         customerId: payload.customerId || null,
+  289:         preparedById,
+  290:         createdById: actor.id,
+  291:         updatedById: actor.id,
+  292:         items: {
+  293:           create: quotationItems,
+  294:         },
+  295:       },
+  296:       include: {
+  297:         branch: {
+  298:           select: {
+  299:             id: true,
+  300:             code: true,
+  301:             name: true,
+  302:           },
+  303:         },
+  304:         customer: {
+  305:           select: {
+  306:             id: true,
+  307:             customerCode: true,
+  308:             fullName: true,
+  309:             mobileNumber: true,
+  310:             email: true,
+  311:           },
+  312:         },
+  313:         preparedBy: {
+  314:           select: {
+  315:             id: true,
+  316:             username: true,
+  317:             fullName: true,
+  318:             role: true,
+  319:           },
+  320:         },
+  321:         createdBy: {
+  322:           select: {
+  323:             id: true,
+  324:             username: true,
+  325:             fullName: true,
+  326:             role: true,
+  327:           },
+  328:         },
+  329:         items: {
+  330:           orderBy: {
+  331:             lineNo: "asc",
+  332:           },
+  333:         },
+  334:       },
+  335:     });
+  336: 
+  337:     return quotation;
+  338:   });
+  339: };
+  340: 
+  341: 
+  342: const canViewInternalNotes = (actor) => {
+  343:   return OWNER_ADMIN_ROLES.has(actor.role);
+  344: };
+  345: 
+  346: const hideInternalNotesIfNeeded = (quotation, actor) => {
+  347:   if (!quotation) {
+  348:     return quotation;
+  349:   }
+  350: 
+  351:   if (canViewInternalNotes(actor)) {
+  352:     return quotation;
+  353:   }
+  354: 
+  355:   const { internalNotes, ...safeQuotation } = quotation;
+  356:   return safeQuotation;
+  357: };
+  358: 
+  359: const resolveBranchFilterForRead = (actor, requestedBranchId) => {
+  360:   if (isSuperOwner(actor)) {
+  361:     return requestedBranchId || null;
+  362:   }
+  363: 
+  364:   if (!actor.branchId) {
+  365:     const error = new Error("BRANCH_REQUIRED");
+  366:     error.statusCode = 400;
+  367:     throw error;
+  368:   }
+  369: 
+  370:   return actor.branchId;
+  371: };
+  372: 
+  373: const parsePagination = (query) => {
+  374:   const page = Math.max(Number(query.page) || 1, 1);
+  375:   const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+  376:   const skip = (page - 1) * limit;
+  377: 
+  378:   return {
+  379:     page,
+  380:     limit,
+  381:     skip,
+  382:   };
+  383: };
+  384: 
+  385: const getQuotations = async (actor, query) => {
+  386:   const branchId = resolveBranchFilterForRead(actor, query.branchId);
+  387:   const search = query.search ? String(query.search).trim() : "";
+  388: 
+  389:   const where = {
+  390:     ...(branchId ? { branchId } : {}),
+  391:     ...(query.status ? { status: query.status } : {}),
+  392:     ...(query.customerId ? { customerId: query.customerId } : {}),
+  393:     ...(query.preparedById ? { preparedById: query.preparedById } : {}),
+  394:     ...(search
+  395:       ? {
+  396:           OR: [
+  397:             {
+  398:               quotationCode: {
+  399:                 contains: search,
+  400:                 mode: "insensitive",
+  401:               },
+  402:             },
+  403:             {
+  404:               title: {
+  405:                 contains: search,
+  406:                 mode: "insensitive",
+  407:               },
+  408:             },
+  409:             {
+  410:               notes: {
+  411:                 contains: search,
+  412:                 mode: "insensitive",
+  413:               },
+  414:             },
+  415:             {
+  416:               customer: {
+  417:                 fullName: {
+  418:                   contains: search,
+  419:                   mode: "insensitive",
+  420:                 },
+  421:               },
+  422:             },
+  423:             {
+  424:               customer: {
+  425:                 customerCode: {
+  426:                   contains: search,
+  427:                   mode: "insensitive",
+  428:                 },
+  429:               },
+  430:             },
+  431:           ],
+  432:         }
+  433:       : {}),
+  434:   };
+  435: 
+  436:   const { page, limit, skip } = parsePagination(query);
+  437: 
+  438:   const [totalItems, quotations] = await Promise.all([
+  439:     prisma.quotation.count({ where }),
+  440:     prisma.quotation.findMany({
+  441:       where,
+  442:       orderBy: {
+  443:         createdAt: "desc",
+  444:       },
+  445:       skip,
+  446:       take: limit,
+  447:       include: {
+  448:         branch: {
+  449:           select: {
+  450:             id: true,
+  451:             code: true,
+  452:             name: true,
+  453:           },
+  454:         },
+  455:         customer: {
+  456:           select: {
+  457:             id: true,
+  458:             customerCode: true,
+  459:             fullName: true,
+  460:             mobileNumber: true,
+  461:             email: true,
+  462:           },
+  463:         },
+  464:         preparedBy: {
+  465:           select: {
+  466:             id: true,
+  467:             username: true,
+  468:             fullName: true,
+  469:             role: true,
+  470:           },
+  471:         },
+  472:         createdBy: {
+  473:           select: {
+  474:             id: true,
+  475:             username: true,
+  476:             fullName: true,
+  477:             role: true,
+  478:           },
+  479:         },
+  480:         _count: {
+  481:           select: {
+  482:             items: true,
+  483:           },
+  484:         },
+  485:       },
+  486:     }),
+  487:   ]);
+  488: 
+  489:   return {
+  490:     data: quotations.map((quotation) => hideInternalNotesIfNeeded(quotation, actor)),
+  491:     pagination: {
+  492:       page,
+  493:       limit,
+  494:       totalItems,
+  495:       totalPages: Math.ceil(totalItems / limit),
+  496:     },
+  497:   };
+  498: };
+  499: 
+  500: const getQuotationById = async (actor, quotationId) => {
+  501:   const branchId = resolveBranchFilterForRead(actor, null);
+  502: 
+  503:   const quotation = await prisma.quotation.findFirst({
+  504:     where: {
+  505:       id: quotationId,
+  506:       ...(branchId ? { branchId } : {}),
+  507:     },
+  508:     include: {
+  509:       branch: {
+  510:         select: {
+  511:           id: true,
+  512:           code: true,
+  513:           name: true,
+  514:         },
+  515:       },
+  516:       customer: {
+  517:         select: {
+  518:           id: true,
+  519:           customerCode: true,
+  520:           fullName: true,
+  521:           mobileNumber: true,
+  522:           email: true,
+  523:           address: true,
+  524:           companyName: true,
+  525:         },
+  526:       },
+  527:       preparedBy: {
+  528:         select: {
+  529:           id: true,
+  530:           username: true,
+  531:           fullName: true,
+  532:           role: true,
+  533:         },
+  534:       },
+  535:       createdBy: {
+  536:         select: {
+  537:           id: true,
+  538:           username: true,
+  539:           fullName: true,
+  540:           role: true,
+  541:         },
+  542:       },
+  543:       updatedBy: {
+  544:         select: {
+  545:           id: true,
+  546:           username: true,
+  547:           fullName: true,
+  548:           role: true,
+  549:         },
+  550:       },
+  551:       items: {
+  552:         orderBy: {
+  553:           lineNo: "asc",
+  554:         },
+  555:         include: {
+  556:           item: {
+  557:             select: {
+  558:               id: true,
+  559:               itemCode: true,
+  560:               itemName: true,
+  561:               brand: true,
+  562:               modelName: true,
+  563:               status: true,
+  564:             },
+  565:           },
+  566:         },
+  567:       },
+  568:     },
+  569:   });
+  570: 
+  571:   if (!quotation) {
+  572:     const error = new Error("QUOTATION_NOT_FOUND");
+  573:     error.statusCode = 404;
+  574:     throw error;
+  575:   }
+  576: 
+  577:   return hideInternalNotesIfNeeded(quotation, actor);
+  578: };
+  579: 
+  580: 
+  581: const ensureCanAccessQuotationBranch = (actor, quotation) => {
+  582:   if (isSuperOwner(actor)) {
+  583:     return;
+  584:   }
+  585: 
+  586:   if (!actor.branchId || quotation.branchId !== actor.branchId) {
+  587:     const error = new Error("QUOTATION_NOT_FOUND");
+  588:     error.statusCode = 404;
+  589:     throw error;
+  590:   }
+  591: };
+  592: 
+  593: const normalizeOptionalId = (value) => {
+  594:   if (value === undefined) {
+  595:     return undefined;
+  596:   }
+  597: 
+  598:   if (value === null || String(value).trim() === "") {
+  599:     return null;
+  600:   }
+  601: 
+  602:   return String(value).trim();
+  603: };
+  604: 
+  605: const updateQuotation = async (actor, quotationId, payload) => {
+  606:   return prisma.$transaction(async (tx) => {
+  607:     const existingQuotation = await tx.quotation.findUnique({
+  608:       where: {
+  609:         id: quotationId,
+  610:       },
+  611:       include: {
+  612:         branch: {
+  613:           select: {
+  614:             id: true,
+  615:             code: true,
+  616:             name: true,
+  617:             status: true,
+  618:           },
+  619:         },
+  620:       },
+  621:     });
+  622: 
+  623:     if (!existingQuotation) {
+  624:       const error = new Error("QUOTATION_NOT_FOUND");
+  625:       error.statusCode = 404;
+  626:       throw error;
+  627:     }
+  628: 
+  629:     ensureCanAccessQuotationBranch(actor, existingQuotation);
+  630: 
+  631:     if (existingQuotation.status !== "DRAFT") {
+  632:       const error = new Error("QUOTATION_NOT_EDITABLE");
+  633:       error.statusCode = 400;
+  634:       throw error;
+  635:     }
+  636: 
+  637:     const updateData = {
+  638:       updatedById: actor.id,
+  639:     };
+  640: 
+  641:     if (payload.title !== undefined) {
+  642:       updateData.title = payload.title || null;
+  643:     }
+  644: 
+  645:     if (payload.notes !== undefined) {
+  646:       updateData.notes = payload.notes || null;
+  647:     }
+  648: 
+  649:     if (payload.internalNotes !== undefined) {
+  650:       updateData.internalNotes = payload.internalNotes || null;
+  651:     }
+  652: 
+  653:     if (payload.isPcBuild !== undefined) {
+  654:       updateData.isPcBuild = Boolean(payload.isPcBuild);
+  655:     }
+  656: 
+  657:     if (payload.validUntil !== undefined) {
+  658:       updateData.validUntil = payload.validUntil ? new Date(payload.validUntil) : null;
+  659:     }
+  660: 
+  661:     const normalizedCustomerId = normalizeOptionalId(payload.customerId);
+  662: 
+  663:     if (normalizedCustomerId !== undefined) {
+  664:       if (normalizedCustomerId === null) {
+  665:         updateData.customerId = null;
+  666:       } else {
+  667:         await ensureCustomerBelongsToBranch(tx, normalizedCustomerId, existingQuotation.branchId);
+  668:         updateData.customerId = normalizedCustomerId;
+  669:       }
+  670:     }
+  671: 
+  672:     const normalizedPreparedById = normalizeOptionalId(payload.preparedById);
+  673: 
+  674:     if (normalizedPreparedById !== undefined) {
+  675:       if (normalizedPreparedById === null) {
+  676:         updateData.preparedById = null;
+  677:       } else {
+  678:         await ensurePreparedByBelongsToBranch(tx, normalizedPreparedById, existingQuotation.branchId);
+  679:         updateData.preparedById = normalizedPreparedById;
+  680:       }
+  681:     }
+  682: 
+  683:     if (payload.items !== undefined) {
+  684:       const { quotationItems, subtotal, totalDiscount, grandTotal } =
+  685:         await buildQuotationItems(tx, actor, existingQuotation.branchId, payload.items);
+  686: 
+  687:       updateData.subtotal = toMoneyString(subtotal);
+  688:       updateData.totalDiscount = toMoneyString(totalDiscount);
+  689:       updateData.grandTotal = toMoneyString(grandTotal);
+  690: 
+  691:       await tx.quotationItem.deleteMany({
+  692:         where: {
+  693:           quotationId: existingQuotation.id,
+  694:         },
+  695:       });
+  696: 
+  697:       updateData.items = {
+  698:         create: quotationItems,
+  699:       };
+  700:     }
+  701: 
+  702:     const quotation = await tx.quotation.update({
+  703:       where: {
+  704:         id: existingQuotation.id,
+  705:       },
+  706:       data: updateData,
+  707:       include: {
+  708:         branch: {
+  709:           select: {
+  710:             id: true,
+  711:             code: true,
+  712:             name: true,
+  713:           },
+  714:         },
+  715:         customer: {
+  716:           select: {
+  717:             id: true,
+  718:             customerCode: true,
+  719:             fullName: true,
+  720:             mobileNumber: true,
+  721:             email: true,
+  722:           },
+  723:         },
+  724:         preparedBy: {
+  725:           select: {
+  726:             id: true,
+  727:             username: true,
+  728:             fullName: true,
+  729:             role: true,
+  730:           },
+  731:         },
+  732:         createdBy: {
+  733:           select: {
+  734:             id: true,
+  735:             username: true,
+  736:             fullName: true,
+  737:             role: true,
+  738:           },
+  739:         },
+  740:         updatedBy: {
+  741:           select: {
+  742:             id: true,
+  743:             username: true,
+  744:             fullName: true,
+  745:             role: true,
+  746:           },
+  747:         },
+  748:         items: {
+  749:           orderBy: {
+  750:             lineNo: "asc",
+  751:           },
+  752:         },
+  753:       },
+  754:     });
+  755: 
+  756:     return hideInternalNotesIfNeeded(quotation, actor);
+  757:   });
+  758: };
+  759: 
+  760: module.exports = {
+  761:   createQuotation,
+  762:   getQuotations,
+  763:   getQuotationById,
+  764:   updateQuotation,
+  765: };
+  766: 
+  767: 
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\services\quotation.service.backup-before-update.js
+============================================================
+    1: const prisma = require("../../../config/prisma");
+    2: 
+    3: const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+    4: const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
+    5: 
+    6: const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+    7: 
+    8: const toMoney = (value) => {
+    9:   return Math.round(Number(value) * 100) / 100;
+   10: };
+   11: 
+   12: const toMoneyString = (value) => {
+   13:   return toMoney(value).toFixed(2);
+   14: };
+   15: 
+   16: const getItemPriceByTier = (item, tier) => {
+   17:   const priceMap = {
+   18:     1: item.price1,
+   19:     2: item.price2,
+   20:     3: item.price3,
+   21:     4: item.price4,
+   22:     5: item.price5,
+   23:   };
+   24: 
+   25:   return Number(priceMap[tier]);
+   26: };
+   27: 
+   28: const resolveBranchIdForCreate = (actor, requestedBranchId) => {
+   29:   if (isSuperOwner(actor)) {
+   30:     if (!requestedBranchId) {
+   31:       const error = new Error("BRANCH_REQUIRED");
+   32:       error.statusCode = 400;
+   33:       throw error;
+   34:     }
+   35: 
+   36:     return requestedBranchId;
+   37:   }
+   38: 
+   39:   if (!actor.branchId) {
+   40:     const error = new Error("BRANCH_REQUIRED");
+   41:     error.statusCode = 400;
+   42:     throw error;
+   43:   }
+   44: 
+   45:   if (requestedBranchId && requestedBranchId !== actor.branchId) {
+   46:     const error = new Error("BRANCH_ACCESS_DENIED");
+   47:     error.statusCode = 403;
+   48:     throw error;
+   49:   }
+   50: 
+   51:   return actor.branchId;
+   52: };
+   53: 
+   54: const generateQuotationCode = async (tx, branchCode, branchId) => {
+   55:   const now = new Date();
+   56:   const yyyy = now.getFullYear();
+   57:   const mm = String(now.getMonth() + 1).padStart(2, "0");
+   58:   const dd = String(now.getDate()).padStart(2, "0");
+   59:   const datePart = `${yyyy}${mm}${dd}`;
+   60:   const prefix = `QT-${branchCode}-${datePart}`;
+   61: 
+   62:   const count = await tx.quotation.count({
+   63:     where: {
+   64:       branchId,
+   65:       quotationCode: {
+   66:         startsWith: prefix,
+   67:       },
+   68:     },
+   69:   });
+   70: 
+   71:   return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+   72: };
+   73: 
+   74: const ensureBranchExists = async (tx, branchId) => {
+   75:   const branch = await tx.branch.findUnique({
+   76:     where: {
+   77:       id: branchId,
+   78:     },
+   79:     select: {
+   80:       id: true,
+   81:       code: true,
+   82:       name: true,
+   83:       status: true,
+   84:     },
+   85:   });
+   86: 
+   87:   if (!branch) {
+   88:     const error = new Error("BRANCH_NOT_FOUND");
+   89:     error.statusCode = 404;
+   90:     throw error;
+   91:   }
+   92: 
+   93:   if (branch.status !== "ACTIVE") {
+   94:     const error = new Error("BRANCH_INACTIVE");
+   95:     error.statusCode = 400;
+   96:     throw error;
+   97:   }
+   98: 
+   99:   return branch;
+  100: };
+  101: 
+  102: const ensureCustomerBelongsToBranch = async (tx, customerId, branchId) => {
+  103:   if (!customerId) {
+  104:     return null;
+  105:   }
+  106: 
+  107:   const customer = await tx.customer.findFirst({
+  108:     where: {
+  109:       id: customerId,
+  110:       branchId,
+  111:     },
+  112:     select: {
+  113:       id: true,
+  114:       customerCode: true,
+  115:       fullName: true,
+  116:       status: true,
+  117:     },
+  118:   });
+  119: 
+  120:   if (!customer) {
+  121:     const error = new Error("CUSTOMER_NOT_FOUND");
+  122:     error.statusCode = 404;
+  123:     throw error;
+  124:   }
+  125: 
+  126:   if (customer.status !== "ACTIVE") {
+  127:     const error = new Error("CUSTOMER_INACTIVE");
+  128:     error.statusCode = 400;
+  129:     throw error;
+  130:   }
+  131: 
+  132:   return customer;
+  133: };
+  134: 
+  135: const ensurePreparedByBelongsToBranch = async (tx, preparedById, branchId) => {
+  136:   if (!preparedById) {
+  137:     return null;
+  138:   }
+  139: 
+  140:   const preparedBy = await tx.user.findFirst({
+  141:     where: {
+  142:       id: preparedById,
+  143:       branchId,
+  144:       status: "ACTIVE",
+  145:     },
+  146:     select: {
+  147:       id: true,
+  148:       username: true,
+  149:       fullName: true,
+  150:       role: true,
+  151:       branchId: true,
+  152:     },
+  153:   });
+  154: 
+  155:   if (!preparedBy) {
+  156:     const error = new Error("PREPARED_BY_NOT_FOUND");
+  157:     error.statusCode = 404;
+  158:     throw error;
+  159:   }
+  160: 
+  161:   return preparedBy;
+  162: };
+  163: 
+  164: const buildQuotationItems = async (tx, actor, branchId, items) => {
+  165:   const quotationItems = [];
+  166:   let subtotal = 0;
+  167:   let totalDiscount = 0;
+  168: 
+  169:   for (let index = 0; index < items.length; index += 1) {
+  170:     const itemPayload = items[index];
+  171:     const quantity = toMoney(itemPayload.quantity);
+  172:     const discountAmount = toMoney(itemPayload.discountAmount || 0);
+  173: 
+  174:     let item = null;
+  175:     let unitPrice = 0;
+  176:     let description = itemPayload.description ? String(itemPayload.description).trim() : "";
+  177: 
+  178:     if (itemPayload.itemId) {
+  179:       item = await tx.item.findFirst({
+  180:         where: {
+  181:           id: itemPayload.itemId,
+  182:           branchId,
+  183:           status: "ACTIVE",
+  184:         },
+  185:       });
+  186: 
+  187:       if (!item) {
+  188:         const error = new Error("ITEM_NOT_FOUND");
+  189:         error.statusCode = 404;
+  190:         throw error;
+  191:       }
+  192: 
+  193:       unitPrice = getItemPriceByTier(item, itemPayload.priceTier);
+  194:       description = description || item.itemName;
+  195: 
+  196:       if (STAFF_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+  197:         const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
+  198:         error.statusCode = 403;
+  199:         throw error;
+  200:       }
+  201: 
+  202:       if (OWNER_ADMIN_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+  203:         unitPrice = toMoney(itemPayload.unitPrice);
+  204:       }
+  205:     } else {
+  206:       if (!description) {
+  207:         const error = new Error("DESCRIPTION_REQUIRED");
+  208:         error.statusCode = 400;
+  209:         throw error;
+  210:       }
+  211: 
+  212:       if (itemPayload.unitPrice === undefined) {
+  213:         const error = new Error("UNIT_PRICE_REQUIRED");
+  214:         error.statusCode = 400;
+  215:         throw error;
+  216:       }
+  217: 
+  218:       unitPrice = toMoney(itemPayload.unitPrice);
+  219:     }
+  220: 
+  221:     const grossLineTotal = toMoney(quantity * unitPrice);
+  222: 
+  223:     if (discountAmount > grossLineTotal) {
+  224:       const error = new Error("DISCOUNT_EXCEEDS_LINE_TOTAL");
+  225:       error.statusCode = 400;
+  226:       throw error;
+  227:     }
+  228: 
+  229:     const lineTotal = toMoney(grossLineTotal - discountAmount);
+  230: 
+  231:     subtotal += grossLineTotal;
+  232:     totalDiscount += discountAmount;
+  233: 
+  234:     quotationItems.push({
+  235:       lineNo: index + 1,
+  236:       description,
+  237:       itemCodeSnapshot: item ? item.itemCode : null,
+  238:       itemNameSnapshot: item ? item.itemName : null,
+  239:       brandSnapshot: item ? item.brand : null,
+  240:       modelSnapshot: item ? item.modelName : null,
+  241:       priceTier: itemPayload.priceTier,
+  242:       quantity: toMoneyString(quantity),
+  243:       unitPrice: toMoneyString(unitPrice),
+  244:       discountAmount: toMoneyString(discountAmount),
+  245:       lineTotal: toMoneyString(lineTotal),
+  246:       isPcBuildPart: Boolean(itemPayload.isPcBuildPart),
+  247:       remarks: itemPayload.remarks || null,
+  248:       itemId: item ? item.id : null,
+  249:     });
+  250:   }
+  251: 
+  252:   return {
+  253:     quotationItems,
+  254:     subtotal: toMoney(subtotal),
+  255:     totalDiscount: toMoney(totalDiscount),
+  256:     grandTotal: toMoney(subtotal - totalDiscount),
+  257:   };
+  258: };
+  259: 
+  260: const createQuotation = async (actor, payload) => {
+  261:   const branchId = resolveBranchIdForCreate(actor, payload.branchId);
+  262: 
+  263:   return prisma.$transaction(async (tx) => {
+  264:     const branch = await ensureBranchExists(tx, branchId);
+  265:     await ensureCustomerBelongsToBranch(tx, payload.customerId, branchId);
+  266: 
+  267:     const preparedById = payload.preparedById || (isSuperOwner(actor) ? null : actor.id);
+  268:     await ensurePreparedByBelongsToBranch(tx, preparedById, branchId);
+  269: 
+  270:     const { quotationItems, subtotal, totalDiscount, grandTotal } =
+  271:       await buildQuotationItems(tx, actor, branchId, payload.items);
+  272: 
+  273:     const quotationCode = await generateQuotationCode(tx, branch.code, branchId);
+  274: 
+  275:     const quotation = await tx.quotation.create({
+  276:       data: {
+  277:         quotationCode,
+  278:         title: payload.title || null,
+  279:         notes: payload.notes || null,
+  280:         internalNotes: payload.internalNotes || null,
+  281:         status: "DRAFT",
+  282:         subtotal: toMoneyString(subtotal),
+  283:         totalDiscount: toMoneyString(totalDiscount),
+  284:         grandTotal: toMoneyString(grandTotal),
+  285:         isPcBuild: Boolean(payload.isPcBuild),
+  286:         validUntil: payload.validUntil ? new Date(payload.validUntil) : null,
+  287:         branchId,
+  288:         customerId: payload.customerId || null,
+  289:         preparedById,
+  290:         createdById: actor.id,
+  291:         updatedById: actor.id,
+  292:         items: {
+  293:           create: quotationItems,
+  294:         },
+  295:       },
+  296:       include: {
+  297:         branch: {
+  298:           select: {
+  299:             id: true,
+  300:             code: true,
+  301:             name: true,
+  302:           },
+  303:         },
+  304:         customer: {
+  305:           select: {
+  306:             id: true,
+  307:             customerCode: true,
+  308:             fullName: true,
+  309:             mobileNumber: true,
+  310:             email: true,
+  311:           },
+  312:         },
+  313:         preparedBy: {
+  314:           select: {
+  315:             id: true,
+  316:             username: true,
+  317:             fullName: true,
+  318:             role: true,
+  319:           },
+  320:         },
+  321:         createdBy: {
+  322:           select: {
+  323:             id: true,
+  324:             username: true,
+  325:             fullName: true,
+  326:             role: true,
+  327:           },
+  328:         },
+  329:         items: {
+  330:           orderBy: {
+  331:             lineNo: "asc",
+  332:           },
+  333:         },
+  334:       },
+  335:     });
+  336: 
+  337:     return quotation;
+  338:   });
+  339: };
+  340: 
+  341: 
+  342: const canViewInternalNotes = (actor) => {
+  343:   return OWNER_ADMIN_ROLES.has(actor.role);
+  344: };
+  345: 
+  346: const hideInternalNotesIfNeeded = (quotation, actor) => {
+  347:   if (!quotation) {
+  348:     return quotation;
+  349:   }
+  350: 
+  351:   if (canViewInternalNotes(actor)) {
+  352:     return quotation;
+  353:   }
+  354: 
+  355:   const { internalNotes, ...safeQuotation } = quotation;
+  356:   return safeQuotation;
+  357: };
+  358: 
+  359: const resolveBranchFilterForRead = (actor, requestedBranchId) => {
+  360:   if (isSuperOwner(actor)) {
+  361:     return requestedBranchId || null;
+  362:   }
+  363: 
+  364:   if (!actor.branchId) {
+  365:     const error = new Error("BRANCH_REQUIRED");
+  366:     error.statusCode = 400;
+  367:     throw error;
+  368:   }
+  369: 
+  370:   return actor.branchId;
+  371: };
+  372: 
+  373: const parsePagination = (query) => {
+  374:   const page = Math.max(Number(query.page) || 1, 1);
+  375:   const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+  376:   const skip = (page - 1) * limit;
+  377: 
+  378:   return {
+  379:     page,
+  380:     limit,
+  381:     skip,
+  382:   };
+  383: };
+  384: 
+  385: const getQuotations = async (actor, query) => {
+  386:   const branchId = resolveBranchFilterForRead(actor, query.branchId);
+  387:   const search = query.search ? String(query.search).trim() : "";
+  388: 
+  389:   const where = {
+  390:     ...(branchId ? { branchId } : {}),
+  391:     ...(query.status ? { status: query.status } : {}),
+  392:     ...(query.customerId ? { customerId: query.customerId } : {}),
+  393:     ...(query.preparedById ? { preparedById: query.preparedById } : {}),
+  394:     ...(search
+  395:       ? {
+  396:           OR: [
+  397:             {
+  398:               quotationCode: {
+  399:                 contains: search,
+  400:                 mode: "insensitive",
+  401:               },
+  402:             },
+  403:             {
+  404:               title: {
+  405:                 contains: search,
+  406:                 mode: "insensitive",
+  407:               },
+  408:             },
+  409:             {
+  410:               notes: {
+  411:                 contains: search,
+  412:                 mode: "insensitive",
+  413:               },
+  414:             },
+  415:             {
+  416:               customer: {
+  417:                 fullName: {
+  418:                   contains: search,
+  419:                   mode: "insensitive",
+  420:                 },
+  421:               },
+  422:             },
+  423:             {
+  424:               customer: {
+  425:                 customerCode: {
+  426:                   contains: search,
+  427:                   mode: "insensitive",
+  428:                 },
+  429:               },
+  430:             },
+  431:           ],
+  432:         }
+  433:       : {}),
+  434:   };
+  435: 
+  436:   const { page, limit, skip } = parsePagination(query);
+  437: 
+  438:   const [totalItems, quotations] = await Promise.all([
+  439:     prisma.quotation.count({ where }),
+  440:     prisma.quotation.findMany({
+  441:       where,
+  442:       orderBy: {
+  443:         createdAt: "desc",
+  444:       },
+  445:       skip,
+  446:       take: limit,
+  447:       include: {
+  448:         branch: {
+  449:           select: {
+  450:             id: true,
+  451:             code: true,
+  452:             name: true,
+  453:           },
+  454:         },
+  455:         customer: {
+  456:           select: {
+  457:             id: true,
+  458:             customerCode: true,
+  459:             fullName: true,
+  460:             mobileNumber: true,
+  461:             email: true,
+  462:           },
+  463:         },
+  464:         preparedBy: {
+  465:           select: {
+  466:             id: true,
+  467:             username: true,
+  468:             fullName: true,
+  469:             role: true,
+  470:           },
+  471:         },
+  472:         createdBy: {
+  473:           select: {
+  474:             id: true,
+  475:             username: true,
+  476:             fullName: true,
+  477:             role: true,
+  478:           },
+  479:         },
+  480:         _count: {
+  481:           select: {
+  482:             items: true,
+  483:           },
+  484:         },
+  485:       },
+  486:     }),
+  487:   ]);
+  488: 
+  489:   return {
+  490:     data: quotations.map((quotation) => hideInternalNotesIfNeeded(quotation, actor)),
+  491:     pagination: {
+  492:       page,
+  493:       limit,
+  494:       totalItems,
+  495:       totalPages: Math.ceil(totalItems / limit),
+  496:     },
+  497:   };
+  498: };
+  499: 
+  500: const getQuotationById = async (actor, quotationId) => {
+  501:   const branchId = resolveBranchFilterForRead(actor, null);
+  502: 
+  503:   const quotation = await prisma.quotation.findFirst({
+  504:     where: {
+  505:       id: quotationId,
+  506:       ...(branchId ? { branchId } : {}),
+  507:     },
+  508:     include: {
+  509:       branch: {
+  510:         select: {
+  511:           id: true,
+  512:           code: true,
+  513:           name: true,
+  514:         },
+  515:       },
+  516:       customer: {
+  517:         select: {
+  518:           id: true,
+  519:           customerCode: true,
+  520:           fullName: true,
+  521:           mobileNumber: true,
+  522:           email: true,
+  523:           address: true,
+  524:           companyName: true,
+  525:         },
+  526:       },
+  527:       preparedBy: {
+  528:         select: {
+  529:           id: true,
+  530:           username: true,
+  531:           fullName: true,
+  532:           role: true,
+  533:         },
+  534:       },
+  535:       createdBy: {
+  536:         select: {
+  537:           id: true,
+  538:           username: true,
+  539:           fullName: true,
+  540:           role: true,
+  541:         },
+  542:       },
+  543:       updatedBy: {
+  544:         select: {
+  545:           id: true,
+  546:           username: true,
+  547:           fullName: true,
+  548:           role: true,
+  549:         },
+  550:       },
+  551:       items: {
+  552:         orderBy: {
+  553:           lineNo: "asc",
+  554:         },
+  555:         include: {
+  556:           item: {
+  557:             select: {
+  558:               id: true,
+  559:               itemCode: true,
+  560:               itemName: true,
+  561:               brand: true,
+  562:               modelName: true,
+  563:               status: true,
+  564:             },
+  565:           },
+  566:         },
+  567:       },
+  568:     },
+  569:   });
+  570: 
+  571:   if (!quotation) {
+  572:     const error = new Error("QUOTATION_NOT_FOUND");
+  573:     error.statusCode = 404;
+  574:     throw error;
+  575:   }
+  576: 
+  577:   return hideInternalNotesIfNeeded(quotation, actor);
+  578: };
+  579: 
+  580: module.exports = {
+  581:   createQuotation,
+  582:   getQuotations,
+  583:   getQuotationById,
+  584: };
+  585: 
+  586: 
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\services\quotation.service.js
+============================================================
+    1: const prisma = require("../../../config/prisma");
+    2: 
+    3: const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+    4: const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
+    5: 
+    6: const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+    7: 
+    8: const toMoney = (value) => {
+    9:   return Math.round(Number(value) * 100) / 100;
+   10: };
+   11: 
+   12: const toMoneyString = (value) => {
+   13:   return toMoney(value).toFixed(2);
+   14: };
+   15: 
+   16: const getItemPriceByTier = (item, tier) => {
+   17:   const priceMap = {
+   18:     1: item.price1,
+   19:     2: item.price2,
+   20:     3: item.price3,
+   21:     4: item.price4,
+   22:     5: item.price5,
+   23:   };
+   24: 
+   25:   return Number(priceMap[tier]);
+   26: };
+   27: 
+   28: const resolveBranchIdForCreate = (actor, requestedBranchId) => {
+   29:   if (isSuperOwner(actor)) {
+   30:     if (!requestedBranchId) {
+   31:       const error = new Error("BRANCH_REQUIRED");
+   32:       error.statusCode = 400;
+   33:       throw error;
+   34:     }
+   35: 
+   36:     return requestedBranchId;
+   37:   }
+   38: 
+   39:   if (!actor.branchId) {
+   40:     const error = new Error("BRANCH_REQUIRED");
+   41:     error.statusCode = 400;
+   42:     throw error;
+   43:   }
+   44: 
+   45:   if (requestedBranchId && requestedBranchId !== actor.branchId) {
+   46:     const error = new Error("BRANCH_ACCESS_DENIED");
+   47:     error.statusCode = 403;
+   48:     throw error;
+   49:   }
+   50: 
+   51:   return actor.branchId;
+   52: };
+   53: 
+   54: const generateQuotationCode = async (tx, branchCode, branchId) => {
+   55:   const now = new Date();
+   56:   const yyyy = now.getFullYear();
+   57:   const mm = String(now.getMonth() + 1).padStart(2, "0");
+   58:   const dd = String(now.getDate()).padStart(2, "0");
+   59:   const datePart = `${yyyy}${mm}${dd}`;
+   60:   const prefix = `QT-${branchCode}-${datePart}`;
+   61: 
+   62:   const count = await tx.quotation.count({
+   63:     where: {
+   64:       branchId,
+   65:       quotationCode: {
+   66:         startsWith: prefix,
+   67:       },
+   68:     },
+   69:   });
+   70: 
+   71:   return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+   72: };
+   73: 
+   74: const ensureBranchExists = async (tx, branchId) => {
+   75:   const branch = await tx.branch.findUnique({
+   76:     where: {
+   77:       id: branchId,
+   78:     },
+   79:     select: {
+   80:       id: true,
+   81:       code: true,
+   82:       name: true,
+   83:       status: true,
+   84:     },
+   85:   });
+   86: 
+   87:   if (!branch) {
+   88:     const error = new Error("BRANCH_NOT_FOUND");
+   89:     error.statusCode = 404;
+   90:     throw error;
+   91:   }
+   92: 
+   93:   if (branch.status !== "ACTIVE") {
+   94:     const error = new Error("BRANCH_INACTIVE");
+   95:     error.statusCode = 400;
+   96:     throw error;
+   97:   }
+   98: 
+   99:   return branch;
+  100: };
+  101: 
+  102: const ensureCustomerBelongsToBranch = async (tx, customerId, branchId) => {
+  103:   if (!customerId) {
+  104:     return null;
+  105:   }
+  106: 
+  107:   const customer = await tx.customer.findFirst({
+  108:     where: {
+  109:       id: customerId,
+  110:       branchId,
+  111:     },
+  112:     select: {
+  113:       id: true,
+  114:       customerCode: true,
+  115:       fullName: true,
+  116:       status: true,
+  117:     },
+  118:   });
+  119: 
+  120:   if (!customer) {
+  121:     const error = new Error("CUSTOMER_NOT_FOUND");
+  122:     error.statusCode = 404;
+  123:     throw error;
+  124:   }
+  125: 
+  126:   if (customer.status !== "ACTIVE") {
+  127:     const error = new Error("CUSTOMER_INACTIVE");
+  128:     error.statusCode = 400;
+  129:     throw error;
+  130:   }
+  131: 
+  132:   return customer;
+  133: };
+  134: 
+  135: const ensurePreparedByBelongsToBranch = async (tx, preparedById, branchId) => {
+  136:   if (!preparedById) {
+  137:     return null;
+  138:   }
+  139: 
+  140:   const preparedBy = await tx.user.findFirst({
+  141:     where: {
+  142:       id: preparedById,
+  143:       status: "ACTIVE",
+  144:       OR: [
+  145:         { branchId },
+  146:         { role: "SUPER_OWNER" },
+  147:       ],
+  148:     },
+  149:     select: {
+  150:       id: true,
+  151:       username: true,
+  152:       fullName: true,
+  153:       role: true,
+  154:       branchId: true,
+  155:     },
+  156:   });
+  157: 
+  158:   if (!preparedBy) {
+  159:     const error = new Error("PREPARED_BY_NOT_FOUND");
+  160:     error.statusCode = 404;
+  161:     throw error;
+  162:   }
+  163: 
+  164:   return preparedBy;
+  165: };
+  166: 
+  167: const buildQuotationItems = async (tx, actor, branchId, items) => {
+  168:   const quotationItems = [];
+  169:   let subtotal = 0;
+  170:   let totalDiscount = 0;
+  171: 
+  172:   for (let index = 0; index < items.length; index += 1) {
+  173:     const itemPayload = items[index];
+  174:     const quantity = toMoney(itemPayload.quantity);
+  175:     const discountAmount = toMoney(itemPayload.discountAmount || 0);
+  176: 
+  177:     let item = null;
+  178:     let unitPrice = 0;
+  179:     let description = itemPayload.description ? String(itemPayload.description).trim() : "";
+  180: 
+  181:     if (itemPayload.itemId) {
+  182:       item = await tx.item.findFirst({
+  183:         where: {
+  184:           id: itemPayload.itemId,
+  185:           branchId,
+  186:           status: "ACTIVE",
+  187:         },
+  188:       });
+  189: 
+  190:       if (!item) {
+  191:         const error = new Error("ITEM_NOT_FOUND");
+  192:         error.statusCode = 404;
+  193:         throw error;
+  194:       }
+  195: 
+  196:       unitPrice = getItemPriceByTier(item, itemPayload.priceTier);
+  197:       description = description || item.itemName;
+  198: 
+  199:       if (STAFF_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+  200:         const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
+  201:         error.statusCode = 403;
+  202:         throw error;
+  203:       }
+  204: 
+  205:       if (OWNER_ADMIN_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+  206:         unitPrice = toMoney(itemPayload.unitPrice);
+  207:       }
+  208:     } else {
+  209:       if (!description) {
+  210:         const error = new Error("DESCRIPTION_REQUIRED");
+  211:         error.statusCode = 400;
+  212:         throw error;
+  213:       }
+  214: 
+  215:       if (itemPayload.unitPrice === undefined) {
+  216:         const error = new Error("UNIT_PRICE_REQUIRED");
+  217:         error.statusCode = 400;
+  218:         throw error;
+  219:       }
+  220: 
+  221:       unitPrice = toMoney(itemPayload.unitPrice);
+  222:     }
+  223: 
+  224:     const grossLineTotal = toMoney(quantity * unitPrice);
+  225: 
+  226:     if (discountAmount > grossLineTotal) {
+  227:       const error = new Error("DISCOUNT_EXCEEDS_LINE_TOTAL");
+  228:       error.statusCode = 400;
+  229:       throw error;
+  230:     }
+  231: 
+  232:     const lineTotal = toMoney(grossLineTotal - discountAmount);
+  233: 
+  234:     subtotal += grossLineTotal;
+  235:     totalDiscount += discountAmount;
+  236: 
+  237:     quotationItems.push({
+  238:       lineNo: index + 1,
+  239:       description,
+  240:       itemCodeSnapshot: item ? item.itemCode : null,
+  241:       itemNameSnapshot: item ? item.itemName : null,
+  242:       brandSnapshot: item ? item.brand : null,
+  243:       modelSnapshot: item ? item.modelName : null,
+  244:       priceTier: itemPayload.priceTier,
+  245:       quantity: toMoneyString(quantity),
+  246:       unitPrice: toMoneyString(unitPrice),
+  247:       discountAmount: toMoneyString(discountAmount),
+  248:       lineTotal: toMoneyString(lineTotal),
+  249:       isPcBuildPart: Boolean(itemPayload.isPcBuildPart),
+  250:       remarks: itemPayload.remarks || null,
+  251:       itemId: item ? item.id : null,
+  252:     });
+  253:   }
+  254: 
+  255:   return {
+  256:     quotationItems,
+  257:     subtotal: toMoney(subtotal),
+  258:     totalDiscount: toMoney(totalDiscount),
+  259:     grandTotal: toMoney(subtotal - totalDiscount),
+  260:   };
+  261: };
+  262: 
+  263: const createQuotation = async (actor, payload) => {
+  264:   const branchId = resolveBranchIdForCreate(actor, payload.branchId);
+  265: 
+  266:   return prisma.$transaction(async (tx) => {
+  267:     const branch = await ensureBranchExists(tx, branchId);
+  268:     await ensureCustomerBelongsToBranch(tx, payload.customerId, branchId);
+  269: 
+  270:     const preparedById = payload.preparedById || actor.id;
+  271:     await ensurePreparedByBelongsToBranch(tx, preparedById, branchId);
+  272: 
+  273:     const { quotationItems, subtotal, totalDiscount, grandTotal } =
+  274:       await buildQuotationItems(tx, actor, branchId, payload.items);
+  275: 
+  276:     const quotationCode = await generateQuotationCode(tx, branch.code, branchId);
+  277: 
+  278:     const quotation = await tx.quotation.create({
+  279:       data: {
+  280:         quotationCode,
+  281:         title: payload.title || null,
+  282:         notes: payload.notes || null,
+  283:         internalNotes: payload.internalNotes || null,
+  284:         status: "DRAFT",
+  285:         subtotal: toMoneyString(subtotal),
+  286:         totalDiscount: toMoneyString(totalDiscount),
+  287:         grandTotal: toMoneyString(grandTotal),
+  288:         isPcBuild: Boolean(payload.isPcBuild),
+  289:         validUntil: payload.validUntil ? new Date(payload.validUntil) : null,
+  290:         branchId,
+  291:         customerId: payload.customerId || null,
+  292:         preparedById,
+  293:         createdById: actor.id,
+  294:         updatedById: actor.id,
+  295:         items: {
+  296:           create: quotationItems,
+  297:         },
+  298:       },
+  299:       include: {
+  300:         branch: {
+  301:           select: {
+  302:             id: true,
+  303:             code: true,
+  304:             name: true,
+  305:           },
+  306:         },
+  307:         customer: {
+  308:           select: {
+  309:             id: true,
+  310:             customerCode: true,
+  311:             fullName: true,
+  312:             mobileNumber: true,
+  313:             email: true,
+  314:           },
+  315:         },
+  316:         preparedBy: {
+  317:           select: {
+  318:             id: true,
+  319:             username: true,
+  320:             fullName: true,
+  321:             role: true,
+  322:           },
+  323:         },
+  324:         createdBy: {
+  325:           select: {
+  326:             id: true,
+  327:             username: true,
+  328:             fullName: true,
+  329:             role: true,
+  330:           },
+  331:         },
+  332:         items: {
+  333:           orderBy: {
+  334:             lineNo: "asc",
+  335:           },
+  336:         },
+  337:       },
+  338:     });
+  339: 
+  340:     return quotation;
+  341:   });
+  342: };
+  343: 
+  344: 
+  345: const canViewInternalNotes = (actor) => {
+  346:   return OWNER_ADMIN_ROLES.has(actor.role);
+  347: };
+  348: 
+  349: const hideInternalNotesIfNeeded = (quotation, actor) => {
+  350:   if (!quotation) {
+  351:     return quotation;
+  352:   }
+  353: 
+  354:   if (canViewInternalNotes(actor)) {
+  355:     return quotation;
+  356:   }
+  357: 
+  358:   const { internalNotes, ...safeQuotation } = quotation;
+  359:   return safeQuotation;
+  360: };
+  361: 
+  362: const resolveBranchFilterForRead = (actor, requestedBranchId) => {
+  363:   if (isSuperOwner(actor)) {
+  364:     return requestedBranchId || null;
+  365:   }
+  366: 
+  367:   if (!actor.branchId) {
+  368:     const error = new Error("BRANCH_REQUIRED");
+  369:     error.statusCode = 400;
+  370:     throw error;
+  371:   }
+  372: 
+  373:   return actor.branchId;
+  374: };
+  375: 
+  376: const parsePagination = (query) => {
+  377:   const page = Math.max(Number(query.page) || 1, 1);
+  378:   const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+  379:   const skip = (page - 1) * limit;
+  380: 
+  381:   return {
+  382:     page,
+  383:     limit,
+  384:     skip,
+  385:   };
+  386: };
+  387: 
+  388: const getQuotations = async (actor, query) => {
+  389:   const branchId = resolveBranchFilterForRead(actor, query.branchId);
+  390:   const search = query.search ? String(query.search).trim() : "";
+  391: 
+  392:   const where = {
+  393:     ...(branchId ? { branchId } : {}),
+  394:     ...(query.status ? { status: query.status } : {}),
+  395:     ...(query.customerId ? { customerId: query.customerId } : {}),
+  396:     ...(query.preparedById ? { preparedById: query.preparedById } : {}),
+  397:     ...(search
+  398:       ? {
+  399:           OR: [
+  400:             {
+  401:               quotationCode: {
+  402:                 contains: search,
+  403:                 mode: "insensitive",
+  404:               },
+  405:             },
+  406:             {
+  407:               title: {
+  408:                 contains: search,
+  409:                 mode: "insensitive",
+  410:               },
+  411:             },
+  412:             {
+  413:               notes: {
+  414:                 contains: search,
+  415:                 mode: "insensitive",
+  416:               },
+  417:             },
+  418:             {
+  419:               customer: {
+  420:                 fullName: {
+  421:                   contains: search,
+  422:                   mode: "insensitive",
+  423:                 },
+  424:               },
+  425:             },
+  426:             {
+  427:               customer: {
+  428:                 customerCode: {
+  429:                   contains: search,
+  430:                   mode: "insensitive",
+  431:                 },
+  432:               },
+  433:             },
+  434:           ],
+  435:         }
+  436:       : {}),
+  437:   };
+  438: 
+  439:   const { page, limit, skip } = parsePagination(query);
+  440: 
+  441:   const [totalItems, quotations] = await Promise.all([
+  442:     prisma.quotation.count({ where }),
+  443:     prisma.quotation.findMany({
+  444:       where,
+  445:       orderBy: {
+  446:         createdAt: "desc",
+  447:       },
+  448:       skip,
+  449:       take: limit,
+  450:       include: {
+  451:         branch: {
+  452:           select: {
+  453:             id: true,
+  454:             code: true,
+  455:             name: true,
+  456:           },
+  457:         },
+  458:         customer: {
+  459:           select: {
+  460:             id: true,
+  461:             customerCode: true,
+  462:             fullName: true,
+  463:             mobileNumber: true,
+  464:             email: true,
+  465:           },
+  466:         },
+  467:         preparedBy: {
+  468:           select: {
+  469:             id: true,
+  470:             username: true,
+  471:             fullName: true,
+  472:             role: true,
+  473:           },
+  474:         },
+  475:         createdBy: {
+  476:           select: {
+  477:             id: true,
+  478:             username: true,
+  479:             fullName: true,
+  480:             role: true,
+  481:           },
+  482:         },
+  483:         _count: {
+  484:           select: {
+  485:             items: true,
+  486:           },
+  487:         },
+  488:       },
+  489:     }),
+  490:   ]);
+  491: 
+  492:   return {
+  493:     data: quotations.map((quotation) => hideInternalNotesIfNeeded(quotation, actor)),
+  494:     pagination: {
+  495:       page,
+  496:       limit,
+  497:       totalItems,
+  498:       totalPages: Math.ceil(totalItems / limit),
+  499:     },
+  500:   };
+  501: };
+  502: 
+  503: const getQuotationById = async (actor, quotationId) => {
+  504:   const branchId = resolveBranchFilterForRead(actor, null);
+  505: 
+  506:   const quotation = await prisma.quotation.findFirst({
+  507:     where: {
+  508:       id: quotationId,
+  509:       ...(branchId ? { branchId } : {}),
+  510:     },
+  511:     include: {
+  512:       branch: {
+  513:         select: {
+  514:           id: true,
+  515:           code: true,
+  516:           name: true,
+  517:         },
+  518:       },
+  519:       customer: {
+  520:         select: {
+  521:           id: true,
+  522:           customerCode: true,
+  523:           fullName: true,
+  524:           mobileNumber: true,
+  525:           email: true,
+  526:           address: true,
+  527:           companyName: true,
+  528:         },
+  529:       },
+  530:       preparedBy: {
+  531:         select: {
+  532:           id: true,
+  533:           username: true,
+  534:           fullName: true,
+  535:           role: true,
+  536:         },
+  537:       },
+  538:       createdBy: {
+  539:         select: {
+  540:           id: true,
+  541:           username: true,
+  542:           fullName: true,
+  543:           role: true,
+  544:         },
+  545:       },
+  546:       updatedBy: {
+  547:         select: {
+  548:           id: true,
+  549:           username: true,
+  550:           fullName: true,
+  551:           role: true,
+  552:         },
+  553:       },
+  554:       items: {
+  555:         orderBy: {
+  556:           lineNo: "asc",
+  557:         },
+  558:         include: {
+  559:           item: {
+  560:             select: {
+  561:               id: true,
+  562:               itemCode: true,
+  563:               itemName: true,
+  564:               brand: true,
+  565:               modelName: true,
+  566:               status: true,
+  567:             },
+  568:           },
+  569:         },
+  570:       },
+  571:     },
+  572:   });
+  573: 
+  574:   if (!quotation) {
+  575:     const error = new Error("QUOTATION_NOT_FOUND");
+  576:     error.statusCode = 404;
+  577:     throw error;
+  578:   }
+  579: 
+  580:   return hideInternalNotesIfNeeded(quotation, actor);
+  581: };
+  582: 
+  583: 
+  584: const ensureCanAccessQuotationBranch = (actor, quotation) => {
+  585:   if (isSuperOwner(actor)) {
+  586:     return;
+  587:   }
+  588: 
+  589:   if (!actor.branchId || quotation.branchId !== actor.branchId) {
+  590:     const error = new Error("QUOTATION_NOT_FOUND");
+  591:     error.statusCode = 404;
+  592:     throw error;
+  593:   }
+  594: };
+  595: 
+  596: const normalizeOptionalId = (value) => {
+  597:   if (value === undefined) {
+  598:     return undefined;
+  599:   }
+  600: 
+  601:   if (value === null || String(value).trim() === "") {
+  602:     return null;
+  603:   }
+  604: 
+  605:   return String(value).trim();
+  606: };
+  607: 
+  608: const updateQuotation = async (actor, quotationId, payload) => {
+  609:   return prisma.$transaction(async (tx) => {
+  610:     const existingQuotation = await tx.quotation.findUnique({
+  611:       where: {
+  612:         id: quotationId,
+  613:       },
+  614:       include: {
+  615:         branch: {
+  616:           select: {
+  617:             id: true,
+  618:             code: true,
+  619:             name: true,
+  620:             status: true,
+  621:           },
+  622:         },
+  623:       },
+  624:     });
+  625: 
+  626:     if (!existingQuotation) {
+  627:       const error = new Error("QUOTATION_NOT_FOUND");
+  628:       error.statusCode = 404;
+  629:       throw error;
+  630:     }
+  631: 
+  632:     ensureCanAccessQuotationBranch(actor, existingQuotation);
+  633: 
+  634:     if (existingQuotation.status !== "DRAFT") {
+  635:       const error = new Error("QUOTATION_NOT_EDITABLE");
+  636:       error.statusCode = 400;
+  637:       throw error;
+  638:     }
+  639: 
+  640:     const updateData = {
+  641:       updatedById: actor.id,
+  642:     };
+  643: 
+  644:     if (payload.title !== undefined) {
+  645:       updateData.title = payload.title || null;
+  646:     }
+  647: 
+  648:     if (payload.notes !== undefined) {
+  649:       updateData.notes = payload.notes || null;
+  650:     }
+  651: 
+  652:     if (payload.internalNotes !== undefined) {
+  653:       updateData.internalNotes = payload.internalNotes || null;
+  654:     }
+  655: 
+  656:     if (payload.isPcBuild !== undefined) {
+  657:       updateData.isPcBuild = Boolean(payload.isPcBuild);
+  658:     }
+  659: 
+  660:     if (payload.validUntil !== undefined) {
+  661:       updateData.validUntil = payload.validUntil ? new Date(payload.validUntil) : null;
+  662:     }
+  663: 
+  664:     const normalizedCustomerId = normalizeOptionalId(payload.customerId);
+  665: 
+  666:     if (normalizedCustomerId !== undefined) {
+  667:       if (normalizedCustomerId === null) {
+  668:         updateData.customerId = null;
+  669:       } else {
+  670:         await ensureCustomerBelongsToBranch(tx, normalizedCustomerId, existingQuotation.branchId);
+  671:         updateData.customerId = normalizedCustomerId;
+  672:       }
+  673:     }
+  674: 
+  675:     const normalizedPreparedById = normalizeOptionalId(payload.preparedById);
+  676: 
+  677:     if (normalizedPreparedById !== undefined) {
+  678:       if (normalizedPreparedById === null) {
+  679:         updateData.preparedById = null;
+  680:       } else {
+  681:         await ensurePreparedByBelongsToBranch(tx, normalizedPreparedById, existingQuotation.branchId);
+  682:         updateData.preparedById = normalizedPreparedById;
+  683:       }
+  684:     }
+  685: 
+  686:     if (payload.items !== undefined) {
+  687:       const { quotationItems, subtotal, totalDiscount, grandTotal } =
+  688:         await buildQuotationItems(tx, actor, existingQuotation.branchId, payload.items);
+  689: 
+  690:       updateData.subtotal = toMoneyString(subtotal);
+  691:       updateData.totalDiscount = toMoneyString(totalDiscount);
+  692:       updateData.grandTotal = toMoneyString(grandTotal);
+  693: 
+  694:       await tx.quotationItem.deleteMany({
+  695:         where: {
+  696:           quotationId: existingQuotation.id,
+  697:         },
+  698:       });
+  699: 
+  700:       updateData.items = {
+  701:         create: quotationItems,
+  702:       };
+  703:     }
+  704: 
+  705:     const quotation = await tx.quotation.update({
+  706:       where: {
+  707:         id: existingQuotation.id,
+  708:       },
+  709:       data: updateData,
+  710:       include: {
+  711:         branch: {
+  712:           select: {
+  713:             id: true,
+  714:             code: true,
+  715:             name: true,
+  716:           },
+  717:         },
+  718:         customer: {
+  719:           select: {
+  720:             id: true,
+  721:             customerCode: true,
+  722:             fullName: true,
+  723:             mobileNumber: true,
+  724:             email: true,
+  725:           },
+  726:         },
+  727:         preparedBy: {
+  728:           select: {
+  729:             id: true,
+  730:             username: true,
+  731:             fullName: true,
+  732:             role: true,
+  733:           },
+  734:         },
+  735:         createdBy: {
+  736:           select: {
+  737:             id: true,
+  738:             username: true,
+  739:             fullName: true,
+  740:             role: true,
+  741:           },
+  742:         },
+  743:         updatedBy: {
+  744:           select: {
+  745:             id: true,
+  746:             username: true,
+  747:             fullName: true,
+  748:             role: true,
+  749:           },
+  750:         },
+  751:         items: {
+  752:           orderBy: {
+  753:             lineNo: "asc",
+  754:           },
+  755:         },
+  756:       },
+  757:     });
+  758: 
+  759:     return hideInternalNotesIfNeeded(quotation, actor);
+  760:   });
+  761: };
+  762: 
+  763: 
+  764: const assertValidQuotationStatusTransition = (currentStatus, nextStatus) => {
+  765:   const allowedTransitions = {
+  766:     DRAFT: ["SENT", "CANCELLED"],
+  767:     SENT: ["APPROVED", "CANCELLED"],
+  768:     APPROVED: [],
+  769:     CANCELLED: [],
+  770:     CONVERTED: [],
+  771:   };
+  772: 
+  773:   const allowedNextStatuses = allowedTransitions[currentStatus] || [];
+  774: 
+  775:   if (!allowedNextStatuses.includes(nextStatus)) {
+  776:     const error = new Error("INVALID_QUOTATION_STATUS_TRANSITION");
+  777:     error.statusCode = 400;
+  778:     throw error;
+  779:   }
+  780: };
+  781: 
+  782: const updateQuotationStatus = async (actor, quotationId, payload) => {
+  783:   return prisma.$transaction(async (tx) => {
+  784:     const existingQuotation = await tx.quotation.findUnique({
+  785:       where: {
+  786:         id: quotationId,
+  787:       },
+  788:       include: {
+  789:         branch: {
+  790:           select: {
+  791:             id: true,
+  792:             code: true,
+  793:             name: true,
+  794:             status: true,
+  795:           },
+  796:         },
+  797:       },
+  798:     });
+  799: 
+  800:     if (!existingQuotation) {
+  801:       const error = new Error("QUOTATION_NOT_FOUND");
+  802:       error.statusCode = 404;
+  803:       throw error;
+  804:     }
+  805: 
+  806:     ensureCanAccessQuotationBranch(actor, existingQuotation);
+  807:     assertValidQuotationStatusTransition(existingQuotation.status, payload.status);
+  808: 
+  809:     const now = new Date();
+  810: 
+  811:     const updateData = {
+  812:       status: payload.status,
+  813:       updatedById: actor.id,
+  814:     };
+  815: 
+  816:     if (payload.status === "SENT") {
+  817:       updateData.sentAt = now;
+  818:     }
+  819: 
+  820:     if (payload.status === "APPROVED") {
+  821:       updateData.approvedAt = now;
+  822:     }
+  823: 
+  824:     if (payload.status === "CANCELLED") {
+  825:       updateData.cancelledAt = now;
+  826:       updateData.internalNotes = payload.remarks
+  827:         ? existingQuotation.internalNotes
+  828:           ? `${existingQuotation.internalNotes}\nCancellation remarks: ${payload.remarks}`
+  829:           : `Cancellation remarks: ${payload.remarks}`
+  830:         : existingQuotation.internalNotes;
+  831:     }
+  832: 
+  833:     const quotation = await tx.quotation.update({
+  834:       where: {
+  835:         id: existingQuotation.id,
+  836:       },
+  837:       data: updateData,
+  838:       include: {
+  839:         branch: {
+  840:           select: {
+  841:             id: true,
+  842:             code: true,
+  843:             name: true,
+  844:           },
+  845:         },
+  846:         customer: {
+  847:           select: {
+  848:             id: true,
+  849:             customerCode: true,
+  850:             fullName: true,
+  851:             mobileNumber: true,
+  852:             email: true,
+  853:           },
+  854:         },
+  855:         preparedBy: {
+  856:           select: {
+  857:             id: true,
+  858:             username: true,
+  859:             fullName: true,
+  860:             role: true,
+  861:           },
+  862:         },
+  863:         createdBy: {
+  864:           select: {
+  865:             id: true,
+  866:             username: true,
+  867:             fullName: true,
+  868:             role: true,
+  869:           },
+  870:         },
+  871:         updatedBy: {
+  872:           select: {
+  873:             id: true,
+  874:             username: true,
+  875:             fullName: true,
+  876:             role: true,
+  877:           },
+  878:         },
+  879:         items: {
+  880:           orderBy: {
+  881:             lineNo: "asc",
+  882:           },
+  883:         },
+  884:       },
+  885:     });
+  886: 
+  887:     return hideInternalNotesIfNeeded(quotation, actor);
+  888:   });
+  889: };
+  890: 
+  891: module.exports = {
+  892:   createQuotation,
+  893:   getQuotations,
+  894:   getQuotationById,
+  895:   updateQuotation,
+  896:   updateQuotationStatus,
+  897: };
+  898: 
+  899: 
+  900: 
+  901: 
+  902: 
+  903: 
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\validations\quotation.validation.backup-before-status.js
+============================================================
+    1: const { z } = require("zod");
+    2: 
+    3: const optionalString = z
+    4:   .string()
+    5:   .trim()
+    6:   .optional()
+    7:   .or(z.literal(""));
+    8: 
+    9: const positiveNumber = z.coerce
+   10:   .number()
+   11:   .positive("Value must be greater than zero");
+   12: 
+   13: const nonNegativeNumber = z.coerce
+   14:   .number()
+   15:   .min(0, "Value cannot be negative");
+   16: 
+   17: const quotationItemSchema = z.object({
+   18:   itemId: z.string().trim().min(1).optional(),
+   19:   description: z.string().trim().min(1).optional(),
+   20:   priceTier: z.coerce.number().int().min(1).max(5),
+   21:   quantity: positiveNumber,
+   22:   unitPrice: nonNegativeNumber.optional(),
+   23:   discountAmount: nonNegativeNumber.optional().default(0),
+   24:   isPcBuildPart: z.boolean().optional().default(false),
+   25:   remarks: optionalString,
+   26: });
+   27: 
+   28: const createQuotationSchema = z.object({
+   29:   body: z.object({
+   30:     branchId: z.string().trim().min(1).optional(),
+   31:     customerId: z.string().trim().min(1).optional(),
+   32:     preparedById: z.string().trim().min(1).optional(),
+   33:     title: optionalString,
+   34:     notes: optionalString,
+   35:     internalNotes: optionalString,
+   36:     isPcBuild: z.boolean().optional().default(false),
+   37:     validUntil: z.string().datetime().optional(),
+   38:     items: z.array(quotationItemSchema).min(1, "At least one quotation item is required"),
+   39:   }),
+   40: });
+   41: 
+   42: 
+   43: const updateQuotationSchema = z.object({
+   44:   body: z.object({
+   45:     customerId: z.string().trim().min(1).optional().or(z.literal("")),
+   46:     preparedById: z.string().trim().min(1).optional().or(z.literal("")),
+   47:     title: optionalString,
+   48:     notes: optionalString,
+   49:     internalNotes: optionalString,
+   50:     isPcBuild: z.boolean().optional(),
+   51:     validUntil: z.string().datetime().optional().or(z.literal("")),
+   52:     items: z.array(quotationItemSchema).min(1, "At least one quotation item is required").optional(),
+   53:   }),
+   54: });
+   55: 
+   56: module.exports = {
+   57:   createQuotationSchema,
+   58:   updateQuotationSchema,
+   59: };
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\validations\quotation.validation.backup-before-update.js
+============================================================
+    1: const { z } = require("zod");
+    2: 
+    3: const optionalString = z
+    4:   .string()
+    5:   .trim()
+    6:   .optional()
+    7:   .or(z.literal(""));
+    8: 
+    9: const positiveNumber = z.coerce
+   10:   .number()
+   11:   .positive("Value must be greater than zero");
+   12: 
+   13: const nonNegativeNumber = z.coerce
+   14:   .number()
+   15:   .min(0, "Value cannot be negative");
+   16: 
+   17: const quotationItemSchema = z.object({
+   18:   itemId: z.string().trim().min(1).optional(),
+   19:   description: z.string().trim().min(1).optional(),
+   20:   priceTier: z.coerce.number().int().min(1).max(5),
+   21:   quantity: positiveNumber,
+   22:   unitPrice: nonNegativeNumber.optional(),
+   23:   discountAmount: nonNegativeNumber.optional().default(0),
+   24:   isPcBuildPart: z.boolean().optional().default(false),
+   25:   remarks: optionalString,
+   26: });
+   27: 
+   28: const createQuotationSchema = z.object({
+   29:   body: z.object({
+   30:     branchId: z.string().trim().min(1).optional(),
+   31:     customerId: z.string().trim().min(1).optional(),
+   32:     preparedById: z.string().trim().min(1).optional(),
+   33:     title: optionalString,
+   34:     notes: optionalString,
+   35:     internalNotes: optionalString,
+   36:     isPcBuild: z.boolean().optional().default(false),
+   37:     validUntil: z.string().datetime().optional(),
+   38:     items: z.array(quotationItemSchema).min(1, "At least one quotation item is required"),
+   39:   }),
+   40: });
+   41: 
+   42: module.exports = {
+   43:   createQuotationSchema,
+   44: };
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\quotations\validations\quotation.validation.js
+============================================================
+    1: const { z } = require("zod");
+    2: 
+    3: const optionalString = z
+    4:   .string()
+    5:   .trim()
+    6:   .optional()
+    7:   .or(z.literal(""));
+    8: 
+    9: const positiveNumber = z.coerce
+   10:   .number()
+   11:   .positive("Value must be greater than zero");
+   12: 
+   13: const nonNegativeNumber = z.coerce
+   14:   .number()
+   15:   .min(0, "Value cannot be negative");
+   16: 
+   17: const quotationItemSchema = z.object({
+   18:   itemId: z.string().trim().min(1).optional(),
+   19:   description: z.string().trim().min(1).optional(),
+   20:   priceTier: z.coerce.number().int().min(1).max(5),
+   21:   quantity: positiveNumber,
+   22:   unitPrice: nonNegativeNumber.optional(),
+   23:   discountAmount: nonNegativeNumber.optional().default(0),
+   24:   isPcBuildPart: z.boolean().optional().default(false),
+   25:   remarks: optionalString,
+   26: });
+   27: 
+   28: const createQuotationSchema = z.object({
+   29:   body: z.object({
+   30:     branchId: z.string().trim().min(1).optional(),
+   31:     customerId: z.string().trim().min(1).optional(),
+   32:     preparedById: z.string().trim().min(1).optional(),
+   33:     title: optionalString,
+   34:     notes: optionalString,
+   35:     internalNotes: optionalString,
+   36:     isPcBuild: z.boolean().optional().default(false),
+   37:     validUntil: z.string().datetime().optional(),
+   38:     items: z.array(quotationItemSchema).min(1, "At least one quotation item is required"),
+   39:   }),
+   40: });
+   41: 
+   42: 
+   43: const updateQuotationSchema = z.object({
+   44:   body: z.object({
+   45:     customerId: z.string().trim().min(1).optional().or(z.literal("")),
+   46:     preparedById: z.string().trim().min(1).optional().or(z.literal("")),
+   47:     title: optionalString,
+   48:     notes: optionalString,
+   49:     internalNotes: optionalString,
+   50:     isPcBuild: z.boolean().optional(),
+   51:     validUntil: z.string().datetime().optional().or(z.literal("")),
+   52:     items: z.array(quotationItemSchema).min(1, "At least one quotation item is required").optional(),
+   53:   }),
+   54: });
+   55: 
+   56: 
+   57: const updateQuotationStatusSchema = z.object({
+   58:   body: z.object({
+   59:     status: z.enum(["SENT", "APPROVED", "CANCELLED"]),
+   60:     remarks: optionalString,
+   61:   }),
+   62: });
+   63: 
+   64: module.exports = {
+   65:   createQuotationSchema,
+   66:   updateQuotationSchema,
+   67:   updateQuotationStatusSchema,
+   68: };
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\prisma\schema.prisma
+============================================================
+    1: generator client {
+    2:   provider = "prisma-client-js"
+    3: }
+    4: 
+    5: datasource db {
+    6:   provider = "postgresql"
+    7: }
+    8: 
+    9: enum BranchStatus {
+   10:   ACTIVE
+   11:   INACTIVE
+   12: }
+   13: 
+   14: enum UserRole {
+   15:   SUPER_OWNER
+   16:   BRANCH_OWNER
+   17:   ADMIN
+   18:   CASHIER
+   19:   TECHNICIAN
+   20:   CASH_CUSTODIAN
+   21: }
+   22: 
+   23: enum UserStatus {
+   24:   PENDING
+   25:   ACTIVE
+   26:   REJECTED
+   27:   DISABLED
+   28: }
+   29: 
+   30: enum SettingCategory {
+   31:   BUSINESS_RULE
+   32:   OPERATION
+   33:   DOCUMENT
+   34:   SYSTEM_ADMIN
+   35: }
+   36: 
+   37: enum SettingValueType {
+   38:   STRING
+   39:   NUMBER
+   40:   BOOLEAN
+   41:   JSON
+   42:   ARRAY
+   43: }
+   44: 
+   45: enum CustomerStatus {
+   46:   ACTIVE
+   47:   INACTIVE
+   48: }
+   49: 
+   50: enum CatalogStatus {
+   51:   ACTIVE
+   52:   INACTIVE
+   53: }
+   54: 
+   55: enum InventoryBatchStatus {
+   56:   ACTIVE
+   57:   DEPLETED
+   58:   EXPIRED
+   59:   CANCELLED
+   60: }
+   61: 
+   62: enum InventoryMovementType {
+   63:   STOCK_IN
+   64:   STOCK_OUT
+   65:   ADJUSTMENT_IN
+   66:   ADJUSTMENT_OUT
+   67:   TRANSFER_IN
+   68:   TRANSFER_OUT
+   69:   SALE_OUT
+   70:   RETURN_IN
+   71:   WARRANTY_OUT
+   72:   WARRANTY_RETURN
+   73: }
+   74: 
+   75: enum InventoryMovementSource {
+   76:   MANUAL
+   77:   PURCHASE
+   78:   SALE
+   79:   TRANSFER
+   80:   RETURN
+   81:   WARRANTY
+   82:   SERVICE
+   83:   SYSTEM
+   84: }
+   85: 
+   86: enum ItemSerialStatus {
+   87:   AVAILABLE
+   88:   RESERVED
+   89:   SOLD
+   90:   RETURNED
+   91:   WARRANTY
+   92:   DAMAGED
+   93:   LOST
+   94: }
+   95: 
+   96: enum QuotationStatus {
+   97:   DRAFT
+   98:   SENT
+   99:   APPROVED
+  100:   CONVERTED
+  101:   CANCELLED
+  102: }
+  103: 
+  104: enum SaleStatus {
+  105:   COMPLETED
+  106:   CANCELLED
+  107:   REFUNDED
+  108:   PARTIALLY_REFUNDED
+  109: }
+  110: 
+  111: enum SalePaymentMethod {
+  112:   CASH
+  113:   GCASH
+  114:   BANK_TRANSFER
+  115:   CARD
+  116:   CREDIT
+  117:   OTHER
+  118: }
+  119: 
+  120: enum SalePaymentStatus {
+  121:   PAID
+  122:   PARTIALLY_PAID
+  123:   UNPAID
+  124:   REFUNDED
+  125: }
+  126: 
+  127: enum InstallmentTerm {
+  128:   STRAIGHT
+  129:   MONTH_3
+  130:   MONTH_6
+  131:   MONTH_9
+  132:   MONTH_12
+  133:   MONTH_18
+  134:   MONTH_24
+  135: }
+  136: 
+  137: enum CreditAccountStatus {
+  138:   ACTIVE
+  139:   PAID
+  140:   CANCELLED
+  141:   DEFAULTED
+  142: }
+  143: 
+  144: enum CreditCollectionStatus {
+  145:   POSTED
+  146:   CANCELLED
+  147: }
+  148: 
+  149: enum ServiceJobStatus {
+  150:   PENDING
+  151:   IN_PROGRESS
+  152:   READY_FOR_RELEASE
+  153:   COMPLETED
+  154:   CANCELLED
+  155: }
+  156: 
+  157: enum ServicePaymentMethod {
+  158:   CASH
+  159:   GCASH
+  160:   BANK_TRANSFER
+  161:   CARD
+  162:   OTHER
+  163: }
+  164: 
+  165: enum ServicePaymentStatus {
+  166:   POSTED
+  167: }
+  168: 
+  169: 
+  170: 
+  171: 
+  172: 
+  173: 
+  174: 
+  175: 
+  176: enum StockTransferStatus {
+  177:   DRAFT
+  178:   REQUESTED
+  179:   APPROVED
+  180:   REJECTED
+  181:   POSTED
+  182:   CANCELLED
+  183: }
+  184: 
+  185: model StockTransfer {
+  186:   id String @id @default(cuid())
+  187: 
+  188:   transferCode String
+  189:   status StockTransferStatus @default(DRAFT)
+  190: 
+  191:   transferDate DateTime @default(now())
+  192:   requestedAt DateTime?
+  193:   approvedAt DateTime?
+  194:   rejectedAt DateTime?
+  195:   postedAt DateTime?
+  196:   cancelledAt DateTime?
+  197: 
+  198:   notes String?
+  199:   internalNotes String?
+  200:   rejectionReason String?
+  201:   cancellationReason String?
+  202: 
+  203:   fromBranchId String
+  204:   fromBranch Branch @relation("StockTransferFromBranch", fields: [fromBranchId], references: [id], onDelete: Restrict)
+  205: 
+  206:   toBranchId String
+  207:   toBranch Branch @relation("StockTransferToBranch", fields: [toBranchId], references: [id], onDelete: Restrict)
+  208: 
+  209:   requestedById String?
+  210:   requestedBy User? @relation("StockTransferRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  211: 
+  212:   approvedById String?
+  213:   approvedBy User? @relation("StockTransferApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  214: 
+  215:   rejectedById String?
+  216:   rejectedBy User? @relation("StockTransferRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
+  217: 
+  218:   postedById String?
+  219:   postedBy User? @relation("StockTransferPostedBy", fields: [postedById], references: [id], onDelete: SetNull)
+  220: 
+  221:   cancelledById String?
+  222:   cancelledBy User? @relation("StockTransferCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  223: 
+  224:   createdById String?
+  225:   createdBy User? @relation("StockTransferCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  226: 
+  227:   updatedById String?
+  228:   updatedBy User? @relation("StockTransferUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  229: 
+  230:   items StockTransferItem[]
+  231: 
+  232:   createdAt DateTime @default(now())
+  233:   updatedAt DateTime @updatedAt
+  234: 
+  235:   @@unique([fromBranchId, transferCode])
+  236:   @@index([fromBranchId])
+  237:   @@index([toBranchId])
+  238:   @@index([status])
+  239:   @@index([transferDate])
+  240:   @@index([requestedById])
+  241:   @@index([approvedById])
+  242:   @@index([rejectedById])
+  243:   @@index([postedById])
+  244:   @@index([cancelledById])
+  245:   @@index([createdById])
+  246:   @@index([updatedById])
+  247: }
+  248: 
+  249: model StockTransferItem {
+  250:   id String @id @default(cuid())
+  251: 
+  252:   lineNo Int
+  253:   description String
+  254: 
+  255:   quantity Decimal @db.Decimal(12, 2)
+  256: 
+  257:   stockTransferId String
+  258:   stockTransfer StockTransfer @relation(fields: [stockTransferId], references: [id], onDelete: Cascade)
+  259: 
+  260:   itemId String
+  261:   item Item @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  262: 
+  263:   fromBatchId String?
+  264:   fromBatch InventoryBatch? @relation("StockTransferItemFromBatch", fields: [fromBatchId], references: [id], onDelete: SetNull)
+  265: 
+  266:   serials StockTransferSerial[]
+  267: 
+  268:   createdAt DateTime @default(now())
+  269:   updatedAt DateTime @updatedAt
+  270: 
+  271:   @@index([stockTransferId])
+  272:   @@index([itemId])
+  273:   @@index([fromBatchId])
+  274: }
+  275: 
+  276: model StockTransferSerial {
+  277:   id String @id @default(cuid())
+  278: 
+  279:   serialNumberSnapshot String
+  280: 
+  281:   stockTransferItemId String
+  282:   stockTransferItem StockTransferItem @relation(fields: [stockTransferItemId], references: [id], onDelete: Cascade)
+  283: 
+  284:   itemSerialId String
+  285:   itemSerial ItemSerial @relation(fields: [itemSerialId], references: [id], onDelete: Restrict)
+  286: 
+  287:   createdAt DateTime @default(now())
+  288:   updatedAt DateTime @updatedAt
+  289: 
+  290:   @@unique([stockTransferItemId, itemSerialId])
+  291:   @@index([stockTransferItemId])
+  292:   @@index([itemSerialId])
+  293:   @@index([serialNumberSnapshot])
+  294: }
+  295: 
+  296: enum PurchaseReceivingStatus {
+  297:   DRAFT
+  298:   POSTED
+  299:   CANCELLED
+  300: }
+  301: 
+  302: model PurchaseReceiving {
+  303:   id String @id @default(cuid())
+  304: 
+  305:   receivingCode String
+  306:   status PurchaseReceivingStatus @default(DRAFT)
+  307: 
+  308:   receivingDate DateTime @default(now())
+  309:   supplierDeliveryNo String?
+  310:   supplierInvoiceNo String?
+  311:   referenceNo String?
+  312: 
+  313:   supplierNameSnapshot String?
+  314:   supplierContactSnapshot String?
+  315: 
+  316:   notes String?
+  317:   internalNotes String?
+  318:   cancellationReason String?
+  319: 
+  320:   subtotal Decimal @default(0) @db.Decimal(12, 2)
+  321:   totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+  322:   grandTotal Decimal @default(0) @db.Decimal(12, 2)
+  323: 
+  324:   postedAt DateTime?
+  325:   cancelledAt DateTime?
+  326: 
+  327:   branchId String
+  328:   branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  329: 
+  330:   supplierId String
+  331:   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  332: 
+  333:   purchaseOrderId String?
+  334:   purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  335: 
+  336:   createdById String?
+  337:   createdBy User? @relation("PurchaseReceivingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  338: 
+  339:   updatedById String?
+  340:   updatedBy User? @relation("PurchaseReceivingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  341: 
+  342:   postedById String?
+  343:   postedBy User? @relation("PurchaseReceivingPostedBy", fields: [postedById], references: [id], onDelete: SetNull)
+  344: 
+  345:   cancelledById String?
+  346:   cancelledBy User? @relation("PurchaseReceivingCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  347: 
+  348:   items PurchaseReceivingItem[]
+  349: 
+  350:   createdAt DateTime @default(now())
+  351:   updatedAt DateTime @updatedAt
+  352: 
+  353:   @@unique([branchId, receivingCode])
+  354:   @@index([branchId])
+  355:   @@index([supplierId])
+  356:   @@index([purchaseOrderId])
+  357:   @@index([status])
+  358:   @@index([receivingDate])
+  359:   @@index([createdById])
+  360:   @@index([updatedById])
+  361:   @@index([postedById])
+  362:   @@index([cancelledById])
+  363: }
+  364: 
+  365: model PurchaseReceivingItem {
+  366:   id String @id @default(cuid())
+  367: 
+  368:   lineNo Int
+  369:   description String
+  370: 
+  371:   quantityReceived Decimal @db.Decimal(12, 2)
+  372:   unitCost Decimal @default(0) @db.Decimal(12, 2)
+  373:   discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  374:   lineTotal Decimal @default(0) @db.Decimal(12, 2)
+  375: 
+  376:   batchCode String?
+  377:   expiryDate DateTime?
+  378: 
+  379:   purchaseReceivingId String
+  380:   purchaseReceiving PurchaseReceiving @relation(fields: [purchaseReceivingId], references: [id], onDelete: Cascade)
+  381: 
+  382:   purchaseOrderItemId String?
+  383:   purchaseOrderItem PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id], onDelete: SetNull)
+  384: 
+  385:   itemId String
+  386:   item Item @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  387: 
+  388:   createdAt DateTime @default(now())
+  389:   updatedAt DateTime @updatedAt
+  390: 
+  391:   @@index([purchaseReceivingId])
+  392:   @@index([purchaseOrderItemId])
+  393:   @@index([itemId])
+  394:   @@index([batchCode])
+  395:   @@index([expiryDate])
+  396:   serials PurchaseReceivingSerial[]
+  397: }
+  398: 
+  399: enum PurchaseOrderStatus {
+  400:   DRAFT
+  401:   ORDERED
+  402:   PARTIALLY_RECEIVED
+  403:   RECEIVED
+  404:   CANCELLED
+  405: }
+  406: 
+  407: 
+  408: model PurchaseReceivingSerial {
+  409:   id String @id @default(cuid())
+  410: 
+  411:   serialNumber String
+  412: 
+  413:   purchaseReceivingItemId String
+  414:   purchaseReceivingItem PurchaseReceivingItem @relation(fields: [purchaseReceivingItemId], references: [id], onDelete: Cascade)
+  415: 
+  416:   createdAt DateTime @default(now())
+  417:   updatedAt DateTime @updatedAt
+  418: 
+  419:   @@unique([purchaseReceivingItemId, serialNumber])
+  420:   @@index([purchaseReceivingItemId])
+  421:   @@index([serialNumber])
+  422: }
+  423: 
+  424: model PurchaseOrder {
+  425:   id String @id @default(cuid())
+  426: 
+  427:   poCode String
+  428:   status PurchaseOrderStatus @default(DRAFT)
+  429: 
+  430:   orderDate DateTime @default(now())
+  431:   expectedDate DateTime?
+  432: 
+  433:   supplierNameSnapshot String?
+  434:   supplierContactSnapshot String?
+  435: 
+  436:   notes String?
+  437:   internalNotes String?
+  438:   cancellationReason String?
+  439: 
+  440:   subtotal Decimal @default(0) @db.Decimal(12, 2)
+  441:   totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+  442:   grandTotal Decimal @default(0) @db.Decimal(12, 2)
+  443: 
+  444:   orderedAt DateTime?
+  445:   receivedAt DateTime?
+  446:   cancelledAt DateTime?
+  447: 
+  448:   branchId String
+  449:   branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  450: 
+  451:   supplierId String
+  452:   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  453: 
+  454:   createdById String?
+  455:   createdBy User? @relation("PurchaseOrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  456: 
+  457:   updatedById String?
+  458:   updatedBy User? @relation("PurchaseOrderUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  459: 
+  460:   orderedById String?
+  461:   orderedBy User? @relation("PurchaseOrderOrderedBy", fields: [orderedById], references: [id], onDelete: SetNull)
+  462: 
+  463:   cancelledById String?
+  464:   cancelledBy User? @relation("PurchaseOrderCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  465: 
+  466:   items PurchaseOrderItem[]
+  467: 
+  468:   createdAt DateTime @default(now())
+  469:   updatedAt DateTime @updatedAt
+  470: 
+  471:   @@unique([branchId, poCode])
+  472:   @@index([branchId])
+  473:   @@index([supplierId])
+  474:   @@index([status])
+  475:   @@index([orderDate])
+  476:   @@index([expectedDate])
+  477:   @@index([createdById])
+  478:   @@index([updatedById])
+  479:   @@index([orderedById])
+  480:   @@index([cancelledById])
+  481:   purchaseReceivings PurchaseReceiving[]
+  482: }
+  483: 
+  484: model PurchaseOrderItem {
+  485:   id String @id @default(cuid())
+  486: 
+  487:   lineNo Int
+  488:   description String
+  489: 
+  490:   quantity Decimal @db.Decimal(12, 2)
+  491:   receivedQuantity Decimal @default(0) @db.Decimal(12, 2)
+  492: 
+  493:   unitCost Decimal @default(0) @db.Decimal(12, 2)
+  494:   discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  495:   lineTotal Decimal @default(0) @db.Decimal(12, 2)
+  496: 
+  497:   purchaseOrderId String
+  498:   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  499: 
+  500:   itemId String?
+  501:   item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  502: 
+  503:   createdAt DateTime @default(now())
+  504:   updatedAt DateTime @updatedAt
+  505: 
+  506:   @@index([purchaseOrderId])
+  507:   @@index([itemId])
+  508:   purchaseReceivingItems PurchaseReceivingItem[]
+  509: }
+  510: 
+  511: enum SupplierStatus {
+  512:   ACTIVE
+  513:   INACTIVE
+  514: }
+  515: 
+  516: model Supplier {
+  517:   id String @id @default(cuid())
+  518: 
+  519:   supplierCode String
+  520:   name String
+  521:   contactPerson String?
+  522:   contactNo String?
+  523:   email String?
+  524:   address String?
+  525:   tin String?
+  526:   notes String?
+  527: 
+  528:   status SupplierStatus @default(ACTIVE)
+  529: 
+  530:   branchId String?
+  531:   branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  532: 
+  533:   createdById String?
+  534:   createdBy User? @relation("SupplierCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  535: 
+  536:   updatedById String?
+  537:   updatedBy User? @relation("SupplierUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  538: 
+  539:   createdAt DateTime @default(now())
+  540:   updatedAt DateTime @updatedAt
+  541: 
+  542:   @@unique([branchId, supplierCode])
+  543:   @@index([branchId])
+  544:   @@index([name])
+  545:   @@index([status])
+  546:   @@index([createdById])
+  547:   @@index([updatedById])
+  548:   purchaseOrders PurchaseOrder[]
+  549:   purchaseReceivings PurchaseReceiving[]
+  550: }
+  551: 
+  552: enum DeliveryReceiptStatus {
+  553:   DRAFT
+  554:   ISSUED
+  555:   CANCELLED
+  556: }
+  557: 
+  558: model DeliveryReceipt {
+  559:   id String @id @default(cuid())
+  560: 
+  561:   drCode String
+  562:   status DeliveryReceiptStatus @default(DRAFT)
+  563: 
+  564:   drDate DateTime @default(now())
+  565: 
+  566:   customerName String?
+  567:   customerAddress String?
+  568:   customerContactNo String?
+  569: 
+  570:   preparedByName String?
+  571:   receivedByName String?
+  572: 
+  573:   notes String?
+  574:   internalNotes String?
+  575: 
+  576:   subtotal Decimal @default(0) @db.Decimal(12, 2)
+  577:   totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+  578:   grandTotal Decimal @default(0) @db.Decimal(12, 2)
+  579: 
+  580:   issuedAt DateTime?
+  581:   cancelledAt DateTime?
+  582:   cancellationReason String?
+  583: 
+  584:   branchId String
+  585:   branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  586: 
+  587:   saleId String @unique
+  588:   sale Sale @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  589: 
+  590:   createdById String?
+  591:   createdBy User? @relation("DeliveryReceiptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  592: 
+  593:   updatedById String?
+  594:   updatedBy User? @relation("DeliveryReceiptUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  595: 
+  596:   issuedById String?
+  597:   issuedBy User? @relation("DeliveryReceiptIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  598: 
+  599:   cancelledById String?
+  600:   cancelledBy User? @relation("DeliveryReceiptCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  601: 
+  602:   items DeliveryReceiptItem[]
+  603: 
+  604:   createdAt DateTime @default(now())
+  605:   updatedAt DateTime @updatedAt
+  606: 
+  607:   @@unique([branchId, drCode])
+  608:   @@index([branchId])
+  609:   @@index([saleId])
+  610:   @@index([status])
+  611:   @@index([drDate])
+  612:   @@index([createdById])
+  613:   @@index([updatedById])
+  614:   @@index([issuedById])
+  615:   @@index([cancelledById])
+  616: }
+  617: 
+  618: model DeliveryReceiptItem {
+  619:   id String @id @default(cuid())
+  620: 
+  621:   lineNo Int
+  622: 
+  623:   itemCodeSnapshot String?
+  624:   itemDescription String
+  625:   quantity Decimal @db.Decimal(12, 2)
+  626:   cashDiscountedPrice Decimal @default(0) @db.Decimal(12, 2)
+  627:   amount Decimal @default(0) @db.Decimal(12, 2)
+  628: 
+  629:   deliveryReceiptId String
+  630:   deliveryReceipt DeliveryReceipt @relation(fields: [deliveryReceiptId], references: [id], onDelete: Cascade)
+  631: 
+  632:   saleItemId String?
+  633:   saleItem SaleItem? @relation(fields: [saleItemId], references: [id], onDelete: SetNull)
+  634: 
+  635:   itemId String?
+  636:   item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  637: 
+  638:   createdAt DateTime @default(now())
+  639:   updatedAt DateTime @updatedAt
+  640: 
+  641:   @@index([deliveryReceiptId])
+  642:   @@index([saleItemId])
+  643:   @@index([itemId])
+  644: }
+  645: 
+  646: enum ReturnRequestStatus {
+  647:   DRAFT
+  648:   REQUESTED
+  649:   APPROVED
+  650:   REJECTED
+  651:   COMPLETED
+  652:   CANCELLED
+  653: }
+  654: 
+  655: enum ReturnRefundMethod {
+  656:   CASH
+  657:   GCASH
+  658:   BANK_TRANSFER
+  659:   CARD
+  660:   STORE_CREDIT
+  661:   NONE
+  662: }
+  663: 
+  664: model ReturnRequest {
+  665:   id String @id @default(cuid())
+  666: 
+  667:   returnCode String
+  668:   status ReturnRequestStatus @default(DRAFT)
+  669: 
+  670:   reason String
+  671:   notes String?
+  672:   internalNotes String?
+  673: 
+  674:   refundMethod ReturnRefundMethod @default(NONE)
+  675:   totalRefundAmount Decimal @default(0) @db.Decimal(12, 2)
+  676: 
+  677:   requestedAt DateTime @default(now())
+  678:   approvedAt DateTime?
+  679:   rejectedAt DateTime?
+  680:   completedAt DateTime?
+  681:   cancelledAt DateTime?
+  682: 
+  683:   rejectionReason String?
+  684:   cancellationReason String?
+  685: 
+  686:   branchId String
+  687:   branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  688: 
+  689:   customerId String?
+  690:   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  691: 
+  692:   saleId String
+  693:   sale Sale @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  694: 
+  695:   createdById String?
+  696:   createdBy User? @relation("ReturnRequestCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  697: 
+  698:   updatedById String?
+  699:   updatedBy User? @relation("ReturnRequestUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  700: 
+  701:   approvedById String?
+  702:   approvedBy User? @relation("ReturnRequestApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  703: 
+  704:   rejectedById String?
+  705:   rejectedBy User? @relation("ReturnRequestRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
+  706: 
+  707:   completedById String?
+  708:   completedBy User? @relation("ReturnRequestCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  709: 
+  710:   cancelledById String?
+  711:   cancelledBy User? @relation("ReturnRequestCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  712: 
+  713:   items ReturnItem[]
+  714: 
+  715:   createdAt DateTime @default(now())
+  716:   updatedAt DateTime @updatedAt
+  717: 
+  718:   @@unique([branchId, returnCode])
+  719:   @@index([branchId])
+  720:   @@index([customerId])
+  721:   @@index([saleId])
+  722:   @@index([status])
+  723:   @@index([refundMethod])
+  724:   @@index([requestedAt])
+  725:   @@index([createdById])
+  726:   @@index([updatedById])
+  727:   @@index([approvedById])
+  728:   @@index([rejectedById])
+  729:   @@index([completedById])
+  730:   @@index([cancelledById])
+  731: }
+  732: 
+  733: model ReturnItem {
+  734:   id String @id @default(cuid())
+  735: 
+  736:   lineNo Int
+  737:   description String
+  738:   reason String?
+  739: 
+  740:   quantity Decimal @db.Decimal(12, 2)
+  741:   unitRefundAmount Decimal @default(0) @db.Decimal(12, 2)
+  742:   lineRefundAmount Decimal @default(0) @db.Decimal(12, 2)
+  743: 
+  744:   returnRequestId String
+  745:   returnRequest ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+  746: 
+  747:   saleItemId String?
+  748:   saleItem SaleItem? @relation(fields: [saleItemId], references: [id], onDelete: SetNull)
+  749: 
+  750:   itemId String?
+  751:   item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  752: 
+  753:   serialId String?
+  754:   serial ItemSerial? @relation(fields: [serialId], references: [id], onDelete: SetNull)
+  755: 
+  756:   createdAt DateTime @default(now())
+  757:   updatedAt DateTime @updatedAt
+  758: 
+  759:   @@index([returnRequestId])
+  760:   @@index([saleItemId])
+  761:   @@index([itemId])
+  762:   @@index([serialId])
+  763: }
+  764: 
+  765: enum WarrantyClaimStatus {
+  766:   IN
+  767:   CHECKING
+  768:   SENT_TO_SUPPLIER
+  769:   APPROVED
+  770:   REJECTED
+  771:   REPAIRED
+  772:   REPLACED
+  773:   OUT
+  774: }
+  775: 
+  776: model WarrantyClaim {
+  777:   id String @id @default(cuid())
+  778: 
+  779:   claimCode String
+  780:   status WarrantyClaimStatus @default(IN)
+  781: 
+  782:   issueDescription String
+  783:   customerComplaint String?
+  784:   diagnosis String?
+  785:   actionTaken String?
+  786:   supplierName String?
+  787:   supplierReferenceNo String?
+  788:   remarks String?
+  789: 
+  790:   receivedAt DateTime @default(now())
+  791:   checkingAt DateTime?
+  792:   sentToSupplierAt DateTime?
+  793:   approvedAt DateTime?
+  794:   rejectedAt DateTime?
+  795:   repairedAt DateTime?
+  796:   replacedAt DateTime?
+  797:   releasedAt DateTime?
+  798: 
+  799:   branchId String
+  800:   branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  801: 
+  802:   customerId String?
+  803:   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  804: 
+  805:   itemId String?
+  806:   item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  807: 
+  808:   serialId String?
+  809:   serial ItemSerial? @relation(fields: [serialId], references: [id], onDelete: SetNull)
+  810: 
+  811:   saleId String?
+  812:   sale Sale? @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  813: 
+  814:   saleItemId String?
+  815:   saleItem SaleItem? @relation(fields: [saleItemId], references: [id], onDelete: SetNull)
+  816: 
+  817:   createdById String?
+  818:   createdBy User? @relation("WarrantyClaimCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  819: 
+  820:   updatedById String?
+  821:   updatedBy User? @relation("WarrantyClaimUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  822: 
+  823:   statusUpdatedById String?
+  824:   statusUpdatedBy User? @relation("WarrantyClaimStatusUpdatedBy", fields: [statusUpdatedById], references: [id], onDelete: SetNull)
+  825: 
+  826:   releasedById String?
+  827:   releasedBy User? @relation("WarrantyClaimReleasedBy", fields: [releasedById], references: [id], onDelete: SetNull)
+  828: 
+  829:   createdAt DateTime @default(now())
+  830:   updatedAt DateTime @updatedAt
+  831: 
+  832:   @@unique([branchId, claimCode])
+  833:   @@index([branchId])
+  834:   @@index([customerId])
+  835:   @@index([itemId])
+  836:   @@index([serialId])
+  837:   @@index([saleId])
+  838:   @@index([saleItemId])
+  839:   @@index([status])
+  840:   @@index([receivedAt])
+  841:   @@index([createdById])
+  842:   @@index([updatedById])
+  843:   @@index([statusUpdatedById])
+  844:   @@index([releasedById])
+  845: }
+  846: 
+  847: model ServicePayment {
+  848:   id String @id @default(cuid())
+  849: 
+  850:   paymentCode String
+  851:   paymentMethod ServicePaymentMethod
+  852:   status ServicePaymentStatus @default(POSTED)
+  853: 
+  854:   amount Decimal @db.Decimal(12, 2)
+  855:   referenceNo String?
+  856:   remarks String?
+  857:   paidAt DateTime @default(now())
+  858: 
+  859:   serviceJobId String @unique
+  860:   serviceJob ServiceJob @relation(fields: [serviceJobId], references: [id], onDelete: Restrict)
+  861: 
+  862:   branchId String
+  863:   branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  864: 
+  865:   customerId String?
+  866:   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  867: 
+  868:   collectedById String?
+  869:   collectedBy User? @relation("ServicePaymentCollectedBy", fields: [collectedById], references: [id], onDelete: SetNull)
+  870: 
+  871:   createdById String?
+  872:   createdBy User? @relation("ServicePaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  873: 
+  874:   createdAt DateTime @default(now())
+  875:   updatedAt DateTime @updatedAt
+  876: 
+  877:   @@unique([branchId, paymentCode])
+  878:   @@index([serviceJobId])
+  879:   @@index([branchId])
+  880:   @@index([customerId])
+  881:   @@index([paymentMethod])
+  882:   @@index([status])
+  883:   @@index([paidAt])
+  884:   @@index([collectedById])
+  885:   @@index([createdById])
+  886: }
+  887: 
+  888: model ServiceJob {
+  889:   id String @id @default(cuid())
+  890: 
+  891:   jobCode String
+  892:   status  ServiceJobStatus @default(PENDING)
+  893: 
+  894:   jobTitle           String
+  895:   deviceDescription String?
+  896:   problemDescription String?
+  897:   diagnosis          String?
+  898:   serviceNotes       String?
+  899: 
+  900:   estimatedServiceCharge Decimal @default(0) @db.Decimal(12, 2)
+  901:   finalServiceCharge     Decimal @default(0) @db.Decimal(12, 2)
+  902: 
+  903:   receivedAt  DateTime @default(now())
+  904:   startedAt   DateTime?
+  905:   readyAt     DateTime?
+  906:   completedAt DateTime?
+  907:   cancelledAt DateTime?
+  908: 
+  909:   cancellationReason String?
+  910: 
+  911:   branchId String
+  912:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  913: 
+  914:   customerId String?
+  915:   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  916: 
+  917:   assignedTechnicianId String?
+  918:   assignedTechnician   User? @relation("ServiceJobAssignedTechnician", fields: [assignedTechnicianId], references: [id], onDelete: SetNull)
+  919: 
+  920:   createdById String?
+  921:   createdBy   User? @relation("ServiceJobCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  922: 
+  923:   updatedById String?
+  924:   updatedBy   User? @relation("ServiceJobUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  925: 
+  926:   cancelledById String?
+  927:   cancelledBy   User? @relation("ServiceJobCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  928: 
+  929:   createdAt DateTime @default(now())
+  930:   updatedAt DateTime @updatedAt
+  931: 
+  932:   @@unique([branchId, jobCode])
+  933:   @@index([branchId])
+  934:   @@index([customerId])
+  935:   @@index([assignedTechnicianId])
+  936:   @@index([status])
+  937:   @@index([receivedAt])
+  938:   @@index([createdById])
+  939:   @@index([updatedById])
+  940:   @@index([cancelledById])
+  941:   payment ServicePayment?
+  942: }
+  943: 
+  944: model Branch {
+  945:   id        String       @id @default(cuid())
+  946:   code      String       @unique
+  947:   name      String
+  948:   address   String?
+  949:   contactNo String?
+  950:   status    BranchStatus @default(ACTIVE)
+  951: 
+  952:   users            User[]
+  953:   auditLogs        AuditLog[]
+  954:   businessSettings BusinessSetting[]
+  955:   itemCategories   ItemCategory[]
+  956:   items            Item[]
+  957:   customers        Customer[]
+  958: 
+  959:   createdAt DateTime @default(now())
+  960:   updatedAt DateTime @updatedAt
+  961: 
+  962:   inventoryBatches   InventoryBatch[]
+  963:   inventoryMovements InventoryMovement[]
+  964:   itemSerials        ItemSerial[]
+  965:   quotations         Quotation[]
+  966:   sales              Sale[]
+  967:   creditAccounts     CreditAccount[]
+  968:   creditCollections  CreditCollection[]
+  969: 
+  970:   @@index([status])
+  971:   @@index([name])
+  972:   cashBoxes        CashBox[]
+  973:   cashTransactions CashTransaction[]
+  974:   cashHandovers    CashHandover[]
+  975:   serviceJobs ServiceJob[]
+  976:   servicePayments ServicePayment[]
+  977:   warrantyClaims WarrantyClaim[]
+  978:   returnRequests ReturnRequest[]
+  979:   deliveryReceipts DeliveryReceipt[]
+  980:   suppliers Supplier[]
+  981:   purchaseOrders PurchaseOrder[]
+  982:   purchaseReceivings PurchaseReceiving[]
+  983:   stockTransfersFrom StockTransfer[] @relation("StockTransferFromBranch")
+  984:   stockTransfersTo StockTransfer[] @relation("StockTransferToBranch")
+  985: }
+  986: 
+  987: model User {
+  988:   createdItemCategories ItemCategory[] @relation("ItemCategoryCreatedBy")
+  989:   updatedItemCategories ItemCategory[] @relation("ItemCategoryUpdatedBy")
+  990:   createdUnits          Unit[]         @relation("UnitCreatedBy")
+  991:   updatedUnits          Unit[]         @relation("UnitUpdatedBy")
+  992:   createdItems          Item[]         @relation("ItemCreatedBy")
+  993:   updatedItems          Item[]         @relation("ItemUpdatedBy")
+  994:   id                    String         @id @default(cuid())
+  995:   employeeCode          String?        @unique
+  996:   username              String         @unique
+  997:   email                 String?        @unique
+  998:   passwordHash          String
+  999: 
+ 1000:   firstName  String
+ 1001:   middleName String?
+ 1002:   lastName   String
+ 1003:   fullName   String
+ 1004: 
+ 1005:   role   UserRole
+ 1006:   status UserStatus @default(PENDING)
+ 1007: 
+ 1008:   branchId String?
+ 1009:   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+ 1010: 
+ 1011:   approvedById  String?
+ 1012:   approvedBy    User?   @relation("UserApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
+ 1013:   approvedUsers User[]  @relation("UserApprovals")
+ 1014: 
+ 1015:   approvedAt  DateTime?
+ 1016:   rejectedAt  DateTime?
+ 1017:   disabledAt  DateTime?
+ 1018:   lastLoginAt DateTime?
+ 1019: 
+ 1020:   auditLogs        AuditLog[]        @relation("AuditActor")
+ 1021:   updatedSettings  BusinessSetting[] @relation("SettingUpdatedBy")
+ 1022:   createdCustomers Customer[]        @relation("CustomerCreatedBy")
+ 1023:   updatedCustomers Customer[]        @relation("CustomerUpdatedBy")
+ 1024: 
+ 1025:   createdAt DateTime @default(now())
+ 1026:   updatedAt DateTime @updatedAt
+ 1027: 
+ 1028:   createdInventoryBatches    InventoryBatch[]    @relation("InventoryBatchCreatedBy")
+ 1029:   updatedInventoryBatches    InventoryBatch[]    @relation("InventoryBatchUpdatedBy")
+ 1030:   createdInventoryMovements  InventoryMovement[] @relation("InventoryMovementCreatedBy")
+ 1031:   updatedInventoryMovements  InventoryMovement[] @relation("InventoryMovementUpdatedBy")
+ 1032:   createdItemSerials         ItemSerial[]        @relation("ItemSerialCreatedBy")
+ 1033:   updatedItemSerials         ItemSerial[]        @relation("ItemSerialUpdatedBy")
+ 1034:   preparedQuotations         Quotation[]         @relation("QuotationPreparedBy")
+ 1035:   createdQuotations          Quotation[]         @relation("QuotationCreatedBy")
+ 1036:   updatedQuotations          Quotation[]         @relation("QuotationUpdatedBy")
+ 1037:   cashierSales               Sale[]              @relation("SaleCashier")
+ 1038:   createdSales               Sale[]              @relation("SaleCreatedBy")
+ 1039:   updatedSales               Sale[]              @relation("SaleUpdatedBy")
+ 1040:   cancelledSales             Sale[]              @relation("SaleCancelledBy")
+ 1041:   createdSalePayments        SalePayment[]       @relation("SalePaymentCreatedBy")
+ 1042:   createdCreditAccounts      CreditAccount[]     @relation("CreditAccountCreatedBy")
+ 1043:   updatedCreditAccounts      CreditAccount[]     @relation("CreditAccountUpdatedBy")
+ 1044:   cancelledCreditAccounts    CreditAccount[]     @relation("CreditAccountCancelledBy")
+ 1045:   collectedCreditCollections CreditCollection[]  @relation("CreditCollectionCollectedBy")
+ 1046:   createdCreditCollections   CreditCollection[]  @relation("CreditCollectionCreatedBy")
+ 1047:   cancelledCreditCollections CreditCollection[]  @relation("CreditCollectionCancelledBy")
+ 1048: 
+ 1049:   @@index([role])
+ 1050:   @@index([status])
+ 1051:   @@index([branchId])
+ 1052:   @@index([fullName])
+ 1053:   @@index([role, status])
+ 1054:   @@index([branchId, role])
+ 1055:   @@index([branchId, status])
+ 1056:   createdCashBoxes              CashBox[]          @relation("CashBoxCreatedBy")
+ 1057:   updatedCashBoxes              CashBox[]          @relation("CashBoxUpdatedBy")
+ 1058:   createdCashTransactions        CashTransaction[] @relation("CashTransactionCreatedBy")
+ 1059:   cancelledCashTransactions      CashTransaction[] @relation("CashTransactionCancelledBy")
+ 1060:   cashHandoversFrom       CashHandover[] @relation("CashHandoverFromUser")
+ 1061:   cashHandoversTo         CashHandover[] @relation("CashHandoverToUser")
+ 1062:   createdCashHandovers    CashHandover[] @relation("CashHandoverCreatedBy")
+ 1063:   receivedCashHandovers   CashHandover[] @relation("CashHandoverReceivedBy")
+ 1064:   cancelledCashHandovers  CashHandover[] @relation("CashHandoverCancelledBy")
+ 1065:   assignedServiceJobs  ServiceJob[] @relation("ServiceJobAssignedTechnician")
+ 1066:   createdServiceJobs   ServiceJob[] @relation("ServiceJobCreatedBy")
+ 1067:   updatedServiceJobs   ServiceJob[] @relation("ServiceJobUpdatedBy")
+ 1068:   cancelledServiceJobs ServiceJob[] @relation("ServiceJobCancelledBy")
+ 1069:   collectedServicePayments ServicePayment[] @relation("ServicePaymentCollectedBy")
+ 1070:   createdServicePayments ServicePayment[] @relation("ServicePaymentCreatedBy")
+ 1071:   createdWarrantyClaims WarrantyClaim[] @relation("WarrantyClaimCreatedBy")
+ 1072:   updatedWarrantyClaims WarrantyClaim[] @relation("WarrantyClaimUpdatedBy")
+ 1073:   statusUpdatedWarrantyClaims WarrantyClaim[] @relation("WarrantyClaimStatusUpdatedBy")
+ 1074:   releasedWarrantyClaims WarrantyClaim[] @relation("WarrantyClaimReleasedBy")
+ 1075:   createdReturnRequests ReturnRequest[] @relation("ReturnRequestCreatedBy")
+ 1076:   updatedReturnRequests ReturnRequest[] @relation("ReturnRequestUpdatedBy")
+ 1077:   approvedReturnRequests ReturnRequest[] @relation("ReturnRequestApprovedBy")
+ 1078:   rejectedReturnRequests ReturnRequest[] @relation("ReturnRequestRejectedBy")
+ 1079:   completedReturnRequests ReturnRequest[] @relation("ReturnRequestCompletedBy")
+ 1080:   cancelledReturnRequests ReturnRequest[] @relation("ReturnRequestCancelledBy")
+ 1081:   createdDeliveryReceipts DeliveryReceipt[] @relation("DeliveryReceiptCreatedBy")
+ 1082:   updatedDeliveryReceipts DeliveryReceipt[] @relation("DeliveryReceiptUpdatedBy")
+ 1083:   issuedDeliveryReceipts DeliveryReceipt[] @relation("DeliveryReceiptIssuedBy")
+ 1084:   cancelledDeliveryReceipts DeliveryReceipt[] @relation("DeliveryReceiptCancelledBy")
+ 1085:   createdSuppliers Supplier[] @relation("SupplierCreatedBy")
+ 1086:   updatedSuppliers Supplier[] @relation("SupplierUpdatedBy")
+ 1087:   createdPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
+ 1088:   updatedPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderUpdatedBy")
+ 1089:   orderedPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderOrderedBy")
+ 1090:   cancelledPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderCancelledBy")
+ 1091:   createdPurchaseReceivings PurchaseReceiving[] @relation("PurchaseReceivingCreatedBy")
+ 1092:   updatedPurchaseReceivings PurchaseReceiving[] @relation("PurchaseReceivingUpdatedBy")
+ 1093:   postedPurchaseReceivings PurchaseReceiving[] @relation("PurchaseReceivingPostedBy")
+ 1094:   cancelledPurchaseReceivings PurchaseReceiving[] @relation("PurchaseReceivingCancelledBy")
+ 1095:   requestedStockTransfers StockTransfer[] @relation("StockTransferRequestedBy")
+ 1096:   approvedStockTransfers StockTransfer[] @relation("StockTransferApprovedBy")
+ 1097:   rejectedStockTransfers StockTransfer[] @relation("StockTransferRejectedBy")
+ 1098:   postedStockTransfers StockTransfer[] @relation("StockTransferPostedBy")
+ 1099:   cancelledStockTransfers StockTransfer[] @relation("StockTransferCancelledBy")
+ 1100:   createdStockTransfers StockTransfer[] @relation("StockTransferCreatedBy")
+ 1101:   updatedStockTransfers StockTransfer[] @relation("StockTransferUpdatedBy")
+ 1102: }
+ 1103: 
+ 1104: model AuditLog {
+ 1105:   id String @id @default(cuid())
+ 1106: 
+ 1107:   actorId String?
+ 1108:   actor   User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+ 1109: 
+ 1110:   branchId String?
+ 1111:   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+ 1112: 
+ 1113:   action      String
+ 1114:   entityType  String
+ 1115:   entityId    String?
+ 1116:   description String?
+ 1117:   metadata    Json?
+ 1118: 
+ 1119:   ipAddress String?
+ 1120:   userAgent String?
+ 1121: 
+ 1122:   createdAt DateTime @default(now())
+ 1123: 
+ 1124:   @@index([actorId])
+ 1125:   @@index([branchId])
+ 1126:   @@index([action])
+ 1127:   @@index([entityType])
+ 1128:   @@index([entityId])
+ 1129:   @@index([createdAt])
+ 1130:   @@index([branchId, createdAt])
+ 1131:   @@index([actorId, createdAt])
+ 1132:   @@index([entityType, entityId])
+ 1133: }
+ 1134: 
+ 1135: model BusinessSetting {
+ 1136:   id String @id @default(cuid())
+ 1137: 
+ 1138:   scopeKey  String           @unique
+ 1139:   key       String
+ 1140:   category  SettingCategory
+ 1141:   valueType SettingValueType
+ 1142:   value     Json
+ 1143: 
+ 1144:   label       String
+ 1145:   description String?
+ 1146: 
+ 1147:   isEditable Boolean @default(true)
+ 1148:   isActive   Boolean @default(true)
+ 1149: 
+ 1150:   branchId String?
+ 1151:   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+ 1152: 
+ 1153:   updatedById String?
+ 1154:   updatedBy   User?   @relation("SettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1155: 
+ 1156:   createdAt DateTime @default(now())
+ 1157:   updatedAt DateTime @updatedAt
+ 1158: 
+ 1159:   @@index([key])
+ 1160:   @@index([category])
+ 1161:   @@index([valueType])
+ 1162:   @@index([branchId])
+ 1163:   @@index([isActive])
+ 1164:   @@index([updatedById])
+ 1165:   @@index([category, isActive])
+ 1166: }
+ 1167: 
+ 1168: model Customer {
+ 1169:   id           String         @id @default(cuid())
+ 1170:   customerCode String
+ 1171:   fullName     String
+ 1172:   mobileNumber String?
+ 1173:   email        String?
+ 1174:   address      String?
+ 1175:   companyName  String?
+ 1176:   notes        String?
+ 1177:   status       CustomerStatus @default(ACTIVE)
+ 1178: 
+ 1179:   branchId String
+ 1180:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1181: 
+ 1182:   createdById String?
+ 1183:   createdBy   User?   @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1184: 
+ 1185:   updatedById String?
+ 1186:   updatedBy   User?   @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1187: 
+ 1188:   createdAt         DateTime           @default(now())
+ 1189:   updatedAt         DateTime           @updatedAt
+ 1190:   quotations        Quotation[]
+ 1191:   sales             Sale[]
+ 1192:   creditAccounts    CreditAccount[]
+ 1193:   creditCollections CreditCollection[]
+ 1194: 
+ 1195:   @@unique([branchId, customerCode])
+ 1196:   @@index([branchId])
+ 1197:   @@index([status])
+ 1198:   @@index([fullName])
+ 1199:   @@index([mobileNumber])
+ 1200:   @@index([email])
+ 1201:   @@index([createdById])
+ 1202:   @@index([updatedById])
+ 1203:   @@index([branchId, status])
+ 1204:   serviceJobs ServiceJob[]
+ 1205:   servicePayments ServicePayment[]
+ 1206:   warrantyClaims WarrantyClaim[]
+ 1207:   returnRequests ReturnRequest[]
+ 1208: }
+ 1209: 
+ 1210: model ItemCategory {
+ 1211:   id           String        @id @default(cuid())
+ 1212:   categoryCode String
+ 1213:   name         String
+ 1214:   description  String?
+ 1215:   status       CatalogStatus @default(ACTIVE)
+ 1216: 
+ 1217:   branchId String
+ 1218:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1219: 
+ 1220:   createdById String?
+ 1221:   createdBy   User?   @relation("ItemCategoryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1222: 
+ 1223:   updatedById String?
+ 1224:   updatedBy   User?   @relation("ItemCategoryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1225: 
+ 1226:   items Item[]
+ 1227: 
+ 1228:   createdAt DateTime @default(now())
+ 1229:   updatedAt DateTime @updatedAt
+ 1230: 
+ 1231:   @@unique([branchId, categoryCode])
+ 1232:   @@unique([branchId, name])
+ 1233:   @@index([branchId])
+ 1234:   @@index([status])
+ 1235:   @@index([createdById])
+ 1236:   @@index([updatedById])
+ 1237: }
+ 1238: 
+ 1239: model Unit {
+ 1240:   id          String        @id @default(cuid())
+ 1241:   unitCode    String        @unique
+ 1242:   name        String        @unique
+ 1243:   description String?
+ 1244:   status      CatalogStatus @default(ACTIVE)
+ 1245: 
+ 1246:   createdById String?
+ 1247:   createdBy   User?   @relation("UnitCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1248: 
+ 1249:   updatedById String?
+ 1250:   updatedBy   User?   @relation("UnitUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1251: 
+ 1252:   items Item[]
+ 1253: 
+ 1254:   createdAt DateTime @default(now())
+ 1255:   updatedAt DateTime @updatedAt
+ 1256: 
+ 1257:   @@index([status])
+ 1258:   @@index([createdById])
+ 1259:   @@index([updatedById])
+ 1260: }
+ 1261: 
+ 1262: model Item {
+ 1263:   id          String        @id @default(cuid())
+ 1264:   itemCode    String
+ 1265:   itemName    String
+ 1266:   description String?
+ 1267:   barcode     String?
+ 1268:   brand       String?
+ 1269:   modelName   String?
+ 1270:   status      CatalogStatus @default(ACTIVE)
+ 1271: 
+ 1272:   isSerialized Boolean @default(false)
+ 1273:   hasWarranty  Boolean @default(false)
+ 1274: 
+ 1275:   costPrice Decimal @default(0) @db.Decimal(12, 2)
+ 1276:   price1    Decimal @default(0) @db.Decimal(12, 2)
+ 1277:   price2    Decimal @default(0) @db.Decimal(12, 2)
+ 1278:   price3    Decimal @default(0) @db.Decimal(12, 2)
+ 1279:   price4    Decimal @default(0) @db.Decimal(12, 2)
+ 1280:   price5    Decimal @default(0) @db.Decimal(12, 2)
+ 1281: 
+ 1282:   minimumStock Decimal @default(0) @db.Decimal(12, 2)
+ 1283:   reorderLevel Decimal @default(0) @db.Decimal(12, 2)
+ 1284: 
+ 1285:   branchId String
+ 1286:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1287: 
+ 1288:   categoryId String
+ 1289:   category   ItemCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+ 1290: 
+ 1291:   unitId String
+ 1292:   unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+ 1293: 
+ 1294:   createdById String?
+ 1295:   createdBy   User?   @relation("ItemCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1296: 
+ 1297:   updatedById String?
+ 1298:   updatedBy   User?   @relation("ItemUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1299: 
+ 1300:   createdAt          DateTime            @default(now())
+ 1301:   updatedAt          DateTime            @updatedAt
+ 1302:   inventoryBatches   InventoryBatch[]
+ 1303:   inventoryMovements InventoryMovement[]
+ 1304:   itemSerials        ItemSerial[]
+ 1305:   quotationItems     QuotationItem[]
+ 1306:   saleItems          SaleItem[]
+ 1307: 
+ 1308:   @@unique([branchId, itemCode])
+ 1309:   @@index([branchId])
+ 1310:   @@index([categoryId])
+ 1311:   @@index([unitId])
+ 1312:   @@index([status])
+ 1313:   @@index([barcode])
+ 1314:   @@index([brand])
+ 1315:   @@index([itemName])
+ 1316:   @@index([isSerialized])
+ 1317:   @@index([hasWarranty])
+ 1318:   @@index([createdById])
+ 1319:   @@index([updatedById])
+ 1320:   @@index([branchId, status])
+ 1321:   warrantyClaims WarrantyClaim[]
+ 1322:   returnItems ReturnItem[]
+ 1323:   deliveryReceiptItems DeliveryReceiptItem[]
+ 1324:   purchaseOrderItems PurchaseOrderItem[]
+ 1325:   purchaseReceivingItems PurchaseReceivingItem[]
+ 1326:   stockTransferItems StockTransferItem[]
+ 1327: }
+ 1328: 
+ 1329: model InventoryBatch {
+ 1330:   id String @id @default(cuid())
+ 1331: 
+ 1332:   batchCode         String
+ 1333:   quantityIn        Decimal @db.Decimal(12, 2)
+ 1334:   quantityAvailable Decimal @default(0) @db.Decimal(12, 2)
+ 1335: 
+ 1336:   unitCost      Decimal @default(0) @db.Decimal(12, 2)
+ 1337:   sellingPrice1 Decimal @default(0) @db.Decimal(12, 2)
+ 1338:   sellingPrice2 Decimal @default(0) @db.Decimal(12, 2)
+ 1339:   sellingPrice3 Decimal @default(0) @db.Decimal(12, 2)
+ 1340:   sellingPrice4 Decimal @default(0) @db.Decimal(12, 2)
+ 1341:   sellingPrice5 Decimal @default(0) @db.Decimal(12, 2)
+ 1342: 
+ 1343:   supplierName String?
+ 1344:   referenceNo  String?
+ 1345:   remarks      String?
+ 1346: 
+ 1347:   receivedAt DateTime  @default(now())
+ 1348:   expiryDate DateTime?
+ 1349: 
+ 1350:   status InventoryBatchStatus @default(ACTIVE)
+ 1351: 
+ 1352:   branchId String
+ 1353:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1354: 
+ 1355:   itemId String
+ 1356:   item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+ 1357: 
+ 1358:   createdById String?
+ 1359:   createdBy   User?   @relation("InventoryBatchCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1360: 
+ 1361:   updatedById String?
+ 1362:   updatedBy   User?   @relation("InventoryBatchUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1363: 
+ 1364:   movements InventoryMovement[]
+ 1365:   serials   ItemSerial[]
+ 1366: 
+ 1367:   createdAt DateTime   @default(now())
+ 1368:   updatedAt DateTime   @updatedAt
+ 1369:   saleItems SaleItem[]
+ 1370: 
+ 1371:   @@unique([branchId, batchCode])
+ 1372:   @@index([branchId])
+ 1373:   @@index([itemId])
+ 1374:   @@index([branchId, itemId])
+ 1375:   @@index([status])
+ 1376:   @@index([expiryDate])
+ 1377:   stockTransferItemsFrom StockTransferItem[] @relation("StockTransferItemFromBatch")
+ 1378: }
+ 1379: 
+ 1380: model InventoryMovement {
+ 1381:   id String @id @default(cuid())
+ 1382: 
+ 1383:   movementCode String
+ 1384: 
+ 1385:   type   InventoryMovementType
+ 1386:   source InventoryMovementSource @default(MANUAL)
+ 1387: 
+ 1388:   quantity Decimal @db.Decimal(12, 2)
+ 1389: 
+ 1390:   previousQuantity Decimal? @db.Decimal(12, 2)
+ 1391:   newQuantity      Decimal? @db.Decimal(12, 2)
+ 1392: 
+ 1393:   unitCost    Decimal? @db.Decimal(12, 2)
+ 1394:   referenceNo String?
+ 1395:   remarks     String?
+ 1396: 
+ 1397:   movementDate DateTime @default(now())
+ 1398: 
+ 1399:   branchId String
+ 1400:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1401: 
+ 1402:   itemId String
+ 1403:   item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+ 1404: 
+ 1405:   batchId String?
+ 1406:   batch   InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+ 1407: 
+ 1408:   serialId String?
+ 1409:   serial   ItemSerial? @relation(fields: [serialId], references: [id], onDelete: SetNull)
+ 1410: 
+ 1411:   createdById String?
+ 1412:   createdBy   User?   @relation("InventoryMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1413: 
+ 1414:   updatedById String?
+ 1415:   updatedBy   User?   @relation("InventoryMovementUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1416: 
+ 1417:   createdAt DateTime @default(now())
+ 1418:   updatedAt DateTime @updatedAt
+ 1419: 
+ 1420:   @@unique([branchId, movementCode])
+ 1421:   @@index([branchId])
+ 1422:   @@index([itemId])
+ 1423:   @@index([batchId])
+ 1424:   @@index([serialId])
+ 1425:   @@index([type])
+ 1426:   @@index([source])
+ 1427:   @@index([movementDate])
+ 1428: }
+ 1429: 
+ 1430: model ItemSerial {
+ 1431:   id String @id @default(cuid())
+ 1432: 
+ 1433:   serialNumber String
+ 1434:   status       ItemSerialStatus @default(AVAILABLE)
+ 1435: 
+ 1436:   remarks String?
+ 1437: 
+ 1438:   branchId String
+ 1439:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1440: 
+ 1441:   itemId String
+ 1442:   item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+ 1443: 
+ 1444:   batchId String?
+ 1445:   batch   InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+ 1446: 
+ 1447:   createdById String?
+ 1448:   createdBy   User?   @relation("ItemSerialCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1449: 
+ 1450:   updatedById String?
+ 1451:   updatedBy   User?   @relation("ItemSerialUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1452: 
+ 1453:   movements InventoryMovement[]
+ 1454: 
+ 1455:   createdAt DateTime   @default(now())
+ 1456:   updatedAt DateTime   @updatedAt
+ 1457:   saleItems SaleItem[]
+ 1458: 
+ 1459:   @@unique([branchId, serialNumber])
+ 1460:   @@index([branchId])
+ 1461:   @@index([itemId])
+ 1462:   @@index([batchId])
+ 1463:   @@index([status])
+ 1464:   warrantyClaims WarrantyClaim[]
+ 1465:   returnItems ReturnItem[]
+ 1466:   stockTransferSerials StockTransferSerial[]
+ 1467: }
+ 1468: 
+ 1469: model Quotation {
+ 1470:   id String @id @default(cuid())
+ 1471: 
+ 1472:   quotationCode String
+ 1473:   title         String?
+ 1474:   notes         String?
+ 1475:   internalNotes String?
+ 1476: 
+ 1477:   status QuotationStatus @default(DRAFT)
+ 1478: 
+ 1479:   subtotal      Decimal @default(0) @db.Decimal(12, 2)
+ 1480:   totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+ 1481:   grandTotal    Decimal @default(0) @db.Decimal(12, 2)
+ 1482: 
+ 1483:   isPcBuild Boolean @default(false)
+ 1484: 
+ 1485:   validUntil  DateTime?
+ 1486:   sentAt      DateTime?
+ 1487:   approvedAt  DateTime?
+ 1488:   convertedAt DateTime?
+ 1489:   cancelledAt DateTime?
+ 1490: 
+ 1491:   branchId String
+ 1492:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1493: 
+ 1494:   customerId String?
+ 1495:   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+ 1496: 
+ 1497:   preparedById String?
+ 1498:   preparedBy   User?   @relation("QuotationPreparedBy", fields: [preparedById], references: [id], onDelete: SetNull)
+ 1499: 
+ 1500:   createdById String?
+ 1501:   createdBy   User?   @relation("QuotationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1502: 
+ 1503:   updatedById String?
+ 1504:   updatedBy   User?   @relation("QuotationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1505: 
+ 1506:   items QuotationItem[]
+ 1507: 
+ 1508:   createdAt DateTime @default(now())
+ 1509:   updatedAt DateTime @updatedAt
+ 1510:   sales     Sale[]
+ 1511: 
+ 1512:   @@unique([branchId, quotationCode])
+ 1513:   @@index([branchId])
+ 1514:   @@index([customerId])
+ 1515:   @@index([preparedById])
+ 1516:   @@index([createdById])
+ 1517:   @@index([status])
+ 1518:   @@index([createdAt])
+ 1519: }
+ 1520: 
+ 1521: model QuotationItem {
+ 1522:   id String @id @default(cuid())
+ 1523: 
+ 1524:   lineNo           Int
+ 1525:   description      String
+ 1526:   itemCodeSnapshot String?
+ 1527:   itemNameSnapshot String?
+ 1528:   brandSnapshot    String?
+ 1529:   modelSnapshot    String?
+ 1530: 
+ 1531:   priceTier      Int
+ 1532:   quantity       Decimal @db.Decimal(12, 2)
+ 1533:   unitPrice      Decimal @db.Decimal(12, 2)
+ 1534:   discountAmount Decimal @default(0) @db.Decimal(12, 2)
+ 1535:   lineTotal      Decimal @db.Decimal(12, 2)
+ 1536: 
+ 1537:   isPcBuildPart Boolean @default(false)
+ 1538:   remarks       String?
+ 1539: 
+ 1540:   quotationId String
+ 1541:   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+ 1542: 
+ 1543:   itemId String?
+ 1544:   item   Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+ 1545: 
+ 1546:   createdAt DateTime @default(now())
+ 1547:   updatedAt DateTime @updatedAt
+ 1548: 
+ 1549:   @@index([quotationId])
+ 1550:   @@index([itemId])
+ 1551:   @@index([priceTier])
+ 1552: }
+ 1553: 
+ 1554: model Sale {
+ 1555:   id String @id @default(cuid())
+ 1556: 
+ 1557:   receiptCode   String
+ 1558:   status        SaleStatus        @default(COMPLETED)
+ 1559:   paymentStatus SalePaymentStatus @default(PAID)
+ 1560: 
+ 1561:   saleDate DateTime @default(now())
+ 1562: 
+ 1563:   subtotal      Decimal @default(0) @db.Decimal(12, 2)
+ 1564:   totalDiscount Decimal @default(0) @db.Decimal(12, 2)
+ 1565:   serviceCharge Decimal @default(0) @db.Decimal(12, 2)
+ 1566:   grandTotal    Decimal @default(0) @db.Decimal(12, 2)
+ 1567:   amountPaid    Decimal @default(0) @db.Decimal(12, 2)
+ 1568:   changeAmount  Decimal @default(0) @db.Decimal(12, 2)
+ 1569: 
+ 1570:   remarks            String?
+ 1571:   cancellationReason String?
+ 1572:   cancelledAt        DateTime?
+ 1573: 
+ 1574:   branchId String
+ 1575:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1576: 
+ 1577:   customerId String?
+ 1578:   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+ 1579: 
+ 1580:   quotationId String?
+ 1581:   quotation   Quotation? @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+ 1582: 
+ 1583:   cashierId String?
+ 1584:   cashier   User?   @relation("SaleCashier", fields: [cashierId], references: [id], onDelete: SetNull)
+ 1585: 
+ 1586:   createdById String?
+ 1587:   createdBy   User?   @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1588: 
+ 1589:   updatedById String?
+ 1590:   updatedBy   User?   @relation("SaleUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1591: 
+ 1592:   cancelledById String?
+ 1593:   cancelledBy   User?   @relation("SaleCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+ 1594: 
+ 1595:   items         SaleItem[]
+ 1596:   payments      SalePayment[]
+ 1597:   creditAccount CreditAccount?
+ 1598: 
+ 1599:   createdAt DateTime @default(now())
+ 1600:   updatedAt DateTime @updatedAt
+ 1601: 
+ 1602:   @@unique([branchId, receiptCode])
+ 1603:   @@index([branchId])
+ 1604:   @@index([customerId])
+ 1605:   @@index([quotationId])
+ 1606:   @@index([cashierId])
+ 1607:   @@index([status])
+ 1608:   @@index([paymentStatus])
+ 1609:   @@index([saleDate])
+ 1610:   warrantyClaims WarrantyClaim[]
+ 1611:   returnRequests ReturnRequest[]
+ 1612:   deliveryReceipt DeliveryReceipt?
+ 1613: }
+ 1614: 
+ 1615: model SaleItem {
+ 1616:   id String @id @default(cuid())
+ 1617: 
+ 1618:   lineNo      Int
+ 1619:   description String
+ 1620: 
+ 1621:   itemCodeSnapshot String?
+ 1622:   itemNameSnapshot String?
+ 1623:   brandSnapshot    String?
+ 1624:   modelSnapshot    String?
+ 1625: 
+ 1626:   priceTier      Int?
+ 1627:   quantity       Decimal @db.Decimal(12, 2)
+ 1628:   unitPrice      Decimal @db.Decimal(12, 2)
+ 1629:   discountAmount Decimal @default(0) @db.Decimal(12, 2)
+ 1630:   lineTotal      Decimal @db.Decimal(12, 2)
+ 1631: 
+ 1632:   saleId String
+ 1633:   sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+ 1634: 
+ 1635:   itemId String?
+ 1636:   item   Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+ 1637: 
+ 1638:   batchId String?
+ 1639:   batch   InventoryBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+ 1640: 
+ 1641:   serialId String?
+ 1642:   serial   ItemSerial? @relation(fields: [serialId], references: [id], onDelete: SetNull)
+ 1643: 
+ 1644:   createdAt DateTime @default(now())
+ 1645:   updatedAt DateTime @updatedAt
+ 1646: 
+ 1647:   @@index([saleId])
+ 1648:   @@index([itemId])
+ 1649:   @@index([batchId])
+ 1650:   @@index([serialId])
+ 1651:   warrantyClaims WarrantyClaim[]
+ 1652:   returnItems ReturnItem[]
+ 1653:   deliveryReceiptItems DeliveryReceiptItem[]
+ 1654: }
+ 1655: 
+ 1656: model SalePayment {
+ 1657:   id String @id @default(cuid())
+ 1658: 
+ 1659:   paymentMethod SalePaymentMethod
+ 1660:   amount        Decimal           @db.Decimal(12, 2)
+ 1661:   referenceNo   String?
+ 1662:   remarks       String?
+ 1663:   paidAt        DateTime          @default(now())
+ 1664: 
+ 1665:   saleId String
+ 1666:   sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+ 1667: 
+ 1668:   createdById String?
+ 1669:   createdBy   User?   @relation("SalePaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1670: 
+ 1671:   createdAt DateTime @default(now())
+ 1672:   updatedAt DateTime @updatedAt
+ 1673: 
+ 1674:   @@index([saleId])
+ 1675:   @@index([paymentMethod])
+ 1676:   @@index([paidAt])
+ 1677: }
+ 1678: 
+ 1679: enum CashBoxStatus {
+ 1680:   ACTIVE
+ 1681:   INACTIVE
+ 1682: }
+ 1683: 
+ 1684: enum CashTransactionType {
+ 1685:   CASH_IN
+ 1686:   CASH_OUT
+ 1687:   SALE_PAYMENT
+ 1688:   CREDIT_COLLECTION
+ 1689:   HANDOVER_OUT
+ 1690:   ADJUSTMENT_IN
+ 1691:   ADJUSTMENT_OUT
+ 1692:   SERVICE_PAYMENT
+ 1693: }
+ 1694: 
+ 1695: enum CashTransactionStatus {
+ 1696:   POSTED
+ 1697:   CANCELLED
+ 1698: }
+ 1699: 
+ 1700: enum CashTransactionSource {
+ 1701:   MANUAL
+ 1702:   SALE
+ 1703:   CREDIT_COLLECTION
+ 1704:   SYSTEM_ADJUSTMENT
+ 1705:   SERVICE_JOB
+ 1706: }
+ 1707: 
+ 1708: enum CashHandoverStatus {
+ 1709:   PENDING
+ 1710:   RECEIVED
+ 1711:   CANCELLED
+ 1712: }
+ 1713: 
+ 1714: model CashHandover {
+ 1715:   id String @id @default(cuid())
+ 1716: 
+ 1717:   handoverCode String
+ 1718:   status       CashHandoverStatus @default(PENDING)
+ 1719: 
+ 1720:   amount Decimal @db.Decimal(12, 2)
+ 1721: 
+ 1722:   remarks            String?
+ 1723:   cancellationReason String?
+ 1724: 
+ 1725:   receivedAt  DateTime?
+ 1726:   cancelledAt DateTime?
+ 1727: 
+ 1728:   cashBoxId String
+ 1729:   cashBox   CashBox @relation(fields: [cashBoxId], references: [id], onDelete: Restrict)
+ 1730: 
+ 1731:   branchId String
+ 1732:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1733: 
+ 1734:   fromUserId String?
+ 1735:   fromUser   User? @relation("CashHandoverFromUser", fields: [fromUserId], references: [id], onDelete: SetNull)
+ 1736: 
+ 1737:   toUserId String?
+ 1738:   toUser   User? @relation("CashHandoverToUser", fields: [toUserId], references: [id], onDelete: SetNull)
+ 1739: 
+ 1740:   createdById String?
+ 1741:   createdBy   User? @relation("CashHandoverCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1742: 
+ 1743:   receivedById String?
+ 1744:   receivedBy   User? @relation("CashHandoverReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+ 1745: 
+ 1746:   cancelledById String?
+ 1747:   cancelledBy   User? @relation("CashHandoverCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+ 1748: 
+ 1749:   createdAt DateTime @default(now())
+ 1750:   updatedAt DateTime @updatedAt
+ 1751: 
+ 1752:   @@unique([branchId, handoverCode])
+ 1753:   @@index([cashBoxId])
+ 1754:   @@index([branchId])
+ 1755:   @@index([status])
+ 1756:   @@index([fromUserId])
+ 1757:   @@index([toUserId])
+ 1758:   @@index([createdById])
+ 1759:   @@index([receivedById])
+ 1760:   @@index([cancelledById])
+ 1761: }
+ 1762: 
+ 1763: model CashBox {
+ 1764:   id String @id @default(cuid())
+ 1765: 
+ 1766:   boxCode String
+ 1767:   name    String
+ 1768:   status  CashBoxStatus @default(ACTIVE)
+ 1769: 
+ 1770:   currentBalance Decimal @default(0) @db.Decimal(12, 2)
+ 1771:   remarks        String?
+ 1772: 
+ 1773:   branchId String
+ 1774:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1775: 
+ 1776:   createdById String?
+ 1777:   createdBy   User? @relation("CashBoxCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1778: 
+ 1779:   updatedById String?
+ 1780:   updatedBy   User? @relation("CashBoxUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1781: 
+ 1782:   transactions CashTransaction[]
+ 1783: 
+ 1784:   createdAt DateTime @default(now())
+ 1785:   updatedAt DateTime @updatedAt
+ 1786: 
+ 1787:   @@unique([branchId, boxCode])
+ 1788:   @@index([branchId])
+ 1789:   @@index([status])
+ 1790:   @@index([createdById])
+ 1791:   @@index([updatedById])
+ 1792:   cashHandovers CashHandover[]
+ 1793: }
+ 1794: 
+ 1795: model CashTransaction {
+ 1796:   id String @id @default(cuid())
+ 1797: 
+ 1798:   transactionCode String
+ 1799:   type            CashTransactionType
+ 1800:   status          CashTransactionStatus @default(POSTED)
+ 1801:   source          CashTransactionSource @default(MANUAL)
+ 1802: 
+ 1803:   amount        Decimal @db.Decimal(12, 2)
+ 1804:   balanceBefore Decimal @db.Decimal(12, 2)
+ 1805:   balanceAfter  Decimal @db.Decimal(12, 2)
+ 1806: 
+ 1807:   description String
+ 1808:   referenceNo String?
+ 1809:   sourceId    String?
+ 1810:   sourceCode  String?
+ 1811: 
+ 1812:   transactionDate DateTime @default(now())
+ 1813: 
+ 1814:   cancelledAt        DateTime?
+ 1815:   cancellationReason String?
+ 1816: 
+ 1817:   cashBoxId String
+ 1818:   cashBox   CashBox @relation(fields: [cashBoxId], references: [id], onDelete: Restrict)
+ 1819: 
+ 1820:   branchId String
+ 1821:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1822: 
+ 1823:   createdById String?
+ 1824:   createdBy   User? @relation("CashTransactionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1825: 
+ 1826:   cancelledById String?
+ 1827:   cancelledBy   User? @relation("CashTransactionCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+ 1828: 
+ 1829:   createdAt DateTime @default(now())
+ 1830:   updatedAt DateTime @updatedAt
+ 1831: 
+ 1832:   @@unique([branchId, transactionCode])
+ 1833:   @@index([cashBoxId])
+ 1834:   @@index([branchId])
+ 1835:   @@index([type])
+ 1836:   @@index([status])
+ 1837:   @@index([source])
+ 1838:   @@index([transactionDate])
+ 1839:   @@index([createdById])
+ 1840:   @@index([cancelledById])
+ 1841: }
+ 1842: 
+ 1843: model CreditAccount {
+ 1844:   id String @id @default(cuid())
+ 1845: 
+ 1846:   creditCode String
+ 1847:   status     CreditAccountStatus @default(ACTIVE)
+ 1848: 
+ 1849:   term      InstallmentTerm
+ 1850:   termBasis Decimal         @db.Decimal(8, 4)
+ 1851: 
+ 1852:   cashPromoTotalAmount    Decimal @db.Decimal(12, 2)
+ 1853:   regularPriceTotalAmount Decimal @db.Decimal(12, 2)
+ 1854:   downpaymentAmount       Decimal @default(0) @db.Decimal(12, 2)
+ 1855: 
+ 1856:   balanceAmount    Decimal  @db.Decimal(12, 2)
+ 1857:   monthlyDueAmount Decimal? @db.Decimal(12, 2)
+ 1858:   totalCollected   Decimal  @default(0) @db.Decimal(12, 2)
+ 1859:   remainingBalance Decimal  @db.Decimal(12, 2)
+ 1860: 
+ 1861:   dueDay       Int?
+ 1862:   firstDueDate DateTime?
+ 1863:   nextDueDate  DateTime?
+ 1864: 
+ 1865:   paidAt             DateTime?
+ 1866:   cancelledAt        DateTime?
+ 1867:   cancellationReason String?
+ 1868:   remarks            String?
+ 1869: 
+ 1870:   branchId String
+ 1871:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1872: 
+ 1873:   customerId String
+ 1874:   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+ 1875: 
+ 1876:   saleId String? @unique
+ 1877:   sale   Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
+ 1878: 
+ 1879:   createdById String?
+ 1880:   createdBy   User?   @relation("CreditAccountCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1881: 
+ 1882:   updatedById String?
+ 1883:   updatedBy   User?   @relation("CreditAccountUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+ 1884: 
+ 1885:   cancelledById String?
+ 1886:   cancelledBy   User?   @relation("CreditAccountCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+ 1887: 
+ 1888:   collections CreditCollection[]
+ 1889: 
+ 1890:   createdAt DateTime @default(now())
+ 1891:   updatedAt DateTime @updatedAt
+ 1892: 
+ 1893:   @@unique([branchId, creditCode])
+ 1894:   @@index([branchId])
+ 1895:   @@index([customerId])
+ 1896:   @@index([saleId])
+ 1897:   @@index([status])
+ 1898:   @@index([term])
+ 1899:   @@index([nextDueDate])
+ 1900:   @@index([createdById])
+ 1901:   @@index([updatedById])
+ 1902:   @@index([cancelledById])
+ 1903: }
+ 1904: 
+ 1905: model CreditCollection {
+ 1906:   id String @id @default(cuid())
+ 1907: 
+ 1908:   collectionCode String
+ 1909:   status         CreditCollectionStatus @default(POSTED)
+ 1910: 
+ 1911:   amount          Decimal @db.Decimal(12, 2)
+ 1912:   previousBalance Decimal @db.Decimal(12, 2)
+ 1913:   newBalance      Decimal @db.Decimal(12, 2)
+ 1914: 
+ 1915:   paymentMethod SalePaymentMethod @default(CASH)
+ 1916:   referenceNo   String?
+ 1917:   remarks       String?
+ 1918:   paidAt        DateTime          @default(now())
+ 1919: 
+ 1920:   cancelledAt        DateTime?
+ 1921:   cancellationReason String?
+ 1922: 
+ 1923:   creditAccountId String
+ 1924:   creditAccount   CreditAccount @relation(fields: [creditAccountId], references: [id], onDelete: Restrict)
+ 1925: 
+ 1926:   branchId String
+ 1927:   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+ 1928: 
+ 1929:   customerId String
+ 1930:   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+ 1931: 
+ 1932:   collectedById String?
+ 1933:   collectedBy   User?   @relation("CreditCollectionCollectedBy", fields: [collectedById], references: [id], onDelete: SetNull)
+ 1934: 
+ 1935:   createdById String?
+ 1936:   createdBy   User?   @relation("CreditCollectionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+ 1937: 
+ 1938:   cancelledById String?
+ 1939:   cancelledBy   User?   @relation("CreditCollectionCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+ 1940: 
+ 1941:   createdAt DateTime @default(now())
+ 1942:   updatedAt DateTime @updatedAt
+ 1943: 
+ 1944:   @@unique([branchId, collectionCode])
+ 1945:   @@index([creditAccountId])
+ 1946:   @@index([branchId])
+ 1947:   @@index([customerId])
+ 1948:   @@index([status])
+ 1949:   @@index([paymentMethod])
+ 1950:   @@index([paidAt])
+ 1951:   @@index([collectedById])
+ 1952:   @@index([createdById])
+ 1953:   @@index([cancelledById])
+ 1954: }

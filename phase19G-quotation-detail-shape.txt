@@ -1,0 +1,485 @@
+=== PHASE 19G QUOTATION DETAIL SHAPE ===
+Generated: 08/11/2026 22:47:33
+
+=== QUOTATION SERVICE DETAIL FUNCTIONS ===
+
+  src\modules\quotations\services\quotation.service.js:100:};
+  src\modules\quotations\services\quotation.service.js:101:
+> src\modules\quotations\services\quotation.service.js:102:const ensureCustomerBelongsToBranch = async (tx, customerId, branchId) => {
+> src\modules\quotations\services\quotation.service.js:103:  if (!customerId) {
+  src\modules\quotations\services\quotation.service.js:104:    return null;
+  src\modules\quotations\services\quotation.service.js:105:  }
+  src\modules\quotations\services\quotation.service.js:106:
+> src\modules\quotations\services\quotation.service.js:107:  const customer = await tx.customer.findFirst({
+  src\modules\quotations\services\quotation.service.js:108:    where: {
+> src\modules\quotations\services\quotation.service.js:109:      id: customerId,
+  src\modules\quotations\services\quotation.service.js:110:      branchId,
+  src\modules\quotations\services\quotation.service.js:111:    },
+  src\modules\quotations\services\quotation.service.js:112:    select: {
+  src\modules\quotations\services\quotation.service.js:113:      id: true,
+> src\modules\quotations\services\quotation.service.js:114:      customerCode: true,
+  src\modules\quotations\services\quotation.service.js:115:      fullName: true,
+  src\modules\quotations\services\quotation.service.js:116:      status: true,
+  src\modules\quotations\services\quotation.service.js:117:    },
+  src\modules\quotations\services\quotation.service.js:118:  });
+  src\modules\quotations\services\quotation.service.js:119:
+> src\modules\quotations\services\quotation.service.js:120:  if (!customer) {
+> src\modules\quotations\services\quotation.service.js:121:    const error = new Error("CUSTOMER_NOT_FOUND");
+  src\modules\quotations\services\quotation.service.js:122:    error.statusCode = 404;
+  src\modules\quotations\services\quotation.service.js:123:    throw error;
+  src\modules\quotations\services\quotation.service.js:124:  }
+  src\modules\quotations\services\quotation.service.js:125:
+> src\modules\quotations\services\quotation.service.js:126:  if (customer.status !== "ACTIVE") {
+> src\modules\quotations\services\quotation.service.js:127:    const error = new Error("CUSTOMER_INACTIVE");
+  src\modules\quotations\services\quotation.service.js:128:    error.statusCode = 400;
+  src\modules\quotations\services\quotation.service.js:129:    throw error;
+  src\modules\quotations\services\quotation.service.js:130:  }
+  src\modules\quotations\services\quotation.service.js:131:
+> src\modules\quotations\services\quotation.service.js:132:  return customer;
+  src\modules\quotations\services\quotation.service.js:133:};
+  src\modules\quotations\services\quotation.service.js:134:
+> src\modules\quotations\services\quotation.service.js:135:const ensurePreparedByBelongsToBranch = async (tx, preparedById, branchId) => {
+> src\modules\quotations\services\quotation.service.js:136:  if (!preparedById) {
+  src\modules\quotations\services\quotation.service.js:137:    return null;
+  src\modules\quotations\services\quotation.service.js:138:  }
+  src\modules\quotations\services\quotation.service.js:139:
+> src\modules\quotations\services\quotation.service.js:140:  const preparedBy = await tx.user.findFirst({
+  src\modules\quotations\services\quotation.service.js:141:    where: {
+> src\modules\quotations\services\quotation.service.js:142:      id: preparedById,
+  src\modules\quotations\services\quotation.service.js:143:      branchId,
+  src\modules\quotations\services\quotation.service.js:144:      status: "ACTIVE",
+  src\modules\quotations\services\quotation.service.js:145:    },
+  src\modules\quotations\services\quotation.service.js:146:    select: {
+  src\modules\quotations\services\quotation.service.js:147:      id: true,
+  src\modules\quotations\services\quotation.service.js:148:      username: true,
+  src\modules\quotations\services\quotation.service.js:153:  });
+  src\modules\quotations\services\quotation.service.js:154:
+> src\modules\quotations\services\quotation.service.js:155:  if (!preparedBy) {
+  src\modules\quotations\services\quotation.service.js:156:    const error = new Error("PREPARED_BY_NOT_FOUND");
+  src\modules\quotations\services\quotation.service.js:157:    error.statusCode = 404;
+  src\modules\quotations\services\quotation.service.js:158:    throw error;
+  src\modules\quotations\services\quotation.service.js:159:  }
+  src\modules\quotations\services\quotation.service.js:160:
+> src\modules\quotations\services\quotation.service.js:161:  return preparedBy;
+  src\modules\quotations\services\quotation.service.js:162:};
+  src\modules\quotations\services\quotation.service.js:163:
+> src\modules\quotations\services\quotation.service.js:164:const buildQuotationItems = async (tx, actor, branchId, items) => {
+> src\modules\quotations\services\quotation.service.js:165:  const quotationItems = [];
+  src\modules\quotations\services\quotation.service.js:166:  let subtotal = 0;
+  src\modules\quotations\services\quotation.service.js:167:  let totalDiscount = 0;
+  src\modules\quotations\services\quotation.service.js:168:
+> src\modules\quotations\services\quotation.service.js:169:  for (let index = 0; index < items.length; index += 1) {
+> src\modules\quotations\services\quotation.service.js:170:    const itemPayload = items[index];
+  src\modules\quotations\services\quotation.service.js:171:    const quantity = toMoney(itemPayload.quantity);
+  src\modules\quotations\services\quotation.service.js:172:    const discountAmount = toMoney(itemPayload.discountAmount || 0);
+  src\modules\quotations\services\quotation.service.js:173:
+  src\modules\quotations\services\quotation.service.js:174:    let item = null;
+  src\modules\quotations\services\quotation.service.js:175:    let unitPrice = 0;
+  src\modules\quotations\services\quotation.service.js:176:    let description = itemPayload.description ? String(itemPayload.description).trim() : "";
+  src\modules\quotations\services\quotation.service.js:191:      }
+  src\modules\quotations\services\quotation.service.js:192:
+> src\modules\quotations\services\quotation.service.js:193:      unitPrice = getItemPriceByTier(item, itemPayload.priceTier);
+  src\modules\quotations\services\quotation.service.js:194:      description = description || item.itemName;
+  src\modules\quotations\services\quotation.service.js:195:
+  src\modules\quotations\services\quotation.service.js:196:      if (STAFF_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+  src\modules\quotations\services\quotation.service.js:197:        const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
+  src\modules\quotations\services\quotation.service.js:198:        error.statusCode = 403;
+  src\modules\quotations\services\quotation.service.js:199:        throw error;
+  src\modules\quotations\services\quotation.service.js:232:    totalDiscount += discountAmount;
+  src\modules\quotations\services\quotation.service.js:233:
+> src\modules\quotations\services\quotation.service.js:234:    quotationItems.push({
+  src\modules\quotations\services\quotation.service.js:235:      lineNo: index + 1,
+  src\modules\quotations\services\quotation.service.js:236:      description,
+  src\modules\quotations\services\quotation.service.js:237:      itemCodeSnapshot: item ? item.itemCode : null,
+  src\modules\quotations\services\quotation.service.js:238:      itemNameSnapshot: item ? item.itemName : null,
+  src\modules\quotations\services\quotation.service.js:239:      brandSnapshot: item ? item.brand : null,
+  src\modules\quotations\services\quotation.service.js:240:      modelSnapshot: item ? item.modelName : null,
+> src\modules\quotations\services\quotation.service.js:241:      priceTier: itemPayload.priceTier,
+  src\modules\quotations\services\quotation.service.js:242:      quantity: toMoneyString(quantity),
+  src\modules\quotations\services\quotation.service.js:243:      unitPrice: toMoneyString(unitPrice),
+  src\modules\quotations\services\quotation.service.js:244:      discountAmount: toMoneyString(discountAmount),
+  src\modules\quotations\services\quotation.service.js:245:      lineTotal: toMoneyString(lineTotal),
+  src\modules\quotations\services\quotation.service.js:246:      isPcBuildPart: Boolean(itemPayload.isPcBuildPart),
+  src\modules\quotations\services\quotation.service.js:247:      remarks: itemPayload.remarks || null,
+  src\modules\quotations\services\quotation.service.js:251:
+  src\modules\quotations\services\quotation.service.js:252:  return {
+> src\modules\quotations\services\quotation.service.js:253:    quotationItems,
+  src\modules\quotations\services\quotation.service.js:254:    subtotal: toMoney(subtotal),
+  src\modules\quotations\services\quotation.service.js:255:    totalDiscount: toMoney(totalDiscount),
+> src\modules\quotations\services\quotation.service.js:256:    grandTotal: toMoney(subtotal - totalDiscount),
+  src\modules\quotations\services\quotation.service.js:257:  };
+  src\modules\quotations\services\quotation.service.js:258:};
+  src\modules\quotations\services\quotation.service.js:259:
+  src\modules\quotations\services\quotation.service.js:260:const createQuotation = async (actor, payload) => {
+  src\modules\quotations\services\quotation.service.js:261:  const branchId = resolveBranchIdForCreate(actor, payload.branchId);
+  src\modules\quotations\services\quotation.service.js:262:
+  src\modules\quotations\services\quotation.service.js:263:  return prisma.$transaction(async (tx) => {
+  src\modules\quotations\services\quotation.service.js:264:    const branch = await ensureBranchExists(tx, branchId);
+> src\modules\quotations\services\quotation.service.js:265:    await ensureCustomerBelongsToBranch(tx, payload.customerId, branchId);
+  src\modules\quotations\services\quotation.service.js:266:
+> src\modules\quotations\services\quotation.service.js:267:    const preparedById = payload.preparedById || (isSuperOwner(actor) ? null : actor.id);
+> src\modules\quotations\services\quotation.service.js:268:    await ensurePreparedByBelongsToBranch(tx, preparedById, branchId);
+  src\modules\quotations\services\quotation.service.js:269:
+> src\modules\quotations\services\quotation.service.js:270:    const { quotationItems, subtotal, totalDiscount, grandTotal } =
+> src\modules\quotations\services\quotation.service.js:271:      await buildQuotationItems(tx, actor, branchId, payload.items);
+  src\modules\quotations\services\quotation.service.js:272:
+  src\modules\quotations\services\quotation.service.js:273:    const quotationCode = await generateQuotationCode(tx, branch.code, branchId);
+  src\modules\quotations\services\quotation.service.js:274:
+  src\modules\quotations\services\quotation.service.js:275:    const quotation = await tx.quotation.create({
+  src\modules\quotations\services\quotation.service.js:276:      data: {
+  src\modules\quotations\services\quotation.service.js:277:        quotationCode,
+  src\modules\quotations\services\quotation.service.js:282:        subtotal: toMoneyString(subtotal),
+  src\modules\quotations\services\quotation.service.js:283:        totalDiscount: toMoneyString(totalDiscount),
+> src\modules\quotations\services\quotation.service.js:284:        grandTotal: toMoneyString(grandTotal),
+  src\modules\quotations\services\quotation.service.js:285:        isPcBuild: Boolean(payload.isPcBuild),
+  src\modules\quotations\services\quotation.service.js:286:        validUntil: payload.validUntil ? new Date(payload.validUntil) : null,
+  src\modules\quotations\services\quotation.service.js:287:        branchId,
+> src\modules\quotations\services\quotation.service.js:288:        customerId: payload.customerId || null,
+> src\modules\quotations\services\quotation.service.js:289:        preparedById,
+  src\modules\quotations\services\quotation.service.js:290:        createdById: actor.id,
+  src\modules\quotations\services\quotation.service.js:291:        updatedById: actor.id,
+> src\modules\quotations\services\quotation.service.js:292:        items: {
+> src\modules\quotations\services\quotation.service.js:293:          create: quotationItems,
+  src\modules\quotations\services\quotation.service.js:294:        },
+  src\modules\quotations\services\quotation.service.js:295:      },
+> src\modules\quotations\services\quotation.service.js:296:      include: {
+  src\modules\quotations\services\quotation.service.js:297:        branch: {
+  src\modules\quotations\services\quotation.service.js:298:          select: {
+  src\modules\quotations\services\quotation.service.js:299:            id: true,
+  src\modules\quotations\services\quotation.service.js:300:            code: true,
+  src\modules\quotations\services\quotation.service.js:301:            name: true,
+  src\modules\quotations\services\quotation.service.js:302:          },
+  src\modules\quotations\services\quotation.service.js:303:        },
+> src\modules\quotations\services\quotation.service.js:304:        customer: {
+  src\modules\quotations\services\quotation.service.js:305:          select: {
+  src\modules\quotations\services\quotation.service.js:306:            id: true,
+> src\modules\quotations\services\quotation.service.js:307:            customerCode: true,
+  src\modules\quotations\services\quotation.service.js:308:            fullName: true,
+  src\modules\quotations\services\quotation.service.js:309:            mobileNumber: true,
+  src\modules\quotations\services\quotation.service.js:310:            email: true,
+  src\modules\quotations\services\quotation.service.js:311:          },
+  src\modules\quotations\services\quotation.service.js:312:        },
+> src\modules\quotations\services\quotation.service.js:313:        preparedBy: {
+  src\modules\quotations\services\quotation.service.js:314:          select: {
+  src\modules\quotations\services\quotation.service.js:315:            id: true,
+  src\modules\quotations\services\quotation.service.js:316:            username: true,
+  src\modules\quotations\services\quotation.service.js:317:            fullName: true,
+  src\modules\quotations\services\quotation.service.js:318:            role: true,
+  src\modules\quotations\services\quotation.service.js:319:          },
+  src\modules\quotations\services\quotation.service.js:327:          },
+  src\modules\quotations\services\quotation.service.js:328:        },
+> src\modules\quotations\services\quotation.service.js:329:        items: {
+  src\modules\quotations\services\quotation.service.js:330:          orderBy: {
+  src\modules\quotations\services\quotation.service.js:331:            lineNo: "asc",
+  src\modules\quotations\services\quotation.service.js:332:          },
+  src\modules\quotations\services\quotation.service.js:333:        },
+  src\modules\quotations\services\quotation.service.js:334:      },
+  src\modules\quotations\services\quotation.service.js:335:    });
+  src\modules\quotations\services\quotation.service.js:390:    ...(branchId ? { branchId } : {}),
+  src\modules\quotations\services\quotation.service.js:391:    ...(query.status ? { status: query.status } : {}),
+> src\modules\quotations\services\quotation.service.js:392:    ...(query.customerId ? { customerId: query.customerId } : {}),
+> src\modules\quotations\services\quotation.service.js:393:    ...(query.preparedById ? { preparedById: query.preparedById } : {}),
+  src\modules\quotations\services\quotation.service.js:394:    ...(search
+  src\modules\quotations\services\quotation.service.js:395:      ? {
+  src\modules\quotations\services\quotation.service.js:396:          OR: [
+  src\modules\quotations\services\quotation.service.js:397:            {
+  src\modules\quotations\services\quotation.service.js:398:              quotationCode: {
+  src\modules\quotations\services\quotation.service.js:399:                contains: search,
+  src\modules\quotations\services\quotation.service.js:414:            },
+  src\modules\quotations\services\quotation.service.js:415:            {
+> src\modules\quotations\services\quotation.service.js:416:              customer: {
+  src\modules\quotations\services\quotation.service.js:417:                fullName: {
+  src\modules\quotations\services\quotation.service.js:418:                  contains: search,
+  src\modules\quotations\services\quotation.service.js:419:                  mode: "insensitive",
+  src\modules\quotations\services\quotation.service.js:420:                },
+  src\modules\quotations\services\quotation.service.js:421:              },
+  src\modules\quotations\services\quotation.service.js:422:            },
+  src\modules\quotations\services\quotation.service.js:423:            {
+> src\modules\quotations\services\quotation.service.js:424:              customer: {
+> src\modules\quotations\services\quotation.service.js:425:                customerCode: {
+  src\modules\quotations\services\quotation.service.js:426:                  contains: search,
+  src\modules\quotations\services\quotation.service.js:427:                  mode: "insensitive",
+  src\modules\quotations\services\quotation.service.js:428:                },
+  src\modules\quotations\services\quotation.service.js:429:              },
+  src\modules\quotations\services\quotation.service.js:430:            },
+  src\modules\quotations\services\quotation.service.js:431:          ],
+  src\modules\quotations\services\quotation.service.js:436:  const { page, limit, skip } = parsePagination(query);
+  src\modules\quotations\services\quotation.service.js:437:
+> src\modules\quotations\services\quotation.service.js:438:  const [totalItems, quotations] = await Promise.all([
+  src\modules\quotations\services\quotation.service.js:439:    prisma.quotation.count({ where }),
+  src\modules\quotations\services\quotation.service.js:440:    prisma.quotation.findMany({
+  src\modules\quotations\services\quotation.service.js:441:      where,
+  src\modules\quotations\services\quotation.service.js:442:      orderBy: {
+  src\modules\quotations\services\quotation.service.js:443:        createdAt: "desc",
+  src\modules\quotations\services\quotation.service.js:444:      },
+  src\modules\quotations\services\quotation.service.js:445:      skip,
+  src\modules\quotations\services\quotation.service.js:446:      take: limit,
+> src\modules\quotations\services\quotation.service.js:447:      include: {
+  src\modules\quotations\services\quotation.service.js:448:        branch: {
+  src\modules\quotations\services\quotation.service.js:449:          select: {
+  src\modules\quotations\services\quotation.service.js:450:            id: true,
+  src\modules\quotations\services\quotation.service.js:451:            code: true,
+  src\modules\quotations\services\quotation.service.js:452:            name: true,
+  src\modules\quotations\services\quotation.service.js:453:          },
+  src\modules\quotations\services\quotation.service.js:454:        },
+> src\modules\quotations\services\quotation.service.js:455:        customer: {
+  src\modules\quotations\services\quotation.service.js:456:          select: {
+  src\modules\quotations\services\quotation.service.js:457:            id: true,
+> src\modules\quotations\services\quotation.service.js:458:            customerCode: true,
+  src\modules\quotations\services\quotation.service.js:459:            fullName: true,
+  src\modules\quotations\services\quotation.service.js:460:            mobileNumber: true,
+  src\modules\quotations\services\quotation.service.js:461:            email: true,
+  src\modules\quotations\services\quotation.service.js:462:          },
+  src\modules\quotations\services\quotation.service.js:463:        },
+> src\modules\quotations\services\quotation.service.js:464:        preparedBy: {
+  src\modules\quotations\services\quotation.service.js:465:          select: {
+  src\modules\quotations\services\quotation.service.js:466:            id: true,
+  src\modules\quotations\services\quotation.service.js:467:            username: true,
+  src\modules\quotations\services\quotation.service.js:468:            fullName: true,
+  src\modules\quotations\services\quotation.service.js:469:            role: true,
+  src\modules\quotations\services\quotation.service.js:470:          },
+  src\modules\quotations\services\quotation.service.js:480:        _count: {
+  src\modules\quotations\services\quotation.service.js:481:          select: {
+> src\modules\quotations\services\quotation.service.js:482:            items: true,
+  src\modules\quotations\services\quotation.service.js:483:          },
+  src\modules\quotations\services\quotation.service.js:484:        },
+  src\modules\quotations\services\quotation.service.js:485:      },
+  src\modules\quotations\services\quotation.service.js:486:    }),
+  src\modules\quotations\services\quotation.service.js:487:  ]);
+  src\modules\quotations\services\quotation.service.js:488:
+  src\modules\quotations\services\quotation.service.js:492:      page,
+  src\modules\quotations\services\quotation.service.js:493:      limit,
+> src\modules\quotations\services\quotation.service.js:494:      totalItems,
+> src\modules\quotations\services\quotation.service.js:495:      totalPages: Math.ceil(totalItems / limit),
+  src\modules\quotations\services\quotation.service.js:496:    },
+  src\modules\quotations\services\quotation.service.js:497:  };
+  src\modules\quotations\services\quotation.service.js:498:};
+  src\modules\quotations\services\quotation.service.js:499:
+> src\modules\quotations\services\quotation.service.js:500:const getQuotationById = async (actor, quotationId) => {
+  src\modules\quotations\services\quotation.service.js:501:  const branchId = resolveBranchFilterForRead(actor, null);
+  src\modules\quotations\services\quotation.service.js:502:
+  src\modules\quotations\services\quotation.service.js:503:  const quotation = await prisma.quotation.findFirst({
+  src\modules\quotations\services\quotation.service.js:504:    where: {
+  src\modules\quotations\services\quotation.service.js:505:      id: quotationId,
+  src\modules\quotations\services\quotation.service.js:506:      ...(branchId ? { branchId } : {}),
+  src\modules\quotations\services\quotation.service.js:507:    },
+> src\modules\quotations\services\quotation.service.js:508:    include: {
+  src\modules\quotations\services\quotation.service.js:509:      branch: {
+  src\modules\quotations\services\quotation.service.js:510:        select: {
+  src\modules\quotations\services\quotation.service.js:511:          id: true,
+  src\modules\quotations\services\quotation.service.js:512:          code: true,
+  src\modules\quotations\services\quotation.service.js:513:          name: true,
+  src\modules\quotations\services\quotation.service.js:514:        },
+  src\modules\quotations\services\quotation.service.js:515:      },
+> src\modules\quotations\services\quotation.service.js:516:      customer: {
+  src\modules\quotations\services\quotation.service.js:517:        select: {
+  src\modules\quotations\services\quotation.service.js:518:          id: true,
+> src\modules\quotations\services\quotation.service.js:519:          customerCode: true,
+  src\modules\quotations\services\quotation.service.js:520:          fullName: true,
+  src\modules\quotations\services\quotation.service.js:521:          mobileNumber: true,
+  src\modules\quotations\services\quotation.service.js:522:          email: true,
+  src\modules\quotations\services\quotation.service.js:523:          address: true,
+  src\modules\quotations\services\quotation.service.js:524:          companyName: true,
+  src\modules\quotations\services\quotation.service.js:525:        },
+  src\modules\quotations\services\quotation.service.js:526:      },
+> src\modules\quotations\services\quotation.service.js:527:      preparedBy: {
+  src\modules\quotations\services\quotation.service.js:528:        select: {
+  src\modules\quotations\services\quotation.service.js:529:          id: true,
+  src\modules\quotations\services\quotation.service.js:530:          username: true,
+  src\modules\quotations\services\quotation.service.js:531:          fullName: true,
+  src\modules\quotations\services\quotation.service.js:532:          role: true,
+  src\modules\quotations\services\quotation.service.js:533:        },
+  src\modules\quotations\services\quotation.service.js:549:        },
+  src\modules\quotations\services\quotation.service.js:550:      },
+> src\modules\quotations\services\quotation.service.js:551:      items: {
+  src\modules\quotations\services\quotation.service.js:552:        orderBy: {
+  src\modules\quotations\services\quotation.service.js:553:          lineNo: "asc",
+  src\modules\quotations\services\quotation.service.js:554:        },
+> src\modules\quotations\services\quotation.service.js:555:        include: {
+  src\modules\quotations\services\quotation.service.js:556:          item: {
+  src\modules\quotations\services\quotation.service.js:557:            select: {
+  src\modules\quotations\services\quotation.service.js:558:              id: true,
+  src\modules\quotations\services\quotation.service.js:559:              itemCode: true,
+  src\modules\quotations\services\quotation.service.js:560:              itemName: true,
+  src\modules\quotations\services\quotation.service.js:561:              brand: true,
+  src\modules\quotations\services\quotation.service.js:609:        id: quotationId,
+  src\modules\quotations\services\quotation.service.js:610:      },
+> src\modules\quotations\services\quotation.service.js:611:      include: {
+  src\modules\quotations\services\quotation.service.js:612:        branch: {
+  src\modules\quotations\services\quotation.service.js:613:          select: {
+  src\modules\quotations\services\quotation.service.js:614:            id: true,
+  src\modules\quotations\services\quotation.service.js:615:            code: true,
+  src\modules\quotations\services\quotation.service.js:616:            name: true,
+  src\modules\quotations\services\quotation.service.js:617:            status: true,
+  src\modules\quotations\services\quotation.service.js:659:    }
+  src\modules\quotations\services\quotation.service.js:660:
+> src\modules\quotations\services\quotation.service.js:661:    const normalizedCustomerId = normalizeOptionalId(payload.customerId);
+  src\modules\quotations\services\quotation.service.js:662:
+> src\modules\quotations\services\quotation.service.js:663:    if (normalizedCustomerId !== undefined) {
+> src\modules\quotations\services\quotation.service.js:664:      if (normalizedCustomerId === null) {
+> src\modules\quotations\services\quotation.service.js:665:        updateData.customerId = null;
+  src\modules\quotations\services\quotation.service.js:666:      } else {
+> src\modules\quotations\services\quotation.service.js:667:        await ensureCustomerBelongsToBranch(tx, normalizedCustomerId, existingQuotation.branchId);
+> src\modules\quotations\services\quotation.service.js:668:        updateData.customerId = normalizedCustomerId;
+  src\modules\quotations\services\quotation.service.js:669:      }
+  src\modules\quotations\services\quotation.service.js:670:    }
+  src\modules\quotations\services\quotation.service.js:671:
+> src\modules\quotations\services\quotation.service.js:672:    const normalizedPreparedById = normalizeOptionalId(payload.preparedById);
+  src\modules\quotations\services\quotation.service.js:673:
+> src\modules\quotations\services\quotation.service.js:674:    if (normalizedPreparedById !== undefined) {
+> src\modules\quotations\services\quotation.service.js:675:      if (normalizedPreparedById === null) {
+> src\modules\quotations\services\quotation.service.js:676:        updateData.preparedById = null;
+  src\modules\quotations\services\quotation.service.js:677:      } else {
+> src\modules\quotations\services\quotation.service.js:678:        await ensurePreparedByBelongsToBranch(tx, normalizedPreparedById, existingQuotation.branchId);
+> src\modules\quotations\services\quotation.service.js:679:        updateData.preparedById = normalizedPreparedById;
+  src\modules\quotations\services\quotation.service.js:680:      }
+  src\modules\quotations\services\quotation.service.js:681:    }
+  src\modules\quotations\services\quotation.service.js:682:
+> src\modules\quotations\services\quotation.service.js:683:    if (payload.items !== undefined) {
+> src\modules\quotations\services\quotation.service.js:684:      const { quotationItems, subtotal, totalDiscount, grandTotal } =
+> src\modules\quotations\services\quotation.service.js:685:        await buildQuotationItems(tx, actor, existingQuotation.branchId, payload.items);
+  src\modules\quotations\services\quotation.service.js:686:
+  src\modules\quotations\services\quotation.service.js:687:      updateData.subtotal = toMoneyString(subtotal);
+  src\modules\quotations\services\quotation.service.js:688:      updateData.totalDiscount = toMoneyString(totalDiscount);
+> src\modules\quotations\services\quotation.service.js:689:      updateData.grandTotal = toMoneyString(grandTotal);
+  src\modules\quotations\services\quotation.service.js:690:
+  src\modules\quotations\services\quotation.service.js:691:      await tx.quotationItem.deleteMany({
+  src\modules\quotations\services\quotation.service.js:692:        where: {
+  src\modules\quotations\services\quotation.service.js:693:          quotationId: existingQuotation.id,
+  src\modules\quotations\services\quotation.service.js:694:        },
+  src\modules\quotations\services\quotation.service.js:695:      });
+  src\modules\quotations\services\quotation.service.js:696:
+> src\modules\quotations\services\quotation.service.js:697:      updateData.items = {
+> src\modules\quotations\services\quotation.service.js:698:        create: quotationItems,
+  src\modules\quotations\services\quotation.service.js:699:      };
+  src\modules\quotations\services\quotation.service.js:700:    }
+  src\modules\quotations\services\quotation.service.js:701:
+  src\modules\quotations\services\quotation.service.js:702:    const quotation = await tx.quotation.update({
+  src\modules\quotations\services\quotation.service.js:703:      where: {
+  src\modules\quotations\services\quotation.service.js:704:        id: existingQuotation.id,
+  src\modules\quotations\services\quotation.service.js:705:      },
+  src\modules\quotations\services\quotation.service.js:706:      data: updateData,
+> src\modules\quotations\services\quotation.service.js:707:      include: {
+  src\modules\quotations\services\quotation.service.js:708:        branch: {
+  src\modules\quotations\services\quotation.service.js:709:          select: {
+  src\modules\quotations\services\quotation.service.js:710:            id: true,
+  src\modules\quotations\services\quotation.service.js:711:            code: true,
+  src\modules\quotations\services\quotation.service.js:712:            name: true,
+  src\modules\quotations\services\quotation.service.js:713:          },
+  src\modules\quotations\services\quotation.service.js:714:        },
+> src\modules\quotations\services\quotation.service.js:715:        customer: {
+  src\modules\quotations\services\quotation.service.js:716:          select: {
+  src\modules\quotations\services\quotation.service.js:717:            id: true,
+> src\modules\quotations\services\quotation.service.js:718:            customerCode: true,
+  src\modules\quotations\services\quotation.service.js:719:            fullName: true,
+  src\modules\quotations\services\quotation.service.js:720:            mobileNumber: true,
+  src\modules\quotations\services\quotation.service.js:721:            email: true,
+  src\modules\quotations\services\quotation.service.js:722:          },
+  src\modules\quotations\services\quotation.service.js:723:        },
+> src\modules\quotations\services\quotation.service.js:724:        preparedBy: {
+  src\modules\quotations\services\quotation.service.js:725:          select: {
+  src\modules\quotations\services\quotation.service.js:726:            id: true,
+  src\modules\quotations\services\quotation.service.js:727:            username: true,
+  src\modules\quotations\services\quotation.service.js:728:            fullName: true,
+  src\modules\quotations\services\quotation.service.js:729:            role: true,
+  src\modules\quotations\services\quotation.service.js:730:          },
+  src\modules\quotations\services\quotation.service.js:746:          },
+  src\modules\quotations\services\quotation.service.js:747:        },
+> src\modules\quotations\services\quotation.service.js:748:        items: {
+  src\modules\quotations\services\quotation.service.js:749:          orderBy: {
+  src\modules\quotations\services\quotation.service.js:750:            lineNo: "asc",
+  src\modules\quotations\services\quotation.service.js:751:          },
+  src\modules\quotations\services\quotation.service.js:752:        },
+  src\modules\quotations\services\quotation.service.js:753:      },
+  src\modules\quotations\services\quotation.service.js:754:    });
+  src\modules\quotations\services\quotation.service.js:770:  const allowedNextStatuses = allowedTransitions[currentStatus] || [];
+  src\modules\quotations\services\quotation.service.js:771:
+> src\modules\quotations\services\quotation.service.js:772:  if (!allowedNextStatuses.includes(nextStatus)) {
+  src\modules\quotations\services\quotation.service.js:773:    const error = new Error("INVALID_QUOTATION_STATUS_TRANSITION");
+  src\modules\quotations\services\quotation.service.js:774:    error.statusCode = 400;
+  src\modules\quotations\services\quotation.service.js:775:    throw error;
+  src\modules\quotations\services\quotation.service.js:776:  }
+  src\modules\quotations\services\quotation.service.js:777:};
+  src\modules\quotations\services\quotation.service.js:778:
+  src\modules\quotations\services\quotation.service.js:783:        id: quotationId,
+  src\modules\quotations\services\quotation.service.js:784:      },
+> src\modules\quotations\services\quotation.service.js:785:      include: {
+  src\modules\quotations\services\quotation.service.js:786:        branch: {
+  src\modules\quotations\services\quotation.service.js:787:          select: {
+  src\modules\quotations\services\quotation.service.js:788:            id: true,
+  src\modules\quotations\services\quotation.service.js:789:            code: true,
+  src\modules\quotations\services\quotation.service.js:790:            name: true,
+  src\modules\quotations\services\quotation.service.js:791:            status: true,
+  src\modules\quotations\services\quotation.service.js:833:      },
+  src\modules\quotations\services\quotation.service.js:834:      data: updateData,
+> src\modules\quotations\services\quotation.service.js:835:      include: {
+  src\modules\quotations\services\quotation.service.js:836:        branch: {
+  src\modules\quotations\services\quotation.service.js:837:          select: {
+  src\modules\quotations\services\quotation.service.js:838:            id: true,
+  src\modules\quotations\services\quotation.service.js:839:            code: true,
+  src\modules\quotations\services\quotation.service.js:840:            name: true,
+  src\modules\quotations\services\quotation.service.js:841:          },
+  src\modules\quotations\services\quotation.service.js:842:        },
+> src\modules\quotations\services\quotation.service.js:843:        customer: {
+  src\modules\quotations\services\quotation.service.js:844:          select: {
+  src\modules\quotations\services\quotation.service.js:845:            id: true,
+> src\modules\quotations\services\quotation.service.js:846:            customerCode: true,
+  src\modules\quotations\services\quotation.service.js:847:            fullName: true,
+  src\modules\quotations\services\quotation.service.js:848:            mobileNumber: true,
+  src\modules\quotations\services\quotation.service.js:849:            email: true,
+  src\modules\quotations\services\quotation.service.js:850:          },
+  src\modules\quotations\services\quotation.service.js:851:        },
+> src\modules\quotations\services\quotation.service.js:852:        preparedBy: {
+  src\modules\quotations\services\quotation.service.js:853:          select: {
+  src\modules\quotations\services\quotation.service.js:854:            id: true,
+  src\modules\quotations\services\quotation.service.js:855:            username: true,
+  src\modules\quotations\services\quotation.service.js:856:            fullName: true,
+  src\modules\quotations\services\quotation.service.js:857:            role: true,
+  src\modules\quotations\services\quotation.service.js:858:          },
+  src\modules\quotations\services\quotation.service.js:874:          },
+  src\modules\quotations\services\quotation.service.js:875:        },
+> src\modules\quotations\services\quotation.service.js:876:        items: {
+  src\modules\quotations\services\quotation.service.js:877:          orderBy: {
+  src\modules\quotations\services\quotation.service.js:878:            lineNo: "asc",
+  src\modules\quotations\services\quotation.service.js:879:          },
+  src\modules\quotations\services\quotation.service.js:880:        },
+  src\modules\quotations\services\quotation.service.js:881:      },
+  src\modules\quotations\services\quotation.service.js:882:    });
+  src\modules\quotations\services\quotation.service.js:889:  createQuotation,
+  src\modules\quotations\services\quotation.service.js:890:  getQuotations,
+> src\modules\quotations\services\quotation.service.js:891:  getQuotationById,
+  src\modules\quotations\services\quotation.service.js:892:  updateQuotation,
+  src\modules\quotations\services\quotation.service.js:893:  updateQuotationStatus,
+  src\modules\quotations\services\quotation.service.js:894:};
+  src\modules\quotations\services\quotation.service.js:895:
+  src\modules\quotations\services\quotation.service.js:896:
+
+
+
+
+=== QUOTATION CONTROLLER DETAIL ===
+
+  src\modules\quotations\controllers\quotation.controller.js:62:};
+  src\modules\quotations\controllers\quotation.controller.js:63:
+> src\modules\quotations\controllers\quotation.controller.js:64:const getQuotationById = async (req, res, next) => {
+  src\modules\quotations\controllers\quotation.controller.js:65:  try {
+> src\modules\quotations\controllers\quotation.controller.js:66:    const quotation = await quotationService.getQuotationById(req.user, req.params.id);
+  src\modules\quotations\controllers\quotation.controller.js:67:
+  src\modules\quotations\controllers\quotation.controller.js:68:    return res.status(200).json({
+  src\modules\quotations\controllers\quotation.controller.js:69:      success: true,
+  src\modules\quotations\controllers\quotation.controller.js:70:      message: "Quotation fetched successfully",
+  src\modules\quotations\controllers\quotation.controller.js:71:      data: quotation,
+  src\modules\quotations\controllers\quotation.controller.js:72:    });
+  src\modules\quotations\controllers\quotation.controller.js:73:  } catch (error) {
+  src\modules\quotations\controllers\quotation.controller.js:74:    return handleQuotationError(error, res, next);
+  src\modules\quotations\controllers\quotation.controller.js:117:  createQuotation,
+  src\modules\quotations\controllers\quotation.controller.js:118:  getQuotations,
+> src\modules\quotations\controllers\quotation.controller.js:119:  getQuotationById,
+  src\modules\quotations\controllers\quotation.controller.js:120:  updateQuotation,
+  src\modules\quotations\controllers\quotation.controller.js:121:  updateQuotationStatus,
+  src\modules\quotations\controllers\quotation.controller.js:122:};
+
+
+
+
+DONE. Output saved to: .\phase19G-quotation-detail-shape.txt

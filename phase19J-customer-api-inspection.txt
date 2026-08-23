@@ -1,0 +1,564 @@
+=== PHASE 19J CUSTOMER API INSPECTION ===
+Generated: 08/12/2026 11:30:56
+
+=== CUSTOMER ROUTES ===
+const express = require("express");
+
+const validate = require("../../../middlewares/validate.middleware");
+const { protect } = require("../../../middlewares/auth.middleware");
+const { requirePermission } = require("../../../middlewares/permission.middleware");
+const { PERMISSIONS } = require("../../../constants/permissions");
+const customerController = require("../controllers/customer.controller");
+const {
+  createCustomerSchema,
+  listCustomersSchema,
+  customerIdParamSchema,
+  updateCustomerSchema,
+} = require("../validations/customer.validation");
+
+const router = express.Router();
+
+router.get(
+  "/",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_CUSTOMERS),
+  validate(listCustomersSchema),
+  customerController.listCustomers
+);
+
+router.post(
+  "/",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_CUSTOMERS),
+  validate(createCustomerSchema),
+  customerController.createCustomer
+);
+
+router.get(
+  "/:id",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_CUSTOMERS),
+  validate(customerIdParamSchema),
+  customerController.getCustomerById
+);
+
+router.patch(
+  "/:id",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_CUSTOMERS),
+  validate(updateCustomerSchema),
+  customerController.updateCustomerById
+);
+
+module.exports = router;
+
+
+=== CUSTOMER CONTROLLER ===
+const asyncHandler = require("../../../utils/asyncHandler");
+const { sendSuccess } = require("../../../utils/apiResponse");
+const customerService = require("../services/customer.service");
+
+const createCustomer = asyncHandler(async (req, res) => {
+  const customer = await customerService.createCustomer(req.body, req.user);
+
+  return sendSuccess(res, {
+    statusCode: 201,
+    message: "Customer created successfully",
+    data: customer,
+  });
+});
+
+const listCustomers = asyncHandler(async (req, res) => {
+  const result = await customerService.listCustomers(req.query, req.user);
+
+  return sendSuccess(res, {
+    message: "Customers retrieved successfully",
+    data: result,
+  });
+});
+
+const getCustomerById = asyncHandler(async (req, res) => {
+  const customer = await customerService.getCustomerById(req.params.id, req.user);
+
+  return sendSuccess(res, {
+    message: "Customer retrieved successfully",
+    data: customer,
+  });
+});
+
+const updateCustomerById = asyncHandler(async (req, res) => {
+  const customer = await customerService.updateCustomerById(
+    req.params.id,
+    req.body,
+    req.user
+  );
+
+  return sendSuccess(res, {
+    message: "Customer updated successfully",
+    data: customer,
+  });
+});
+
+module.exports = {
+  createCustomer,
+  listCustomers,
+  getCustomerById,
+  updateCustomerById,
+};
+
+
+=== CUSTOMER VALIDATION ===
+const { z } = require("zod");
+
+const customerStatusValues = ["ACTIVE", "INACTIVE"];
+
+const createCustomerSchema = z.object({
+  body: z.object({
+    branchId: z.string().trim().min(1, "Branch ID is required").optional(),
+    customerCode: z
+      .string()
+      .trim()
+      .min(1, "Customer code cannot be empty")
+      .optional(),
+    fullName: z.string().trim().min(1, "Full name is required"),
+    mobileNumber: z
+      .string()
+      .trim()
+      .min(1, "Mobile number cannot be empty")
+      .optional()
+      .nullable(),
+    email: z
+      .string()
+      .trim()
+      .email("Invalid email address")
+      .optional()
+      .nullable(),
+    address: z
+      .string()
+      .trim()
+      .min(1, "Address cannot be empty")
+      .optional()
+      .nullable(),
+    companyName: z
+      .string()
+      .trim()
+      .min(1, "Company name cannot be empty")
+      .optional()
+      .nullable(),
+    notes: z
+      .string()
+      .trim()
+      .min(1, "Notes cannot be empty")
+      .optional()
+      .nullable(),
+  }),
+});
+
+const listCustomersSchema = z.object({
+  query: z.object({
+    search: z.string().trim().optional(),
+    branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
+    status: z.enum(customerStatusValues).optional(),
+    page: z
+      .string()
+      .trim()
+      .regex(/^[1-9][0-9]*$/, "Page must be a positive number")
+      .optional(),
+    limit: z
+      .string()
+      .trim()
+      .regex(/^[1-9][0-9]*$/, "Limit must be a positive number")
+      .optional(),
+  }),
+});
+
+const customerIdParamSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Customer ID is required"),
+  }),
+});
+
+const updateCustomerSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Customer ID is required"),
+  }),
+  body: z.object({
+    customerCode: z
+      .string()
+      .trim()
+      .min(1, "Customer code cannot be empty")
+      .optional(),
+    fullName: z
+      .string()
+      .trim()
+      .min(1, "Full name cannot be empty")
+      .optional(),
+    mobileNumber: z
+      .string()
+      .trim()
+      .min(1, "Mobile number cannot be empty")
+      .optional()
+      .nullable(),
+    email: z
+      .string()
+      .trim()
+      .email("Invalid email address")
+      .optional()
+      .nullable(),
+    address: z
+      .string()
+      .trim()
+      .min(1, "Address cannot be empty")
+      .optional()
+      .nullable(),
+    companyName: z
+      .string()
+      .trim()
+      .min(1, "Company name cannot be empty")
+      .optional()
+      .nullable(),
+    notes: z
+      .string()
+      .trim()
+      .min(1, "Notes cannot be empty")
+      .optional()
+      .nullable(),
+    status: z.enum(customerStatusValues).optional(),
+  }),
+});
+
+module.exports = {
+  createCustomerSchema,
+  listCustomersSchema,
+  customerIdParamSchema,
+  updateCustomerSchema,
+};
+
+
+=== CUSTOMER SERVICE FIRST 260 LINES ===
+const prisma = require("../../../config/prisma");
+const AppError = require("../../../utils/appError");
+
+const CUSTOMER_SELECT = {
+  id: true,
+  customerCode: true,
+  fullName: true,
+  mobileNumber: true,
+  email: true,
+  address: true,
+  companyName: true,
+  notes: true,
+  status: true,
+  branchId: true,
+  branch: {
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      status: true,
+    },
+  },
+  createdById: true,
+  createdBy: {
+    select: {
+      id: true,
+      username: true,
+      fullName: true,
+      role: true,
+    },
+  },
+  updatedById: true,
+  updatedBy: {
+    select: {
+      id: true,
+      username: true,
+      fullName: true,
+      role: true,
+    },
+  },
+  createdAt: true,
+  updatedAt: true,
+};
+
+const normalizeOptionalString = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const trimmed = String(value).trim();
+
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const getActorBranchIdForCreate = (actor, requestedBranchId) => {
+  if (!actor) {
+    throw new AppError("Authentication required", 401, "AUTHENTICATION_REQUIRED");
+  }
+
+  if (actor.role === "SUPER_OWNER") {
+    if (!requestedBranchId) {
+      throw new AppError(
+        "Branch ID is required for Super Owner customer creation",
+        400,
+        "BRANCH_ID_REQUIRED"
+      );
+    }
+
+    return requestedBranchId;
+  }
+
+  if (!actor.branchId) {
+    throw new AppError(
+      "User is not assigned to a branch",
+      400,
+      "USER_BRANCH_REQUIRED"
+    );
+  }
+
+  if (requestedBranchId && requestedBranchId !== actor.branchId) {
+    throw new AppError(
+      "You can only create customers in your assigned branch",
+      403,
+      "BRANCH_ACCESS_DENIED"
+    );
+  }
+
+  return actor.branchId;
+};
+
+const getBranchIdForList = (actor, requestedBranchId) => {
+  if (!actor) {
+    throw new AppError("Authentication required", 401, "AUTHENTICATION_REQUIRED");
+  }
+
+  if (actor.role === "SUPER_OWNER") {
+    return requestedBranchId || undefined;
+  }
+
+  if (!actor.branchId) {
+    throw new AppError(
+      "User is not assigned to a branch",
+      400,
+      "USER_BRANCH_REQUIRED"
+    );
+  }
+
+  if (requestedBranchId && requestedBranchId !== actor.branchId) {
+    throw new AppError(
+      "You can only view customers in your assigned branch",
+      403,
+      "BRANCH_ACCESS_DENIED"
+    );
+  }
+
+  return actor.branchId;
+};
+
+const assertCustomerAccess = (customer, actor) => {
+  if (!actor) {
+    throw new AppError("Authentication required", 401, "AUTHENTICATION_REQUIRED");
+  }
+
+  if (actor.role === "SUPER_OWNER") {
+    return;
+  }
+
+  if (!actor.branchId) {
+    throw new AppError(
+      "User is not assigned to a branch",
+      400,
+      "USER_BRANCH_REQUIRED"
+    );
+  }
+
+  if (customer.branchId !== actor.branchId) {
+    throw new AppError(
+      "You can only access customers in your assigned branch",
+      403,
+      "BRANCH_ACCESS_DENIED"
+    );
+  }
+};
+
+const getActiveBranchOrThrow = async (branchId) => {
+  const branch = await prisma.branch.findUnique({
+    where: {
+      id: branchId,
+    },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      status: true,
+    },
+  });
+
+  if (!branch) {
+    throw new AppError("Branch not found", 404, "BRANCH_NOT_FOUND");
+  }
+
+  if (branch.status !== "ACTIVE") {
+    throw new AppError("Branch is not active", 400, "BRANCH_NOT_ACTIVE");
+  }
+
+  return branch;
+};
+
+const generateCustomerCode = async (branch) => {
+  const prefix = `CUST-${branch.code}-`;
+
+  const existingCustomers = await prisma.customer.findMany({
+    where: {
+      branchId: branch.id,
+      customerCode: {
+        startsWith: prefix,
+      },
+    },
+    select: {
+      customerCode: true,
+    },
+  });
+
+  let highestNumber = 0;
+
+  for (const customer of existingCustomers) {
+    const suffix = customer.customerCode.replace(prefix, "");
+    const parsedNumber = Number.parseInt(suffix, 10);
+
+    if (!Number.isNaN(parsedNumber) && parsedNumber > highestNumber) {
+      highestNumber = parsedNumber;
+    }
+  }
+
+  const nextNumber = highestNumber + 1;
+
+  return `${prefix}${String(nextNumber).padStart(3, "0")}`;
+};
+
+const assertCustomerCodeIsUnique = async (branchId, customerCode) => {
+  const existingCustomer = await prisma.customer.findUnique({
+    where: {
+      branchId_customerCode: {
+        branchId,
+        customerCode,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (existingCustomer) {
+    throw new AppError(
+      "Customer code already exists in this branch",
+      409,
+      "CUSTOMER_CODE_ALREADY_EXISTS"
+    );
+  }
+};
+
+const assertCustomerCodeIsUniqueForUpdate = async (
+  branchId,
+  customerCode,
+  currentCustomerId
+) => {
+  const existingCustomer = await prisma.customer.findUnique({
+    where: {
+      branchId_customerCode: {
+        branchId,
+        customerCode,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (existingCustomer && existingCustomer.id !== currentCustomerId) {
+    throw new AppError(
+      "Customer code already exists in this branch",
+      409,
+      "CUSTOMER_CODE_ALREADY_EXISTS"
+    );
+  }
+};
+
+const createCustomer = async (payload, actor) => {
+  const branchId = getActorBranchIdForCreate(actor, payload.branchId);
+  const branch = await getActiveBranchOrThrow(branchId);
+
+  const customerCode = payload.customerCode
+    ? payload.customerCode.trim().toUpperCase()
+    : await generateCustomerCode(branch);
+
+  await assertCustomerCodeIsUnique(branch.id, customerCode);
+
+  return prisma.customer.create({
+    data: {
+      customerCode,
+
+
+=== PRISMA CUSTOMER MODEL ===
+
+> prisma\schema.prisma:1168:model Customer {
+  prisma\schema.prisma:1169:  id           String         @id @default(cuid())
+  prisma\schema.prisma:1170:  customerCode String
+  prisma\schema.prisma:1171:  fullName     String
+  prisma\schema.prisma:1172:  mobileNumber String?
+  prisma\schema.prisma:1173:  email        String?
+  prisma\schema.prisma:1174:  address      String?
+  prisma\schema.prisma:1175:  companyName  String?
+  prisma\schema.prisma:1176:  notes        String?
+  prisma\schema.prisma:1177:  status       CustomerStatus @default(ACTIVE)
+  prisma\schema.prisma:1178:
+  prisma\schema.prisma:1179:  branchId String
+  prisma\schema.prisma:1180:  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  prisma\schema.prisma:1181:
+  prisma\schema.prisma:1182:  createdById String?
+  prisma\schema.prisma:1183:  createdBy   User?   @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1184:
+  prisma\schema.prisma:1185:  updatedById String?
+  prisma\schema.prisma:1186:  updatedBy   User?   @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  prisma\schema.prisma:1187:
+  prisma\schema.prisma:1188:  createdAt         DateTime           @default(now())
+  prisma\schema.prisma:1189:  updatedAt         DateTime           @updatedAt
+  prisma\schema.prisma:1190:  quotations        Quotation[]
+  prisma\schema.prisma:1191:  sales             Sale[]
+  prisma\schema.prisma:1192:  creditAccounts    CreditAccount[]
+  prisma\schema.prisma:1193:  creditCollections CreditCollection[]
+  prisma\schema.prisma:1194:
+  prisma\schema.prisma:1195:  @@unique([branchId, customerCode])
+  prisma\schema.prisma:1196:  @@index([branchId])
+  prisma\schema.prisma:1197:  @@index([status])
+  prisma\schema.prisma:1198:  @@index([fullName])
+  prisma\schema.prisma:1199:  @@index([mobileNumber])
+  prisma\schema.prisma:1200:  @@index([email])
+  prisma\schema.prisma:1201:  @@index([createdById])
+  prisma\schema.prisma:1202:  @@index([updatedById])
+  prisma\schema.prisma:1203:  @@index([branchId, status])
+  prisma\schema.prisma:1204:  serviceJobs ServiceJob[]
+  prisma\schema.prisma:1205:  servicePayments ServicePayment[]
+  prisma\schema.prisma:1206:  warrantyClaims WarrantyClaim[]
+  prisma\schema.prisma:1207:  returnRequests ReturnRequest[]
+  prisma\schema.prisma:1208:}
+
+
+
+
+=== API ROUTE REGISTRATION CUSTOMER ===
+
+  src\routes\api.routes.js:7:const settingRoutes = require("../modules/settings/routes/setting.routes");
+> src\routes\api.routes.js:8:const customerRoutes = require("../modules/customers/routes/customer.routes");
+  src\routes\api.routes.js:9:const supplierRoutes = require("../modules/suppliers/routes/supplier.routes");
+  src\routes\api.routes.js:10:const purchaseOrderRoutes = require("../modules/purchase-orders/routes/purchaseOrder.routes");
+  src\routes\api.routes.js:11:const purchaseReceivingRoutes = require("../modules/purchase-receivings/routes/purchaseReceiving.routes");
+  src\routes\api.routes.js:32:router.use("/settings", settingRoutes);
+> src\routes\api.routes.js:33:router.use("/customers", customerRoutes);
+  src\routes\api.routes.js:34:router.use("/suppliers", supplierRoutes);
+  src\routes\api.routes.js:35:router.use("/purchase-orders", purchaseOrderRoutes);
+  src\routes\api.routes.js:36:router.use("/purchase-receivings", purchaseReceivingRoutes);
+
+
+
+
+DONE. Output saved to: .\phase19J-customer-api-inspection.txt

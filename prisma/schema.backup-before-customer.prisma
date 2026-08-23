@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum UserRole {
+  SUPER_OWNER
+  BRANCH_OWNER
+  ADMIN
+  CASHIER
+  TECHNICIAN
+  CASH_CUSTODIAN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  DISABLED
+}
+
+enum SettingCategory {
+  BUSINESS_RULE
+  OPERATION
+  DOCUMENT
+  SYSTEM_ADMIN
+}
+
+enum SettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  ARRAY
+}
+
+model Branch {
+  id        String       @id @default(cuid())
+  code      String       @unique
+  name      String
+  address   String?
+  contactNo String?
+  status    BranchStatus @default(ACTIVE)
+
+  users            User[]
+  auditLogs        AuditLog[]
+  businessSettings BusinessSetting[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([name])
+}
+
+model User {
+  id           String  @id @default(cuid())
+  employeeCode String? @unique
+  username     String  @unique
+  email        String? @unique
+  passwordHash String
+
+  firstName  String
+  middleName String?
+  lastName   String
+  fullName   String
+
+  role   UserRole
+  status UserStatus @default(PENDING)
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  approvedById  String?
+  approvedBy    User?   @relation("UserApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedUsers User[]  @relation("UserApprovals")
+
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  disabledAt  DateTime?
+  lastLoginAt DateTime?
+
+  auditLogs       AuditLog[]        @relation("AuditActor")
+  updatedSettings BusinessSetting[] @relation("SettingUpdatedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+  @@index([status])
+  @@index([branchId])
+  @@index([fullName])
+  @@index([role, status])
+  @@index([branchId, role])
+  @@index([branchId, status])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  actorId String?
+  actor   User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  action      String
+  entityType  String
+  entityId    String?
+  description String?
+  metadata    Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([branchId])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+  @@index([branchId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model BusinessSetting {
+  id String @id @default(cuid())
+
+  scopeKey  String           @unique
+  key       String
+  category  SettingCategory
+  valueType SettingValueType
+  value     Json
+
+  label       String
+  description String?
+
+  isEditable Boolean @default(true)
+  isActive   Boolean @default(true)
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  updatedById String?
+  updatedBy   User?   @relation("SettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+  @@index([category])
+  @@index([valueType])
+  @@index([branchId])
+  @@index([isActive])
+  @@index([updatedById])
+  @@index([category, isActive])
+}

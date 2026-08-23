@@ -1,0 +1,796 @@
+﻿PHASE 17D - ITEM PRICE EDIT PERMISSION CHECK
+Generated: 08/08/2026 12:22:12
+
+===== ITEM VALIDATION UPDATE SCHEMA =====
+
+  src\modules\items\routes\item.routes.js:10:  listItemsSchema,
+  src\modules\items\routes\item.routes.js:11:  itemIdParamSchema,
+> src\modules\items\routes\item.routes.js:12:  updateItemSchema,
+  src\modules\items\routes\item.routes.js:13:} = require("../validations/item.validation");
+  src\modules\items\routes\item.routes.js:14:
+  src\modules\items\routes\item.routes.js:15:const router = express.Router();
+  src\modules\items\routes\item.routes.js:16:
+  src\modules\items\routes\item.routes.js:17:router.get(
+  src\modules\items\routes\item.routes.js:43:  protect,
+  src\modules\items\routes\item.routes.js:44:  requirePermission(PERMISSIONS.MANAGE_CATALOG),
+> src\modules\items\routes\item.routes.js:45:  validate(updateItemSchema),
+  src\modules\items\routes\item.routes.js:46:  itemController.updateItemById
+  src\modules\items\routes\item.routes.js:47:);
+  src\modules\items\routes\item.routes.js:48:
+  src\modules\items\routes\item.routes.js:49:module.exports = router;
+  src\modules\items\services\item.service.backup-before-item-get-update.js:11:  modelName: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:12:  status: true,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:13:  isSerialized: true,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:14:  hasWarranty: true,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:15:  costPrice: true,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:16:  price1: true,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:17:  price2: true,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:18:  price3: true,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:19:  price4: true,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:20:  price5: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:21:  minimumStock: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:22:  reorderLevel: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:23:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:24:  branchId: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:25:  branch: {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:32:  },
+  src\modules\items\services\item.service.backup-before-item-get-update.js:33:
+> src\modules\items\services\item.service.backup-before-item-get-update.js:34:  categoryId: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:35:  category: {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:36:    select: {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:37:      id: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:38:      categoryCode: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:39:      name: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:43:  },
+  src\modules\items\services\item.service.backup-before-item-get-update.js:44:
+> src\modules\items\services\item.service.backup-before-item-get-update.js:45:  unitId: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:46:  unit: {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:47:    select: {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:48:      id: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:49:      unitCode: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:50:      name: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:191:};
+  src\modules\items\services\item.service.backup-before-item-get-update.js:192:
+> src\modules\items\services\item.service.backup-before-item-get-update.js:193:const getActiveCategoryOrThrow = async (categoryId) => {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:194:  const category = await prisma.itemCategory.findUnique({
+  src\modules\items\services\item.service.backup-before-item-get-update.js:195:    where: {
+> src\modules\items\services\item.service.backup-before-item-get-update.js:196:      id: categoryId,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:197:    },
+  src\modules\items\services\item.service.backup-before-item-get-update.js:198:    select: {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:199:      id: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:200:      categoryCode: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:201:      name: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:227:};
+  src\modules\items\services\item.service.backup-before-item-get-update.js:228:
+> src\modules\items\services\item.service.backup-before-item-get-update.js:229:const getActiveUnitOrThrow = async (unitId) => {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:230:  const unit = await prisma.unit.findUnique({
+  src\modules\items\services\item.service.backup-before-item-get-update.js:231:    where: {
+> src\modules\items\services\item.service.backup-before-item-get-update.js:232:      id: unitId,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:233:    },
+  src\modules\items\services\item.service.backup-before-item-get-update.js:234:    select: {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:235:      id: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:236:      unitCode: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:237:      name: true,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:317:  const branchId = getActorBranchIdForCreate(actor, payload.branchId);
+  src\modules\items\services\item.service.backup-before-item-get-update.js:318:  const branch = await getActiveBranchOrThrow(branchId);
+> src\modules\items\services\item.service.backup-before-item-get-update.js:319:  const category = await getActiveCategoryOrThrow(payload.categoryId);
+> src\modules\items\services\item.service.backup-before-item-get-update.js:320:  const unit = await getActiveUnitOrThrow(payload.unitId);
+  src\modules\items\services\item.service.backup-before-item-get-update.js:321:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:322:  assertCategoryBelongsToBranch(category, branch);
+  src\modules\items\services\item.service.backup-before-item-get-update.js:323:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:324:  const itemCode = payload.itemCode
+  src\modules\items\services\item.service.backup-before-item-get-update.js:325:    ? payload.itemCode.trim().toUpperCase()
+  src\modules\items\services\item.service.backup-before-item-get-update.js:337:      modelName: normalizeOptionalString(payload.modelName),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:338:      status: "ACTIVE",
+> src\modules\items\services\item.service.backup-before-item-get-update.js:339:      isSerialized: Boolean(payload.isSerialized),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:340:      hasWarranty: Boolean(payload.hasWarranty),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:341:
+> src\modules\items\services\item.service.backup-before-item-get-update.js:342:      costPrice: normalizeMoney(payload.costPrice),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:343:      price1: normalizeMoney(payload.price1),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:344:      price2: normalizeMoney(payload.price2),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:345:      price3: normalizeMoney(payload.price3),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:346:      price4: normalizeMoney(payload.price4),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:347:      price5: normalizeMoney(payload.price5),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:348:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:349:      minimumStock: normalizeMoney(payload.minimumStock),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:350:      reorderLevel: normalizeMoney(payload.reorderLevel),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:351:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:352:      branchId: branch.id,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:353:      categoryId: category.id,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:354:      unitId: unit.id,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:355:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:356:      createdById: actor.id,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:357:      updatedById: actor.id,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:358:    },
+  src\modules\items\services\item.service.backup-before-item-get-update.js:359:    select: ITEM_SELECT,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:372:  const where = {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:373:    branchId,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:374:    categoryId: filters.categoryId,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:375:    unitId: filters.unitId,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:376:    status: filters.status,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:377:    isSerialized: parseBooleanQuery(filters.isSerialized),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:378:    hasWarranty: parseBooleanQuery(filters.hasWarranty),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:379:  };
+  src\modules\items\services\item.service.backup-before-item-get-update.js:380:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:381:  if (search) {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:382:    where.OR = [
+  src\modules\items\services\item.service.backup-before-item-get-update.js:383:      {
+  src\modules\items\services\item.service.backup-before-item-list.js:11:  modelName: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:12:  status: true,
+> src\modules\items\services\item.service.backup-before-item-list.js:13:  isSerialized: true,
+> src\modules\items\services\item.service.backup-before-item-list.js:14:  hasWarranty: true,
+> src\modules\items\services\item.service.backup-before-item-list.js:15:  costPrice: true,
+> src\modules\items\services\item.service.backup-before-item-list.js:16:  price1: true,
+> src\modules\items\services\item.service.backup-before-item-list.js:17:  price2: true,
+> src\modules\items\services\item.service.backup-before-item-list.js:18:  price3: true,
+> src\modules\items\services\item.service.backup-before-item-list.js:19:  price4: true,
+> src\modules\items\services\item.service.backup-before-item-list.js:20:  price5: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:21:  minimumStock: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:22:  reorderLevel: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:23:
+  src\modules\items\services\item.service.backup-before-item-list.js:24:  branchId: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:25:  branch: {
+  src\modules\items\services\item.service.backup-before-item-list.js:32:  },
+  src\modules\items\services\item.service.backup-before-item-list.js:33:
+> src\modules\items\services\item.service.backup-before-item-list.js:34:  categoryId: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:35:  category: {
+  src\modules\items\services\item.service.backup-before-item-list.js:36:    select: {
+  src\modules\items\services\item.service.backup-before-item-list.js:37:      id: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:38:      categoryCode: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:39:      name: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:43:  },
+  src\modules\items\services\item.service.backup-before-item-list.js:44:
+> src\modules\items\services\item.service.backup-before-item-list.js:45:  unitId: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:46:  unit: {
+  src\modules\items\services\item.service.backup-before-item-list.js:47:    select: {
+  src\modules\items\services\item.service.backup-before-item-list.js:48:      id: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:49:      unitCode: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:50:      name: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:155:};
+  src\modules\items\services\item.service.backup-before-item-list.js:156:
+> src\modules\items\services\item.service.backup-before-item-list.js:157:const getActiveCategoryOrThrow = async (categoryId) => {
+  src\modules\items\services\item.service.backup-before-item-list.js:158:  const category = await prisma.itemCategory.findUnique({
+  src\modules\items\services\item.service.backup-before-item-list.js:159:    where: {
+> src\modules\items\services\item.service.backup-before-item-list.js:160:      id: categoryId,
+  src\modules\items\services\item.service.backup-before-item-list.js:161:    },
+  src\modules\items\services\item.service.backup-before-item-list.js:162:    select: {
+  src\modules\items\services\item.service.backup-before-item-list.js:163:      id: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:164:      categoryCode: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:165:      name: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:191:};
+  src\modules\items\services\item.service.backup-before-item-list.js:192:
+> src\modules\items\services\item.service.backup-before-item-list.js:193:const getActiveUnitOrThrow = async (unitId) => {
+  src\modules\items\services\item.service.backup-before-item-list.js:194:  const unit = await prisma.unit.findUnique({
+  src\modules\items\services\item.service.backup-before-item-list.js:195:    where: {
+> src\modules\items\services\item.service.backup-before-item-list.js:196:      id: unitId,
+  src\modules\items\services\item.service.backup-before-item-list.js:197:    },
+  src\modules\items\services\item.service.backup-before-item-list.js:198:    select: {
+  src\modules\items\services\item.service.backup-before-item-list.js:199:      id: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:200:      unitCode: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:201:      name: true,
+  src\modules\items\services\item.service.backup-before-item-list.js:281:  const branchId = getActorBranchIdForCreate(actor, payload.branchId);
+  src\modules\items\services\item.service.backup-before-item-list.js:282:  const branch = await getActiveBranchOrThrow(branchId);
+> src\modules\items\services\item.service.backup-before-item-list.js:283:  const category = await getActiveCategoryOrThrow(payload.categoryId);
+> src\modules\items\services\item.service.backup-before-item-list.js:284:  const unit = await getActiveUnitOrThrow(payload.unitId);
+  src\modules\items\services\item.service.backup-before-item-list.js:285:
+  src\modules\items\services\item.service.backup-before-item-list.js:286:  assertCategoryBelongsToBranch(category, branch);
+  src\modules\items\services\item.service.backup-before-item-list.js:287:
+  src\modules\items\services\item.service.backup-before-item-list.js:288:  const itemCode = payload.itemCode
+  src\modules\items\services\item.service.backup-before-item-list.js:289:    ? payload.itemCode.trim().toUpperCase()
+  src\modules\items\services\item.service.backup-before-item-list.js:301:      modelName: normalizeOptionalString(payload.modelName),
+  src\modules\items\services\item.service.backup-before-item-list.js:302:      status: "ACTIVE",
+> src\modules\items\services\item.service.backup-before-item-list.js:303:      isSerialized: Boolean(payload.isSerialized),
+> src\modules\items\services\item.service.backup-before-item-list.js:304:      hasWarranty: Boolean(payload.hasWarranty),
+  src\modules\items\services\item.service.backup-before-item-list.js:305:
+> src\modules\items\services\item.service.backup-before-item-list.js:306:      costPrice: normalizeMoney(payload.costPrice),
+> src\modules\items\services\item.service.backup-before-item-list.js:307:      price1: normalizeMoney(payload.price1),
+> src\modules\items\services\item.service.backup-before-item-list.js:308:      price2: normalizeMoney(payload.price2),
+> src\modules\items\services\item.service.backup-before-item-list.js:309:      price3: normalizeMoney(payload.price3),
+> src\modules\items\services\item.service.backup-before-item-list.js:310:      price4: normalizeMoney(payload.price4),
+> src\modules\items\services\item.service.backup-before-item-list.js:311:      price5: normalizeMoney(payload.price5),
+  src\modules\items\services\item.service.backup-before-item-list.js:312:
+  src\modules\items\services\item.service.backup-before-item-list.js:313:      minimumStock: normalizeMoney(payload.minimumStock),
+  src\modules\items\services\item.service.backup-before-item-list.js:314:      reorderLevel: normalizeMoney(payload.reorderLevel),
+  src\modules\items\services\item.service.backup-before-item-list.js:315:
+  src\modules\items\services\item.service.backup-before-item-list.js:316:      branchId: branch.id,
+> src\modules\items\services\item.service.backup-before-item-list.js:317:      categoryId: category.id,
+> src\modules\items\services\item.service.backup-before-item-list.js:318:      unitId: unit.id,
+  src\modules\items\services\item.service.backup-before-item-list.js:319:
+  src\modules\items\services\item.service.backup-before-item-list.js:320:      createdById: actor.id,
+  src\modules\items\services\item.service.backup-before-item-list.js:321:      updatedById: actor.id,
+  src\modules\items\services\item.service.backup-before-item-list.js:322:    },
+  src\modules\items\services\item.service.backup-before-item-list.js:323:    select: ITEM_SELECT,
+  src\modules\items\services\item.service.js:11:  modelName: true,
+  src\modules\items\services\item.service.js:12:  status: true,
+> src\modules\items\services\item.service.js:13:  isSerialized: true,
+> src\modules\items\services\item.service.js:14:  hasWarranty: true,
+> src\modules\items\services\item.service.js:15:  costPrice: true,
+> src\modules\items\services\item.service.js:16:  price1: true,
+> src\modules\items\services\item.service.js:17:  price2: true,
+> src\modules\items\services\item.service.js:18:  price3: true,
+> src\modules\items\services\item.service.js:19:  price4: true,
+> src\modules\items\services\item.service.js:20:  price5: true,
+  src\modules\items\services\item.service.js:21:  minimumStock: true,
+  src\modules\items\services\item.service.js:22:  reorderLevel: true,
+  src\modules\items\services\item.service.js:23:
+  src\modules\items\services\item.service.js:24:  branchId: true,
+  src\modules\items\services\item.service.js:25:  branch: {
+  src\modules\items\services\item.service.js:32:  },
+  src\modules\items\services\item.service.js:33:
+> src\modules\items\services\item.service.js:34:  categoryId: true,
+  src\modules\items\services\item.service.js:35:  category: {
+  src\modules\items\services\item.service.js:36:    select: {
+  src\modules\items\services\item.service.js:37:      id: true,
+  src\modules\items\services\item.service.js:38:      categoryCode: true,
+  src\modules\items\services\item.service.js:39:      name: true,
+  src\modules\items\services\item.service.js:43:  },
+  src\modules\items\services\item.service.js:44:
+> src\modules\items\services\item.service.js:45:  unitId: true,
+  src\modules\items\services\item.service.js:46:  unit: {
+  src\modules\items\services\item.service.js:47:    select: {
+  src\modules\items\services\item.service.js:48:      id: true,
+  src\modules\items\services\item.service.js:49:      unitCode: true,
+  src\modules\items\services\item.service.js:50:      name: true,
+  src\modules\items\services\item.service.js:217:};
+  src\modules\items\services\item.service.js:218:
+> src\modules\items\services\item.service.js:219:const getActiveCategoryOrThrow = async (categoryId) => {
+  src\modules\items\services\item.service.js:220:  const category = await prisma.itemCategory.findUnique({
+  src\modules\items\services\item.service.js:221:    where: {
+> src\modules\items\services\item.service.js:222:      id: categoryId,
+  src\modules\items\services\item.service.js:223:    },
+  src\modules\items\services\item.service.js:224:    select: {
+  src\modules\items\services\item.service.js:225:      id: true,
+  src\modules\items\services\item.service.js:226:      categoryCode: true,
+  src\modules\items\services\item.service.js:227:      name: true,
+  src\modules\items\services\item.service.js:253:};
+  src\modules\items\services\item.service.js:254:
+> src\modules\items\services\item.service.js:255:const getActiveUnitOrThrow = async (unitId) => {
+  src\modules\items\services\item.service.js:256:  const unit = await prisma.unit.findUnique({
+  src\modules\items\services\item.service.js:257:    where: {
+> src\modules\items\services\item.service.js:258:      id: unitId,
+  src\modules\items\services\item.service.js:259:    },
+  src\modules\items\services\item.service.js:260:    select: {
+  src\modules\items\services\item.service.js:261:      id: true,
+  src\modules\items\services\item.service.js:262:      unitCode: true,
+  src\modules\items\services\item.service.js:263:      name: true,
+  src\modules\items\services\item.service.js:369:  const branchId = getActorBranchIdForCreate(actor, payload.branchId);
+  src\modules\items\services\item.service.js:370:  const branch = await getActiveBranchOrThrow(branchId);
+> src\modules\items\services\item.service.js:371:  const category = await getActiveCategoryOrThrow(payload.categoryId);
+> src\modules\items\services\item.service.js:372:  const unit = await getActiveUnitOrThrow(payload.unitId);
+  src\modules\items\services\item.service.js:373:
+  src\modules\items\services\item.service.js:374:  assertCategoryBelongsToBranchId(category, branch.id);
+  src\modules\items\services\item.service.js:375:
+  src\modules\items\services\item.service.js:376:  const itemCode = payload.itemCode
+  src\modules\items\services\item.service.js:377:    ? payload.itemCode.trim().toUpperCase()
+  src\modules\items\services\item.service.js:389:      modelName: normalizeOptionalString(payload.modelName),
+  src\modules\items\services\item.service.js:390:      status: "ACTIVE",
+> src\modules\items\services\item.service.js:391:      isSerialized: Boolean(payload.isSerialized),
+> src\modules\items\services\item.service.js:392:      hasWarranty: Boolean(payload.hasWarranty),
+  src\modules\items\services\item.service.js:393:
+> src\modules\items\services\item.service.js:394:      costPrice: normalizeMoney(payload.costPrice),
+> src\modules\items\services\item.service.js:395:      price1: normalizeMoney(payload.price1),
+> src\modules\items\services\item.service.js:396:      price2: normalizeMoney(payload.price2),
+> src\modules\items\services\item.service.js:397:      price3: normalizeMoney(payload.price3),
+> src\modules\items\services\item.service.js:398:      price4: normalizeMoney(payload.price4),
+> src\modules\items\services\item.service.js:399:      price5: normalizeMoney(payload.price5),
+  src\modules\items\services\item.service.js:400:
+  src\modules\items\services\item.service.js:401:      minimumStock: normalizeMoney(payload.minimumStock),
+  src\modules\items\services\item.service.js:402:      reorderLevel: normalizeMoney(payload.reorderLevel),
+  src\modules\items\services\item.service.js:403:
+  src\modules\items\services\item.service.js:404:      branchId: branch.id,
+> src\modules\items\services\item.service.js:405:      categoryId: category.id,
+> src\modules\items\services\item.service.js:406:      unitId: unit.id,
+  src\modules\items\services\item.service.js:407:
+  src\modules\items\services\item.service.js:408:      createdById: actor.id,
+  src\modules\items\services\item.service.js:409:      updatedById: actor.id,
+  src\modules\items\services\item.service.js:410:    },
+  src\modules\items\services\item.service.js:411:    select: ITEM_SELECT,
+  src\modules\items\services\item.service.js:424:  const where = {
+  src\modules\items\services\item.service.js:425:    branchId,
+> src\modules\items\services\item.service.js:426:    categoryId: filters.categoryId,
+> src\modules\items\services\item.service.js:427:    unitId: filters.unitId,
+  src\modules\items\services\item.service.js:428:    status: filters.status,
+> src\modules\items\services\item.service.js:429:    isSerialized: parseBooleanQuery(filters.isSerialized),
+> src\modules\items\services\item.service.js:430:    hasWarranty: parseBooleanQuery(filters.hasWarranty),
+  src\modules\items\services\item.service.js:431:  };
+  src\modules\items\services\item.service.js:432:
+  src\modules\items\services\item.service.js:433:  if (search) {
+  src\modules\items\services\item.service.js:434:    where.OR = [
+  src\modules\items\services\item.service.js:435:      {
+  src\modules\items\services\item.service.js:580:  }
+  src\modules\items\services\item.service.js:581:
+> src\modules\items\services\item.service.js:582:  if (payload.isSerialized !== undefined) {
+> src\modules\items\services\item.service.js:583:    updateData.isSerialized = Boolean(payload.isSerialized);
+  src\modules\items\services\item.service.js:584:  }
+  src\modules\items\services\item.service.js:585:
+> src\modules\items\services\item.service.js:586:  if (payload.hasWarranty !== undefined) {
+> src\modules\items\services\item.service.js:587:    updateData.hasWarranty = Boolean(payload.hasWarranty);
+  src\modules\items\services\item.service.js:588:  }
+  src\modules\items\services\item.service.js:589:
+> src\modules\items\services\item.service.js:590:  if (payload.categoryId !== undefined) {
+> src\modules\items\services\item.service.js:591:    const category = await getActiveCategoryOrThrow(payload.categoryId);
+  src\modules\items\services\item.service.js:592:
+  src\modules\items\services\item.service.js:593:    assertCategoryBelongsToBranchId(category, existingItem.branchId);
+  src\modules\items\services\item.service.js:594:
+> src\modules\items\services\item.service.js:595:    updateData.categoryId = category.id;
+  src\modules\items\services\item.service.js:596:  }
+  src\modules\items\services\item.service.js:597:
+> src\modules\items\services\item.service.js:598:  if (payload.unitId !== undefined) {
+> src\modules\items\services\item.service.js:599:    const unit = await getActiveUnitOrThrow(payload.unitId);
+  src\modules\items\services\item.service.js:600:
+> src\modules\items\services\item.service.js:601:    updateData.unitId = unit.id;
+  src\modules\items\services\item.service.js:602:  }
+  src\modules\items\services\item.service.js:603:
+> src\modules\items\services\item.service.js:604:  if (payload.costPrice !== undefined) {
+> src\modules\items\services\item.service.js:605:    updateData.costPrice = normalizeMoney(payload.costPrice);
+  src\modules\items\services\item.service.js:606:  }
+  src\modules\items\services\item.service.js:607:
+> src\modules\items\services\item.service.js:608:  if (payload.price1 !== undefined) {
+> src\modules\items\services\item.service.js:609:    updateData.price1 = normalizeMoney(payload.price1);
+  src\modules\items\services\item.service.js:610:  }
+  src\modules\items\services\item.service.js:611:
+> src\modules\items\services\item.service.js:612:  if (payload.price2 !== undefined) {
+> src\modules\items\services\item.service.js:613:    updateData.price2 = normalizeMoney(payload.price2);
+  src\modules\items\services\item.service.js:614:  }
+  src\modules\items\services\item.service.js:615:
+> src\modules\items\services\item.service.js:616:  if (payload.price3 !== undefined) {
+> src\modules\items\services\item.service.js:617:    updateData.price3 = normalizeMoney(payload.price3);
+  src\modules\items\services\item.service.js:618:  }
+  src\modules\items\services\item.service.js:619:
+> src\modules\items\services\item.service.js:620:  if (payload.price4 !== undefined) {
+> src\modules\items\services\item.service.js:621:    updateData.price4 = normalizeMoney(payload.price4);
+  src\modules\items\services\item.service.js:622:  }
+  src\modules\items\services\item.service.js:623:
+> src\modules\items\services\item.service.js:624:  if (payload.price5 !== undefined) {
+> src\modules\items\services\item.service.js:625:    updateData.price5 = normalizeMoney(payload.price5);
+  src\modules\items\services\item.service.js:626:  }
+  src\modules\items\services\item.service.js:627:
+  src\modules\items\services\item.service.js:628:  if (payload.minimumStock !== undefined) {
+  src\modules\items\services\item.service.js:629:    updateData.minimumStock = normalizeMoney(payload.minimumStock);
+  src\modules\items\services\item.service.js:630:  }
+  src\modules\items\utils\itemPricingPolicy.js:22:  }
+  src\modules\items\utils\itemPricingPolicy.js:23:
+> src\modules\items\utils\itemPricingPolicy.js:24:  const { costPrice, ...safeItem } = item;
+  src\modules\items\utils\itemPricingPolicy.js:25:
+  src\modules\items\utils\itemPricingPolicy.js:26:  return safeItem;
+  src\modules\items\utils\itemPricingPolicy.js:27:};
+  src\modules\items\utils\itemPricingPolicy.js:28:
+  src\modules\items\utils\itemPricingPolicy.js:29:const sanitizeItemsPricingForActor = (items, actor) => {
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:47:    modelName: optionalText("Model name"),
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:48:
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:49:    categoryId: z.string().trim().min(1, "Category ID is required"),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:50:    unitId: z.string().trim().min(1, "Unit ID is required"),
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:51:
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:52:    isSerialized: z.boolean().optional(),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:53:    hasWarranty: z.boolean().optional(),
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:54:
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:55:    costPrice: nonNegativeMoney("Cost price"),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:56:    price1: nonNegativeMoney("Price 1"),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:57:    price2: nonNegativeMoney("Price 2"),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:58:    price3: nonNegativeMoney("Price 3"),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:59:    price4: nonNegativeMoney("Price 4"),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:60:    price5: nonNegativeMoney("Price 5"),
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:61:
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:62:    minimumStock: nonNegativeMoney("Minimum stock"),
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:63:    reorderLevel: nonNegativeMoney("Reorder level"),
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:64:  }),
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:65:});
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:70:
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:71:    branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:72:    categoryId: z
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:73:      .string()
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:74:      .trim()
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:75:      .min(1, "Category ID cannot be empty")
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:76:      .optional(),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:77:    unitId: z.string().trim().min(1, "Unit ID cannot be empty").optional(),
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:78:
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:79:    status: z.enum(catalogStatusValues).optional(),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:80:    isSerialized: z.enum(booleanQueryValues).optional(),
+> src\modules\items\validations\item.validation.backup-before-item-get-update.js:81:    hasWarranty: z.enum(booleanQueryValues).optional(),
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:82:
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:83:    page: z
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:84:      .string()
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:85:      .trim()
+  src\modules\items\validations\item.validation.backup-before-item-get-update.js:86:      .regex(/^[1-9][0-9]*$/, "Page must be a positive number")
+  src\modules\items\validations\item.validation.backup-before-item-list.js:44:    modelName: optionalText("Model name"),
+  src\modules\items\validations\item.validation.backup-before-item-list.js:45:
+> src\modules\items\validations\item.validation.backup-before-item-list.js:46:    categoryId: z.string().trim().min(1, "Category ID is required"),
+> src\modules\items\validations\item.validation.backup-before-item-list.js:47:    unitId: z.string().trim().min(1, "Unit ID is required"),
+  src\modules\items\validations\item.validation.backup-before-item-list.js:48:
+> src\modules\items\validations\item.validation.backup-before-item-list.js:49:    isSerialized: z.boolean().optional(),
+> src\modules\items\validations\item.validation.backup-before-item-list.js:50:    hasWarranty: z.boolean().optional(),
+  src\modules\items\validations\item.validation.backup-before-item-list.js:51:
+> src\modules\items\validations\item.validation.backup-before-item-list.js:52:    costPrice: nonNegativeMoney("Cost price"),
+> src\modules\items\validations\item.validation.backup-before-item-list.js:53:    price1: nonNegativeMoney("Price 1"),
+> src\modules\items\validations\item.validation.backup-before-item-list.js:54:    price2: nonNegativeMoney("Price 2"),
+> src\modules\items\validations\item.validation.backup-before-item-list.js:55:    price3: nonNegativeMoney("Price 3"),
+> src\modules\items\validations\item.validation.backup-before-item-list.js:56:    price4: nonNegativeMoney("Price 4"),
+> src\modules\items\validations\item.validation.backup-before-item-list.js:57:    price5: nonNegativeMoney("Price 5"),
+  src\modules\items\validations\item.validation.backup-before-item-list.js:58:
+  src\modules\items\validations\item.validation.backup-before-item-list.js:59:    minimumStock: nonNegativeMoney("Minimum stock"),
+  src\modules\items\validations\item.validation.backup-before-item-list.js:60:    reorderLevel: nonNegativeMoney("Reorder level"),
+  src\modules\items\validations\item.validation.backup-before-item-list.js:61:  }),
+  src\modules\items\validations\item.validation.backup-before-item-list.js:62:});
+  src\modules\items\validations\item.validation.js:72:    modelName: optionalText("Model name"),
+  src\modules\items\validations\item.validation.js:73:
+> src\modules\items\validations\item.validation.js:74:    categoryId: z.string().trim().min(1, "Category ID is required"),
+> src\modules\items\validations\item.validation.js:75:    unitId: z.string().trim().min(1, "Unit ID is required"),
+  src\modules\items\validations\item.validation.js:76:
+> src\modules\items\validations\item.validation.js:77:    isSerialized: z.boolean().optional(),
+> src\modules\items\validations\item.validation.js:78:    hasWarranty: z.boolean().optional(),
+  src\modules\items\validations\item.validation.js:79:
+> src\modules\items\validations\item.validation.js:80:    costPrice: nonNegativeMoney("Cost price"),
+> src\modules\items\validations\item.validation.js:81:    price1: nonNegativeMoney("Price 1"),
+> src\modules\items\validations\item.validation.js:82:    price2: nonNegativeMoney("Price 2"),
+> src\modules\items\validations\item.validation.js:83:    price3: nonNegativeMoney("Price 3"),
+> src\modules\items\validations\item.validation.js:84:    price4: nonNegativeMoney("Price 4"),
+> src\modules\items\validations\item.validation.js:85:    price5: nonNegativeMoney("Price 5"),
+  src\modules\items\validations\item.validation.js:86:
+  src\modules\items\validations\item.validation.js:87:    minimumStock: nonNegativeMoney("Minimum stock"),
+  src\modules\items\validations\item.validation.js:88:    reorderLevel: nonNegativeMoney("Reorder level"),
+  src\modules\items\validations\item.validation.js:89:  }),
+  src\modules\items\validations\item.validation.js:90:});
+  src\modules\items\validations\item.validation.js:95:
+  src\modules\items\validations\item.validation.js:96:    branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
+> src\modules\items\validations\item.validation.js:97:    categoryId: z
+  src\modules\items\validations\item.validation.js:98:      .string()
+  src\modules\items\validations\item.validation.js:99:      .trim()
+  src\modules\items\validations\item.validation.js:100:      .min(1, "Category ID cannot be empty")
+  src\modules\items\validations\item.validation.js:101:      .optional(),
+> src\modules\items\validations\item.validation.js:102:    unitId: z.string().trim().min(1, "Unit ID cannot be empty").optional(),
+  src\modules\items\validations\item.validation.js:103:
+  src\modules\items\validations\item.validation.js:104:    status: z.enum(catalogStatusValues).optional(),
+> src\modules\items\validations\item.validation.js:105:    isSerialized: z.enum(booleanQueryValues).optional(),
+> src\modules\items\validations\item.validation.js:106:    hasWarranty: z.enum(booleanQueryValues).optional(),
+  src\modules\items\validations\item.validation.js:107:
+  src\modules\items\validations\item.validation.js:108:    page: z
+  src\modules\items\validations\item.validation.js:109:      .string()
+  src\modules\items\validations\item.validation.js:110:      .trim()
+  src\modules\items\validations\item.validation.js:111:      .regex(/^[1-9][0-9]*$/, "Page must be a positive number")
+  src\modules\items\validations\item.validation.js:126:});
+  src\modules\items\validations\item.validation.js:127:
+> src\modules\items\validations\item.validation.js:128:const updateItemSchema = z.object({
+  src\modules\items\validations\item.validation.js:129:  params: z.object({
+  src\modules\items\validations\item.validation.js:130:    id: z.string().trim().min(1, "Item ID is required"),
+  src\modules\items\validations\item.validation.js:131:  }),
+  src\modules\items\validations\item.validation.js:132:  body: z.object({
+  src\modules\items\validations\item.validation.js:133:    itemCode: z
+  src\modules\items\validations\item.validation.js:144:    modelName: optionalText("Model name"),
+  src\modules\items\validations\item.validation.js:145:
+> src\modules\items\validations\item.validation.js:146:    categoryId: z
+  src\modules\items\validations\item.validation.js:147:      .string()
+  src\modules\items\validations\item.validation.js:148:      .trim()
+  src\modules\items\validations\item.validation.js:149:      .min(1, "Category ID cannot be empty")
+  src\modules\items\validations\item.validation.js:150:      .optional(),
+  src\modules\items\validations\item.validation.js:151:
+> src\modules\items\validations\item.validation.js:152:    unitId: z.string().trim().min(1, "Unit ID cannot be empty").optional(),
+  src\modules\items\validations\item.validation.js:153:
+  src\modules\items\validations\item.validation.js:154:    status: z.enum(catalogStatusValues).optional(),
+  src\modules\items\validations\item.validation.js:155:
+> src\modules\items\validations\item.validation.js:156:    isSerialized: z.boolean().optional(),
+> src\modules\items\validations\item.validation.js:157:    hasWarranty: z.boolean().optional(),
+  src\modules\items\validations\item.validation.js:158:
+> src\modules\items\validations\item.validation.js:159:    costPrice: optionalNonNegativeMoney("Cost price"),
+> src\modules\items\validations\item.validation.js:160:    price1: optionalNonNegativeMoney("Price 1"),
+> src\modules\items\validations\item.validation.js:161:    price2: optionalNonNegativeMoney("Price 2"),
+> src\modules\items\validations\item.validation.js:162:    price3: optionalNonNegativeMoney("Price 3"),
+> src\modules\items\validations\item.validation.js:163:    price4: optionalNonNegativeMoney("Price 4"),
+> src\modules\items\validations\item.validation.js:164:    price5: optionalNonNegativeMoney("Price 5"),
+  src\modules\items\validations\item.validation.js:165:
+  src\modules\items\validations\item.validation.js:166:    minimumStock: optionalNonNegativeMoney("Minimum stock"),
+  src\modules\items\validations\item.validation.js:167:    reorderLevel: optionalNonNegativeMoney("Reorder level"),
+  src\modules\items\validations\item.validation.js:168:  }),
+  src\modules\items\validations\item.validation.js:169:});
+  src\modules\items\validations\item.validation.js:173:  listItemsSchema,
+  src\modules\items\validations\item.validation.js:174:  itemIdParamSchema,
+> src\modules\items\validations\item.validation.js:175:  updateItemSchema,
+  src\modules\items\validations\item.validation.js:176:};
+
+
+
+
+===== ITEM UPDATE SERVICE =====
+
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:30:  });
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:31:});
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:32:
+> src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:33:const updateItemById = asyncHandler(async (req, res) => {
+> src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:34:  const item = await itemService.updateItemById(req.params.id, req.body, req.user);
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:35:
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:36:  return sendSuccess(res, {
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:37:    message: "Item updated successfully",
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:38:    data: item,
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:39:  });
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:40:});
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:41:
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:42:module.exports = {
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:43:  createItem,
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:44:  listItems,
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:45:  getItemById,
+> src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:46:  updateItemById,
+  src\modules\items\controllers\item.controller.backup-before-pricing-permissions.js:47:};
+  src\modules\items\controllers\item.controller.js:41:  });
+  src\modules\items\controllers\item.controller.js:42:});
+  src\modules\items\controllers\item.controller.js:43:
+> src\modules\items\controllers\item.controller.js:44:const updateItemById = asyncHandler(async (req, res) => {
+> src\modules\items\controllers\item.controller.js:45:  const item = await itemService.updateItemById(req.params.id, req.body, req.user);
+  src\modules\items\controllers\item.controller.js:46:  const safeItem = sanitizeItemPricingForActor(item, req.user);
+  src\modules\items\controllers\item.controller.js:47:
+  src\modules\items\controllers\item.controller.js:48:  return sendSuccess(res, {
+  src\modules\items\controllers\item.controller.js:49:    message: "Item updated successfully",
+  src\modules\items\controllers\item.controller.js:50:    data: safeItem,
+  src\modules\items\controllers\item.controller.js:51:  });
+  src\modules\items\controllers\item.controller.js:52:});
+  src\modules\items\controllers\item.controller.js:53:
+  src\modules\items\controllers\item.controller.js:55:  createItem,
+  src\modules\items\controllers\item.controller.js:56:  listItems,
+  src\modules\items\controllers\item.controller.js:57:  getItemById,
+> src\modules\items\controllers\item.controller.js:58:  updateItemById,
+  src\modules\items\controllers\item.controller.js:59:};
+  src\modules\items\routes\item.routes.backup-before-item-get-update.js:23:router.post(
+  src\modules\items\routes\item.routes.backup-before-item-get-update.js:24:  "/",
+  src\modules\items\routes\item.routes.backup-before-item-get-update.js:25:  protect,
+> src\modules\items\routes\item.routes.backup-before-item-get-update.js:26:  requirePermission(PERMISSIONS.MANAGE_CATALOG),
+  src\modules\items\routes\item.routes.backup-before-item-get-update.js:27:  validate(createItemSchema),
+  src\modules\items\routes\item.routes.backup-before-item-get-update.js:28:  itemController.createItem
+  src\modules\items\routes\item.routes.backup-before-item-get-update.js:29:);
+  src\modules\items\routes\item.routes.backup-before-item-get-update.js:30:
+  src\modules\items\routes\item.routes.backup-before-item-get-update.js:31:module.exports = router;
+  src\modules\items\routes\item.routes.backup-before-item-list.js:12:router.post(
+  src\modules\items\routes\item.routes.backup-before-item-list.js:13:  "/",
+  src\modules\items\routes\item.routes.backup-before-item-list.js:14:  protect,
+> src\modules\items\routes\item.routes.backup-before-item-list.js:15:  requirePermission(PERMISSIONS.MANAGE_CATALOG),
+  src\modules\items\routes\item.routes.backup-before-item-list.js:16:  validate(createItemSchema),
+  src\modules\items\routes\item.routes.backup-before-item-list.js:17:  itemController.createItem
+  src\modules\items\routes\item.routes.backup-before-item-list.js:18:);
+  src\modules\items\routes\item.routes.backup-before-item-list.js:19:
+  src\modules\items\routes\item.routes.backup-before-item-list.js:20:module.exports = router;
+  src\modules\items\routes\item.routes.js:25:router.post(
+  src\modules\items\routes\item.routes.js:26:  "/",
+  src\modules\items\routes\item.routes.js:27:  protect,
+> src\modules\items\routes\item.routes.js:28:  requirePermission(PERMISSIONS.MANAGE_CATALOG),
+  src\modules\items\routes\item.routes.js:29:  validate(createItemSchema),
+  src\modules\items\routes\item.routes.js:30:  itemController.createItem
+  src\modules\items\routes\item.routes.js:31:);
+  src\modules\items\routes\item.routes.js:32:
+  src\modules\items\routes\item.routes.js:33:router.get(
+  src\modules\items\routes\item.routes.js:34:  "/:id",
+  src\modules\items\routes\item.routes.js:35:  protect,
+  src\modules\items\routes\item.routes.js:36:  requirePermission(PERMISSIONS.VIEW_CATALOG),
+  src\modules\items\routes\item.routes.js:41:router.patch(
+  src\modules\items\routes\item.routes.js:42:  "/:id",
+  src\modules\items\routes\item.routes.js:43:  protect,
+> src\modules\items\routes\item.routes.js:44:  requirePermission(PERMISSIONS.MANAGE_CATALOG),
+  src\modules\items\routes\item.routes.js:45:  validate(updateItemSchema),
+> src\modules\items\routes\item.routes.js:46:  itemController.updateItemById
+  src\modules\items\routes\item.routes.js:47:);
+  src\modules\items\routes\item.routes.js:48:
+  src\modules\items\routes\item.routes.js:49:module.exports = router;
+  src\modules\items\services\item.service.backup-before-item-get-update.js:86:  return trimmed.length > 0 ? trimmed : null;
+  src\modules\items\services\item.service.backup-before-item-get-update.js:87:};
+  src\modules\items\services\item.service.backup-before-item-get-update.js:88:
+> src\modules\items\services\item.service.backup-before-item-get-update.js:89:const normalizeMoney = (value) => {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:90:  if (value === undefined || value === null || value === "") {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:91:    return "0.00";
+  src\modules\items\services\item.service.backup-before-item-get-update.js:92:  }
+  src\modules\items\services\item.service.backup-before-item-get-update.js:93:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:94:  return Number(value).toFixed(2);
+  src\modules\items\services\item.service.backup-before-item-get-update.js:95:};
+  src\modules\items\services\item.service.backup-before-item-get-update.js:96:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:97:const parseBooleanQuery = (value) => {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:131:    throw new AppError(
+  src\modules\items\services\item.service.backup-before-item-get-update.js:132:      "You can only create items in your assigned branch",
+  src\modules\items\services\item.service.backup-before-item-get-update.js:133:      403,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:134:      "BRANCH_ACCESS_DENIED"
+  src\modules\items\services\item.service.backup-before-item-get-update.js:135:    );
+  src\modules\items\services\item.service.backup-before-item-get-update.js:136:  }
+  src\modules\items\services\item.service.backup-before-item-get-update.js:137:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:138:  return actor.branchId;
+  src\modules\items\services\item.service.backup-before-item-get-update.js:139:};
+  src\modules\items\services\item.service.backup-before-item-get-update.js:140:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:141:const getBranchIdForList = (actor, requestedBranchId) => {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:142:  if (!actor) {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:159:    throw new AppError(
+  src\modules\items\services\item.service.backup-before-item-get-update.js:160:      "You can only view items in your assigned branch",
+  src\modules\items\services\item.service.backup-before-item-get-update.js:161:      403,
+> src\modules\items\services\item.service.backup-before-item-get-update.js:162:      "BRANCH_ACCESS_DENIED"
+  src\modules\items\services\item.service.backup-before-item-get-update.js:163:    );
+  src\modules\items\services\item.service.backup-before-item-get-update.js:164:  }
+  src\modules\items\services\item.service.backup-before-item-get-update.js:165:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:166:  return actor.branchId;
+  src\modules\items\services\item.service.backup-before-item-get-update.js:167:};
+  src\modules\items\services\item.service.backup-before-item-get-update.js:168:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:169:const getActiveBranchOrThrow = async (branchId) => {
+  src\modules\items\services\item.service.backup-before-item-get-update.js:170:  const branch = await prisma.branch.findUnique({
+  src\modules\items\services\item.service.backup-before-item-get-update.js:339:      isSerialized: Boolean(payload.isSerialized),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:340:      hasWarranty: Boolean(payload.hasWarranty),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:341:
+> src\modules\items\services\item.service.backup-before-item-get-update.js:342:      costPrice: normalizeMoney(payload.costPrice),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:343:      price1: normalizeMoney(payload.price1),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:344:      price2: normalizeMoney(payload.price2),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:345:      price3: normalizeMoney(payload.price3),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:346:      price4: normalizeMoney(payload.price4),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:347:      price5: normalizeMoney(payload.price5),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:348:
+> src\modules\items\services\item.service.backup-before-item-get-update.js:349:      minimumStock: normalizeMoney(payload.minimumStock),
+> src\modules\items\services\item.service.backup-before-item-get-update.js:350:      reorderLevel: normalizeMoney(payload.reorderLevel),
+  src\modules\items\services\item.service.backup-before-item-get-update.js:351:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:352:      branchId: branch.id,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:353:      categoryId: category.id,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:354:      unitId: unit.id,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:355:
+  src\modules\items\services\item.service.backup-before-item-get-update.js:356:      createdById: actor.id,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:357:      updatedById: actor.id,
+  src\modules\items\services\item.service.backup-before-item-get-update.js:358:    },
+  src\modules\items\services\item.service.backup-before-item-list.js:86:  return trimmed.length > 0 ? trimmed : null;
+  src\modules\items\services\item.service.backup-before-item-list.js:87:};
+  src\modules\items\services\item.service.backup-before-item-list.js:88:
+> src\modules\items\services\item.service.backup-before-item-list.js:89:const normalizeMoney = (value) => {
+  src\modules\items\services\item.service.backup-before-item-list.js:90:  if (value === undefined || value === null || value === "") {
+  src\modules\items\services\item.service.backup-before-item-list.js:91:    return "0.00";
+  src\modules\items\services\item.service.backup-before-item-list.js:92:  }
+  src\modules\items\services\item.service.backup-before-item-list.js:93:
+  src\modules\items\services\item.service.backup-before-item-list.js:94:  return Number(value).toFixed(2);
+  src\modules\items\services\item.service.backup-before-item-list.js:95:};
+  src\modules\items\services\item.service.backup-before-item-list.js:96:
+  src\modules\items\services\item.service.backup-before-item-list.js:97:const getActorBranchIdForCreate = (actor, requestedBranchId) => {
+  src\modules\items\services\item.service.backup-before-item-list.js:123:    throw new AppError(
+  src\modules\items\services\item.service.backup-before-item-list.js:124:      "You can only create items in your assigned branch",
+  src\modules\items\services\item.service.backup-before-item-list.js:125:      403,
+> src\modules\items\services\item.service.backup-before-item-list.js:126:      "BRANCH_ACCESS_DENIED"
+  src\modules\items\services\item.service.backup-before-item-list.js:127:    );
+  src\modules\items\services\item.service.backup-before-item-list.js:128:  }
+  src\modules\items\services\item.service.backup-before-item-list.js:129:
+  src\modules\items\services\item.service.backup-before-item-list.js:130:  return actor.branchId;
+  src\modules\items\services\item.service.backup-before-item-list.js:131:};
+  src\modules\items\services\item.service.backup-before-item-list.js:132:
+  src\modules\items\services\item.service.backup-before-item-list.js:133:const getActiveBranchOrThrow = async (branchId) => {
+  src\modules\items\services\item.service.backup-before-item-list.js:134:  const branch = await prisma.branch.findUnique({
+  src\modules\items\services\item.service.backup-before-item-list.js:303:      isSerialized: Boolean(payload.isSerialized),
+  src\modules\items\services\item.service.backup-before-item-list.js:304:      hasWarranty: Boolean(payload.hasWarranty),
+  src\modules\items\services\item.service.backup-before-item-list.js:305:
+> src\modules\items\services\item.service.backup-before-item-list.js:306:      costPrice: normalizeMoney(payload.costPrice),
+> src\modules\items\services\item.service.backup-before-item-list.js:307:      price1: normalizeMoney(payload.price1),
+> src\modules\items\services\item.service.backup-before-item-list.js:308:      price2: normalizeMoney(payload.price2),
+> src\modules\items\services\item.service.backup-before-item-list.js:309:      price3: normalizeMoney(payload.price3),
+> src\modules\items\services\item.service.backup-before-item-list.js:310:      price4: normalizeMoney(payload.price4),
+> src\modules\items\services\item.service.backup-before-item-list.js:311:      price5: normalizeMoney(payload.price5),
+  src\modules\items\services\item.service.backup-before-item-list.js:312:
+> src\modules\items\services\item.service.backup-before-item-list.js:313:      minimumStock: normalizeMoney(payload.minimumStock),
+> src\modules\items\services\item.service.backup-before-item-list.js:314:      reorderLevel: normalizeMoney(payload.reorderLevel),
+  src\modules\items\services\item.service.backup-before-item-list.js:315:
+  src\modules\items\services\item.service.backup-before-item-list.js:316:      branchId: branch.id,
+  src\modules\items\services\item.service.backup-before-item-list.js:317:      categoryId: category.id,
+  src\modules\items\services\item.service.backup-before-item-list.js:318:      unitId: unit.id,
+  src\modules\items\services\item.service.backup-before-item-list.js:319:
+  src\modules\items\services\item.service.backup-before-item-list.js:320:      createdById: actor.id,
+  src\modules\items\services\item.service.backup-before-item-list.js:321:      updatedById: actor.id,
+  src\modules\items\services\item.service.backup-before-item-list.js:322:    },
+  src\modules\items\services\item.service.js:86:  return trimmed.length > 0 ? trimmed : null;
+  src\modules\items\services\item.service.js:87:};
+  src\modules\items\services\item.service.js:88:
+> src\modules\items\services\item.service.js:89:const normalizeMoney = (value) => {
+  src\modules\items\services\item.service.js:90:  if (value === undefined || value === null || value === "") {
+  src\modules\items\services\item.service.js:91:    return "0.00";
+  src\modules\items\services\item.service.js:92:  }
+  src\modules\items\services\item.service.js:93:
+  src\modules\items\services\item.service.js:94:  return Number(value).toFixed(2);
+  src\modules\items\services\item.service.js:95:};
+  src\modules\items\services\item.service.js:96:
+  src\modules\items\services\item.service.js:97:const parseBooleanQuery = (value) => {
+  src\modules\items\services\item.service.js:131:    throw new AppError(
+  src\modules\items\services\item.service.js:132:      "You can only create items in your assigned branch",
+  src\modules\items\services\item.service.js:133:      403,
+> src\modules\items\services\item.service.js:134:      "BRANCH_ACCESS_DENIED"
+  src\modules\items\services\item.service.js:135:    );
+  src\modules\items\services\item.service.js:136:  }
+  src\modules\items\services\item.service.js:137:
+  src\modules\items\services\item.service.js:138:  return actor.branchId;
+  src\modules\items\services\item.service.js:139:};
+  src\modules\items\services\item.service.js:140:
+  src\modules\items\services\item.service.js:141:const getBranchIdForList = (actor, requestedBranchId) => {
+  src\modules\items\services\item.service.js:142:  if (!actor) {
+  src\modules\items\services\item.service.js:159:    throw new AppError(
+  src\modules\items\services\item.service.js:160:      "You can only view items in your assigned branch",
+  src\modules\items\services\item.service.js:161:      403,
+> src\modules\items\services\item.service.js:162:      "BRANCH_ACCESS_DENIED"
+  src\modules\items\services\item.service.js:163:    );
+  src\modules\items\services\item.service.js:164:  }
+  src\modules\items\services\item.service.js:165:
+  src\modules\items\services\item.service.js:166:  return actor.branchId;
+  src\modules\items\services\item.service.js:167:};
+  src\modules\items\services\item.service.js:168:
+  src\modules\items\services\item.service.js:169:const assertItemAccess = (item, actor) => {
+  src\modules\items\services\item.service.js:170:  if (!actor) {
+  src\modules\items\services\item.service.js:187:    throw new AppError(
+  src\modules\items\services\item.service.js:188:      "You can only access items in your assigned branch",
+  src\modules\items\services\item.service.js:189:      403,
+> src\modules\items\services\item.service.js:190:      "BRANCH_ACCESS_DENIED"
+  src\modules\items\services\item.service.js:191:    );
+  src\modules\items\services\item.service.js:192:  }
+  src\modules\items\services\item.service.js:193:};
+  src\modules\items\services\item.service.js:194:
+  src\modules\items\services\item.service.js:195:const getActiveBranchOrThrow = async (branchId) => {
+  src\modules\items\services\item.service.js:196:  const branch = await prisma.branch.findUnique({
+  src\modules\items\services\item.service.js:197:    where: {
+  src\modules\items\services\item.service.js:198:      id: branchId,
+  src\modules\items\services\item.service.js:391:      isSerialized: Boolean(payload.isSerialized),
+  src\modules\items\services\item.service.js:392:      hasWarranty: Boolean(payload.hasWarranty),
+  src\modules\items\services\item.service.js:393:
+> src\modules\items\services\item.service.js:394:      costPrice: normalizeMoney(payload.costPrice),
+> src\modules\items\services\item.service.js:395:      price1: normalizeMoney(payload.price1),
+> src\modules\items\services\item.service.js:396:      price2: normalizeMoney(payload.price2),
+> src\modules\items\services\item.service.js:397:      price3: normalizeMoney(payload.price3),
+> src\modules\items\services\item.service.js:398:      price4: normalizeMoney(payload.price4),
+> src\modules\items\services\item.service.js:399:      price5: normalizeMoney(payload.price5),
+  src\modules\items\services\item.service.js:400:
+> src\modules\items\services\item.service.js:401:      minimumStock: normalizeMoney(payload.minimumStock),
+> src\modules\items\services\item.service.js:402:      reorderLevel: normalizeMoney(payload.reorderLevel),
+  src\modules\items\services\item.service.js:403:
+  src\modules\items\services\item.service.js:404:      branchId: branch.id,
+  src\modules\items\services\item.service.js:405:      categoryId: category.id,
+  src\modules\items\services\item.service.js:406:      unitId: unit.id,
+  src\modules\items\services\item.service.js:407:
+  src\modules\items\services\item.service.js:408:      createdById: actor.id,
+  src\modules\items\services\item.service.js:409:      updatedById: actor.id,
+  src\modules\items\services\item.service.js:410:    },
+  src\modules\items\services\item.service.js:525:  return item;
+  src\modules\items\services\item.service.js:526:};
+  src\modules\items\services\item.service.js:527:
+> src\modules\items\services\item.service.js:528:const updateItemById = async (itemId, payload, actor) => {
+  src\modules\items\services\item.service.js:529:  const existingItem = await prisma.item.findUnique({
+  src\modules\items\services\item.service.js:530:    where: {
+  src\modules\items\services\item.service.js:531:      id: itemId,
+  src\modules\items\services\item.service.js:532:    },
+  src\modules\items\services\item.service.js:533:    select: ITEM_SELECT,
+  src\modules\items\services\item.service.js:534:  });
+  src\modules\items\services\item.service.js:535:
+  src\modules\items\services\item.service.js:536:  if (!existingItem) {
+  src\modules\items\services\item.service.js:602:  }
+  src\modules\items\services\item.service.js:603:
+  src\modules\items\services\item.service.js:604:  if (payload.costPrice !== undefined) {
+> src\modules\items\services\item.service.js:605:    updateData.costPrice = normalizeMoney(payload.costPrice);
+  src\modules\items\services\item.service.js:606:  }
+  src\modules\items\services\item.service.js:607:
+> src\modules\items\services\item.service.js:608:  if (payload.price1 !== undefined) {
+> src\modules\items\services\item.service.js:609:    updateData.price1 = normalizeMoney(payload.price1);
+  src\modules\items\services\item.service.js:610:  }
+  src\modules\items\services\item.service.js:611:
+> src\modules\items\services\item.service.js:612:  if (payload.price2 !== undefined) {
+> src\modules\items\services\item.service.js:613:    updateData.price2 = normalizeMoney(payload.price2);
+  src\modules\items\services\item.service.js:614:  }
+  src\modules\items\services\item.service.js:615:
+> src\modules\items\services\item.service.js:616:  if (payload.price3 !== undefined) {
+> src\modules\items\services\item.service.js:617:    updateData.price3 = normalizeMoney(payload.price3);
+  src\modules\items\services\item.service.js:618:  }
+  src\modules\items\services\item.service.js:619:
+> src\modules\items\services\item.service.js:620:  if (payload.price4 !== undefined) {
+> src\modules\items\services\item.service.js:621:    updateData.price4 = normalizeMoney(payload.price4);
+  src\modules\items\services\item.service.js:622:  }
+  src\modules\items\services\item.service.js:623:
+> src\modules\items\services\item.service.js:624:  if (payload.price5 !== undefined) {
+> src\modules\items\services\item.service.js:625:    updateData.price5 = normalizeMoney(payload.price5);
+  src\modules\items\services\item.service.js:626:  }
+  src\modules\items\services\item.service.js:627:
+  src\modules\items\services\item.service.js:628:  if (payload.minimumStock !== undefined) {
+> src\modules\items\services\item.service.js:629:    updateData.minimumStock = normalizeMoney(payload.minimumStock);
+  src\modules\items\services\item.service.js:630:  }
+  src\modules\items\services\item.service.js:631:
+  src\modules\items\services\item.service.js:632:  if (payload.reorderLevel !== undefined) {
+> src\modules\items\services\item.service.js:633:    updateData.reorderLevel = normalizeMoney(payload.reorderLevel);
+  src\modules\items\services\item.service.js:634:  }
+  src\modules\items\services\item.service.js:635:
+  src\modules\items\services\item.service.js:636:  return prisma.item.update({
+  src\modules\items\services\item.service.js:637:    where: {
+  src\modules\items\services\item.service.js:638:      id: existingItem.id,
+  src\modules\items\services\item.service.js:639:    },
+  src\modules\items\services\item.service.js:640:    data: updateData,
+  src\modules\items\services\item.service.js:641:    select: ITEM_SELECT,
+  src\modules\items\services\item.service.js:647:  createItem,
+  src\modules\items\services\item.service.js:648:  listItems,
+  src\modules\items\services\item.service.js:649:  getItemById,
+> src\modules\items\services\item.service.js:650:  updateItemById,
+  src\modules\items\services\item.service.js:651:};
+
+
+

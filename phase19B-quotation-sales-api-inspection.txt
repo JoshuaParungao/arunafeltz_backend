@@ -1,0 +1,707 @@
+=== PHASE 19B QUOTATION / SALES API INSPECTION ===
+Generated: 08/11/2026 22:19:17
+
+=== CURRENT QUOTATION ROUTES ===
+const express = require("express");
+
+const quotationController = require("../controllers/quotation.controller");
+const validate = require("../../../middlewares/validate.middleware");
+const { protect } = require("../../../middlewares/auth.middleware");
+const { requirePermission } = require("../../../middlewares/permission.middleware");
+const { PERMISSIONS } = require("../../../constants/permissions");
+const { createQuotationSchema, updateQuotationSchema, updateQuotationStatusSchema } = require("../validations/quotation.validation");
+
+const router = express.Router();
+
+router.use(protect);
+
+
+router.get(
+  "/",
+  requirePermission(PERMISSIONS.VIEW_QUOTATIONS),
+  quotationController.getQuotations
+);
+
+router.get(
+  "/:id",
+  requirePermission(PERMISSIONS.VIEW_QUOTATIONS),
+  quotationController.getQuotationById
+);
+
+
+
+router.patch(
+  "/:id/status",
+  requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+  validate(updateQuotationStatusSchema),
+  quotationController.updateQuotationStatus
+);
+
+router.patch(
+  "/:id",
+  requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+  validate(updateQuotationSchema),
+  quotationController.updateQuotation
+);
+
+router.post(
+  "/",
+  requirePermission(PERMISSIONS.MANAGE_QUOTATIONS),
+  validate(createQuotationSchema),
+  quotationController.createQuotation
+);
+
+module.exports = router;
+
+
+=== CURRENT QUOTATION CONTROLLER ===
+const quotationService = require("../services/quotation.service");
+
+const handleQuotationError = (error, res, next) => {
+  const knownErrors = {
+    BRANCH_REQUIRED: [400, "Branch is required."],
+    BRANCH_ACCESS_DENIED: [403, "You cannot create quotation for this branch."],
+    BRANCH_NOT_FOUND: [404, "Branch not found."],
+    BRANCH_INACTIVE: [400, "Branch is inactive."],
+    CUSTOMER_NOT_FOUND: [404, "Customer not found for this branch."],
+    CUSTOMER_INACTIVE: [400, "Customer is inactive."],
+    PREPARED_BY_NOT_FOUND: [404, "Prepared by user not found for this branch."],
+    ITEM_NOT_FOUND: [404, "Item not found for this branch."],
+    STAFF_CUSTOM_PRICE_NOT_ALLOWED: [403, "Staff cannot set custom price for inventory items."],
+    DESCRIPTION_REQUIRED: [400, "Description is required for custom quotation line."],
+    UNIT_PRICE_REQUIRED: [400, "Unit price is required for custom quotation line."],
+    DISCOUNT_EXCEEDS_LINE_TOTAL: [400, "Discount cannot exceed line total."],
+    QUOTATION_NOT_FOUND: [404, "Quotation not found."],
+    QUOTATION_NOT_EDITABLE: [400, "Only draft quotations can be updated."],
+    INVALID_QUOTATION_STATUS_TRANSITION: [400, "Invalid quotation status transition."],
+  };
+
+  if (knownErrors[error.message]) {
+    const [status, message] = knownErrors[error.message];
+
+    return res.status(status).json({
+      success: false,
+      message,
+      errorCode: error.message,
+    });
+  }
+
+  return next(error);
+};
+
+const createQuotation = async (req, res, next) => {
+  try {
+    const quotation = await quotationService.createQuotation(req.user, req.body);
+
+    return res.status(201).json({
+      success: true,
+      message: "Quotation created successfully",
+      data: quotation,
+    });
+  } catch (error) {
+    return handleQuotationError(error, res, next);
+  }
+};
+
+
+const getQuotations = async (req, res, next) => {
+  try {
+    const result = await quotationService.getQuotations(req.user, req.query);
+
+    return res.status(200).json({
+      success: true,
+      message: "Quotations fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return handleQuotationError(error, res, next);
+  }
+};
+
+const getQuotationById = async (req, res, next) => {
+  try {
+    const quotation = await quotationService.getQuotationById(req.user, req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Quotation fetched successfully",
+      data: quotation,
+    });
+  } catch (error) {
+    return handleQuotationError(error, res, next);
+  }
+};
+
+
+const updateQuotation = async (req, res, next) => {
+  try {
+    const quotation = await quotationService.updateQuotation(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Quotation updated successfully",
+      data: quotation,
+    });
+  } catch (error) {
+    return handleQuotationError(error, res, next);
+  }
+};
+
+
+const updateQuotationStatus = async (req, res, next) => {
+  try {
+    const quotation = await quotationService.updateQuotationStatus(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Quotation status updated successfully",
+      data: quotation,
+    });
+  } catch (error) {
+    return handleQuotationError(error, res, next);
+  }
+};
+
+module.exports = {
+  createQuotation,
+  getQuotations,
+  getQuotationById,
+  updateQuotation,
+  updateQuotationStatus,
+};
+
+
+=== CURRENT QUOTATION VALIDATION ===
+const { z } = require("zod");
+
+const optionalString = z
+  .string()
+  .trim()
+  .optional()
+  .or(z.literal(""));
+
+const positiveNumber = z.coerce
+  .number()
+  .positive("Value must be greater than zero");
+
+const nonNegativeNumber = z.coerce
+  .number()
+  .min(0, "Value cannot be negative");
+
+const quotationItemSchema = z.object({
+  itemId: z.string().trim().min(1).optional(),
+  description: z.string().trim().min(1).optional(),
+  priceTier: z.coerce.number().int().min(1).max(5),
+  quantity: positiveNumber,
+  unitPrice: nonNegativeNumber.optional(),
+  discountAmount: nonNegativeNumber.optional().default(0),
+  isPcBuildPart: z.boolean().optional().default(false),
+  remarks: optionalString,
+});
+
+const createQuotationSchema = z.object({
+  body: z.object({
+    branchId: z.string().trim().min(1).optional(),
+    customerId: z.string().trim().min(1).optional(),
+    preparedById: z.string().trim().min(1).optional(),
+    title: optionalString,
+    notes: optionalString,
+    internalNotes: optionalString,
+    isPcBuild: z.boolean().optional().default(false),
+    validUntil: z.string().datetime().optional(),
+    items: z.array(quotationItemSchema).min(1, "At least one quotation item is required"),
+  }),
+});
+
+
+const updateQuotationSchema = z.object({
+  body: z.object({
+    customerId: z.string().trim().min(1).optional().or(z.literal("")),
+    preparedById: z.string().trim().min(1).optional().or(z.literal("")),
+    title: optionalString,
+    notes: optionalString,
+    internalNotes: optionalString,
+    isPcBuild: z.boolean().optional(),
+    validUntil: z.string().datetime().optional().or(z.literal("")),
+    items: z.array(quotationItemSchema).min(1, "At least one quotation item is required").optional(),
+  }),
+});
+
+
+const updateQuotationStatusSchema = z.object({
+  body: z.object({
+    status: z.enum(["SENT", "APPROVED", "CANCELLED"]),
+    remarks: optionalString,
+  }),
+});
+
+module.exports = {
+  createQuotationSchema,
+  updateQuotationSchema,
+  updateQuotationStatusSchema,
+};
+
+
+=== CURRENT QUOTATION SERVICE - FIRST 260 LINES ===
+const prisma = require("../../../config/prisma");
+
+const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
+
+const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+
+const toMoney = (value) => {
+  return Math.round(Number(value) * 100) / 100;
+};
+
+const toMoneyString = (value) => {
+  return toMoney(value).toFixed(2);
+};
+
+const getItemPriceByTier = (item, tier) => {
+  const priceMap = {
+    1: item.price1,
+    2: item.price2,
+    3: item.price3,
+    4: item.price4,
+    5: item.price5,
+  };
+
+  return Number(priceMap[tier]);
+};
+
+const resolveBranchIdForCreate = (actor, requestedBranchId) => {
+  if (isSuperOwner(actor)) {
+    if (!requestedBranchId) {
+      const error = new Error("BRANCH_REQUIRED");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return requestedBranchId;
+  }
+
+  if (!actor.branchId) {
+    const error = new Error("BRANCH_REQUIRED");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (requestedBranchId && requestedBranchId !== actor.branchId) {
+    const error = new Error("BRANCH_ACCESS_DENIED");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return actor.branchId;
+};
+
+const generateQuotationCode = async (tx, branchCode, branchId) => {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const datePart = `${yyyy}${mm}${dd}`;
+  const prefix = `QT-${branchCode}-${datePart}`;
+
+  const count = await tx.quotation.count({
+    where: {
+      branchId,
+      quotationCode: {
+        startsWith: prefix,
+      },
+    },
+  });
+
+  return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+};
+
+const ensureBranchExists = async (tx, branchId) => {
+  const branch = await tx.branch.findUnique({
+    where: {
+      id: branchId,
+    },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      status: true,
+    },
+  });
+
+  if (!branch) {
+    const error = new Error("BRANCH_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (branch.status !== "ACTIVE") {
+    const error = new Error("BRANCH_INACTIVE");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return branch;
+};
+
+const ensureCustomerBelongsToBranch = async (tx, customerId, branchId) => {
+  if (!customerId) {
+    return null;
+  }
+
+  const customer = await tx.customer.findFirst({
+    where: {
+      id: customerId,
+      branchId,
+    },
+    select: {
+      id: true,
+      customerCode: true,
+      fullName: true,
+      status: true,
+    },
+  });
+
+  if (!customer) {
+    const error = new Error("CUSTOMER_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (customer.status !== "ACTIVE") {
+    const error = new Error("CUSTOMER_INACTIVE");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return customer;
+};
+
+const ensurePreparedByBelongsToBranch = async (tx, preparedById, branchId) => {
+  if (!preparedById) {
+    return null;
+  }
+
+  const preparedBy = await tx.user.findFirst({
+    where: {
+      id: preparedById,
+      branchId,
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+      username: true,
+      fullName: true,
+      role: true,
+      branchId: true,
+    },
+  });
+
+  if (!preparedBy) {
+    const error = new Error("PREPARED_BY_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return preparedBy;
+};
+
+const buildQuotationItems = async (tx, actor, branchId, items) => {
+  const quotationItems = [];
+  let subtotal = 0;
+  let totalDiscount = 0;
+
+  for (let index = 0; index < items.length; index += 1) {
+    const itemPayload = items[index];
+    const quantity = toMoney(itemPayload.quantity);
+    const discountAmount = toMoney(itemPayload.discountAmount || 0);
+
+    let item = null;
+    let unitPrice = 0;
+    let description = itemPayload.description ? String(itemPayload.description).trim() : "";
+
+    if (itemPayload.itemId) {
+      item = await tx.item.findFirst({
+        where: {
+          id: itemPayload.itemId,
+          branchId,
+          status: "ACTIVE",
+        },
+      });
+
+      if (!item) {
+        const error = new Error("ITEM_NOT_FOUND");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      unitPrice = getItemPriceByTier(item, itemPayload.priceTier);
+      description = description || item.itemName;
+
+      if (STAFF_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+        const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      if (OWNER_ADMIN_ROLES.has(actor.role) && itemPayload.unitPrice !== undefined) {
+        unitPrice = toMoney(itemPayload.unitPrice);
+      }
+    } else {
+      if (!description) {
+        const error = new Error("DESCRIPTION_REQUIRED");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (itemPayload.unitPrice === undefined) {
+        const error = new Error("UNIT_PRICE_REQUIRED");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      unitPrice = toMoney(itemPayload.unitPrice);
+    }
+
+    const grossLineTotal = toMoney(quantity * unitPrice);
+
+    if (discountAmount > grossLineTotal) {
+      const error = new Error("DISCOUNT_EXCEEDS_LINE_TOTAL");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const lineTotal = toMoney(grossLineTotal - discountAmount);
+
+    subtotal += grossLineTotal;
+    totalDiscount += discountAmount;
+
+    quotationItems.push({
+      lineNo: index + 1,
+      description,
+      itemCodeSnapshot: item ? item.itemCode : null,
+      itemNameSnapshot: item ? item.itemName : null,
+      brandSnapshot: item ? item.brand : null,
+      modelSnapshot: item ? item.modelName : null,
+      priceTier: itemPayload.priceTier,
+      quantity: toMoneyString(quantity),
+      unitPrice: toMoneyString(unitPrice),
+      discountAmount: toMoneyString(discountAmount),
+      lineTotal: toMoneyString(lineTotal),
+      isPcBuildPart: Boolean(itemPayload.isPcBuildPart),
+      remarks: itemPayload.remarks || null,
+      itemId: item ? item.id : null,
+    });
+  }
+
+  return {
+    quotationItems,
+    subtotal: toMoney(subtotal),
+    totalDiscount: toMoney(totalDiscount),
+    grandTotal: toMoney(subtotal - totalDiscount),
+  };
+};
+
+const createQuotation = async (actor, payload) => {
+
+
+=== CURRENT SALES ROUTES ===
+const express = require("express");
+
+const saleController = require("../controllers/sale.controller");
+const validate = require("../../../middlewares/validate.middleware");
+const { protect } = require("../../../middlewares/auth.middleware");
+const { requirePermission } = require("../../../middlewares/permission.middleware");
+const { PERMISSIONS } = require("../../../constants/permissions");
+const {
+  createSaleSchema,
+  cancelSaleSchema,
+  createCreditAccountSchema,
+} = require("../validations/sale.validation");
+
+const router = express.Router();
+
+router.use(protect);
+
+
+router.get(
+  "/",
+  requirePermission(PERMISSIONS.VIEW_SALES),
+  saleController.getSales
+);
+
+router.get(
+  "/:id",
+  requirePermission(PERMISSIONS.VIEW_SALES),
+  saleController.getSaleById
+);
+
+
+router.post(
+  "/:id/credit-account",
+  requirePermission(PERMISSIONS.MANAGE_SALES),
+  validate(createCreditAccountSchema),
+  saleController.createCreditAccountFromSale
+);
+
+router.patch(
+  "/:id/cancel",
+  requirePermission(PERMISSIONS.MANAGE_SALES),
+  validate(cancelSaleSchema),
+  saleController.cancelSale
+);
+
+router.post(
+  "/",
+  requirePermission(PERMISSIONS.MANAGE_SALES),
+  validate(createSaleSchema),
+  saleController.createSale
+);
+
+module.exports = router;
+
+
+=== CURRENT SALES VALIDATION ===
+const { z } = require("zod");
+
+const optionalString = z
+  .string()
+  .trim()
+  .optional()
+  .or(z.literal(""));
+
+const positiveNumber = z.coerce
+  .number()
+  .positive("Value must be greater than zero");
+
+const nonNegativeNumber = z.coerce
+  .number()
+  .min(0, "Value cannot be negative");
+
+const installmentTermValues = [
+  "STRAIGHT",
+  "MONTH_3",
+  "MONTH_6",
+  "MONTH_9",
+  "MONTH_12",
+  "MONTH_18",
+  "MONTH_24",
+];
+
+const saleItemSchema = z.object({
+  itemId: z.string().trim().min(1).optional(),
+  description: z.string().trim().min(1).optional(),
+  priceTier: z.coerce.number().int().min(1).max(5).optional(),
+  quantity: positiveNumber,
+  unitPrice: nonNegativeNumber.optional(),
+  discountAmount: nonNegativeNumber.optional().default(0),
+  batchId: z.string().trim().min(1).optional(),
+  serialId: z.string().trim().min(1).optional(),
+});
+
+const salePaymentSchema = z.object({
+  paymentMethod: z.enum(["CASH", "GCASH", "BANK_TRANSFER", "CARD", "CREDIT", "OTHER"]),
+  amount: nonNegativeNumber,
+  referenceNo: optionalString,
+  remarks: optionalString,
+});
+
+const createSaleSchema = z.object({
+  body: z.object({
+    branchId: z.string().trim().min(1).optional(),
+    customerId: z.string().trim().min(1).optional(),
+    quotationId: z.string().trim().min(1).optional(),
+    serviceCharge: nonNegativeNumber.optional().default(0),
+    remarks: optionalString,
+    items: z.array(saleItemSchema).min(1, "At least one sale item is required"),
+    payments: z.array(salePaymentSchema).min(1, "At least one payment is required"),
+  }),
+});
+
+
+const cancelSaleSchema = z.object({
+  body: z.object({
+    cancellationReason: z.string().trim().min(1, "Cancellation reason is required"),
+  }),
+});
+
+const createCreditAccountSchema = z.object({
+  body: z.object({
+    term: z.enum(installmentTermValues),
+    dueDay: z.coerce.number().int().min(1).max(31).optional(),
+    firstDueDate: z.string().trim().min(1).optional(),
+    remarks: optionalString,
+  }),
+});
+
+module.exports = {
+  createSaleSchema,
+  cancelSaleSchema,
+  createCreditAccountSchema,
+};
+
+
+=== API ROUTE REGISTRATION ===
+const express = require("express");
+
+const healthRoutes = require("../modules/health/routes/health.routes");
+const branchRoutes = require("../modules/branches/routes/branch.routes");
+const userRoutes = require("../modules/users/routes/user.routes");
+const authRoutes = require("../modules/auth/routes/auth.routes");
+const settingRoutes = require("../modules/settings/routes/setting.routes");
+const customerRoutes = require("../modules/customers/routes/customer.routes");
+const supplierRoutes = require("../modules/suppliers/routes/supplier.routes");
+const purchaseOrderRoutes = require("../modules/purchase-orders/routes/purchaseOrder.routes");
+const purchaseReceivingRoutes = require("../modules/purchase-receivings/routes/purchaseReceiving.routes");
+const stockTransferRoutes = require("../modules/stock-transfers/routes/stockTransfer.routes");
+const itemCategoryRoutes = require("../modules/item-categories/routes/itemCategory.routes");
+const unitRoutes = require("../modules/units/routes/unit.routes");
+const itemRoutes = require("../modules/items/routes/item.routes");
+const inventoryRoutes = require("../modules/inventory/routes/inventory.routes");
+const quotationRoutes = require("../modules/quotations/routes/quotation.routes");
+const saleRoutes = require("../modules/sales/routes/sale.routes");
+const creditAccountRoutes = require("../modules/credit-accounts/routes/creditAccount.routes");
+const cashBoxRoutes = require("../modules/cash-boxes/routes/cashBox.routes");
+const serviceJobRoutes = require("../modules/service-jobs/routes/serviceJob.routes");
+const warrantyClaimRoutes = require("../modules/warranty-claims/routes/warrantyClaim.routes");
+const auditLogRoutes = require("../modules/audit-logs/routes/auditLog.routes");
+const reportRoutes = require("../modules/reports/routes/report.routes");
+
+const router = express.Router();
+
+router.use("/health", healthRoutes);
+router.use("/auth", authRoutes);
+router.use("/branches", branchRoutes);
+router.use("/users", userRoutes);
+router.use("/settings", settingRoutes);
+router.use("/customers", customerRoutes);
+router.use("/suppliers", supplierRoutes);
+router.use("/purchase-orders", purchaseOrderRoutes);
+router.use("/purchase-receivings", purchaseReceivingRoutes);
+router.use("/stock-transfers", stockTransferRoutes);
+router.use("/item-categories", itemCategoryRoutes);
+router.use("/units", unitRoutes);
+router.use("/items", itemRoutes);
+router.use("/inventory", inventoryRoutes);
+router.use("/quotations", quotationRoutes);
+router.use("/sales", saleRoutes);
+router.use("/credit-accounts", creditAccountRoutes);
+router.use("/cash-boxes", cashBoxRoutes);
+router.use("/service-jobs", serviceJobRoutes);
+router.use("/warranty-claims", warrantyClaimRoutes);
+router.use("/audit-logs", auditLogRoutes);
+router.use("/reports", reportRoutes);
+
+module.exports = router;
+
+
+
+DONE. Output saved to: .\phase19B-quotation-sales-api-inspection.txt

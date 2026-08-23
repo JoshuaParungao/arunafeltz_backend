@@ -1,0 +1,103 @@
+const toMoney = (value) => {
+  return Math.round(Number(value) * 100) / 100;
+};
+
+const toMoneyString = (value) => {
+  return toMoney(value).toFixed(2);
+};
+
+const generateCashTransactionCode = async (tx, branchCode, branchId) => {
+  const date = new Date();
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+
+  const datePart = `${yyyy}${mm}${dd}`;
+  const prefix = `CASH-${branchCode}-${datePart}-`;
+
+  const startOfDay = new Date(yyyy, date.getMonth(), date.getDate());
+  const endOfDay = new Date(yyyy, date.getMonth(), date.getDate() + 1);
+
+  const count = await tx.cashTransaction.count({
+    where: {
+      branchId,
+      createdAt: {
+        gte: startOfDay,
+        lt: endOfDay,
+      },
+    },
+  });
+
+  return `${prefix}${String(count + 1).padStart(4, "0")}`;
+};
+
+const getDefaultCashBox = async (tx, branch) => {
+  const cashBox = await tx.cashBox.findFirst({
+    where: {
+      branchId: branch.id,
+      boxCode: `CASHBOX-${branch.code}`,
+      status: "ACTIVE",
+    },
+  });
+
+  if (!cashBox) {
+    const error = new Error("DEFAULT_CASH_BOX_NOT_FOUND");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return cashBox;
+};
+
+const postSystemCashIn = async (tx, actor, branch, payload) => {
+  const amount = toMoney(payload.amount);
+
+  if (amount <= 0) {
+    return null;
+  }
+
+  const cashBox = await getDefaultCashBox(tx, branch);
+  const balanceBefore = toMoney(Number(cashBox.currentBalance));
+  const balanceAfter = toMoney(balanceBefore + amount);
+
+  const transactionCode = await generateCashTransactionCode(tx, branch.code, branch.id);
+
+  const transaction = await tx.cashTransaction.create({
+    data: {
+      transactionCode,
+      type: payload.type,
+      status: "POSTED",
+      source: payload.source,
+      amount: toMoneyString(amount),
+      balanceBefore: toMoneyString(balanceBefore),
+      balanceAfter: toMoneyString(balanceAfter),
+      description: payload.description,
+      referenceNo: payload.referenceNo || null,
+      sourceId: payload.sourceId || null,
+      sourceCode: payload.sourceCode || null,
+      transactionDate: payload.transactionDate || new Date(),
+      cashBoxId: cashBox.id,
+      branchId: branch.id,
+      createdById: actor.id,
+    },
+  });
+
+  const updatedCashBox = await tx.cashBox.update({
+    where: {
+      id: cashBox.id,
+    },
+    data: {
+      currentBalance: toMoneyString(balanceAfter),
+      updatedById: actor.id,
+    },
+  });
+
+  return {
+    transaction,
+    cashBox: updatedCashBox,
+  };
+};
+
+module.exports = {
+  postSystemCashIn,
+};

@@ -1,0 +1,1289 @@
+﻿ARUNAFELTZ PHASE 19L - USERS / TECHNICIAN INSPECTION
+Generated: 08/12/2026 13:47:35
+
+============================================================
+MODULE DIRECTORY LIST
+============================================================
+D:\Arunafeltz\arunafeltz-backend\src\modules\audit-logs
+D:\Arunafeltz\arunafeltz-backend\src\modules\auth
+D:\Arunafeltz\arunafeltz-backend\src\modules\branches
+D:\Arunafeltz\arunafeltz-backend\src\modules\cash-boxes
+D:\Arunafeltz\arunafeltz-backend\src\modules\credit-accounts
+D:\Arunafeltz\arunafeltz-backend\src\modules\customers
+D:\Arunafeltz\arunafeltz-backend\src\modules\health
+D:\Arunafeltz\arunafeltz-backend\src\modules\inventory
+D:\Arunafeltz\arunafeltz-backend\src\modules\item-categories
+D:\Arunafeltz\arunafeltz-backend\src\modules\items
+D:\Arunafeltz\arunafeltz-backend\src\modules\purchase-orders
+D:\Arunafeltz\arunafeltz-backend\src\modules\purchase-receivings
+D:\Arunafeltz\arunafeltz-backend\src\modules\quotations
+D:\Arunafeltz\arunafeltz-backend\src\modules\reports
+D:\Arunafeltz\arunafeltz-backend\src\modules\sales
+D:\Arunafeltz\arunafeltz-backend\src\modules\service-jobs
+D:\Arunafeltz\arunafeltz-backend\src\modules\settings
+D:\Arunafeltz\arunafeltz-backend\src\modules\stock-transfers
+D:\Arunafeltz\arunafeltz-backend\src\modules\suppliers
+D:\Arunafeltz\arunafeltz-backend\src\modules\units
+D:\Arunafeltz\arunafeltz-backend\src\modules\users
+D:\Arunafeltz\arunafeltz-backend\src\modules\warranty-claims
+
+============================================================
+USERS MODULE
+============================================================
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\users\controllers\user.controller.js
+============================================================
+    1: const asyncHandler = require("../../../utils/asyncHandler");
+    2: const { sendSuccess } = require("../../../utils/apiResponse");
+    3: const userService = require("../services/user.service");
+    4: 
+    5: const createUser = asyncHandler(async (req, res) => {
+    6:   const user = await userService.createUser(req.body);
+    7: 
+    8:   return sendSuccess(res, {
+    9:     statusCode: 201,
+   10:     message: "User created successfully",
+   11:     data: user,
+   12:   });
+   13: });
+   14: 
+   15: const listUsers = asyncHandler(async (req, res) => {
+   16:   const users = await userService.listUsers(req.query);
+   17: 
+   18:   return sendSuccess(res, {
+   19:     message: "Users retrieved successfully",
+   20:     data: users,
+   21:   });
+   22: });
+   23: 
+   24: const getUserById = asyncHandler(async (req, res) => {
+   25:   const user = await userService.getUserById(req.params.id);
+   26: 
+   27:   return sendSuccess(res, {
+   28:     message: "User retrieved successfully",
+   29:     data: user,
+   30:   });
+   31: });
+   32: 
+   33: const updateUser = asyncHandler(async (req, res) => {
+   34:   const user = await userService.updateUser(req.params.id, req.body);
+   35: 
+   36:   return sendSuccess(res, {
+   37:     message: "User updated successfully",
+   38:     data: user,
+   39:   });
+   40: });
+   41: 
+   42: const approveUser = asyncHandler(async (req, res) => {
+   43:   const user = await userService.approveUser(req.params.id, req.user.id);
+   44: 
+   45:   return sendSuccess(res, {
+   46:     message: "User approved successfully",
+   47:     data: user,
+   48:   });
+   49: });
+   50: 
+   51: const rejectUser = asyncHandler(async (req, res) => {
+   52:   const user = await userService.rejectUser(req.params.id, req.user.id);
+   53: 
+   54:   return sendSuccess(res, {
+   55:     message: "User rejected successfully",
+   56:     data: user,
+   57:   });
+   58: });
+   59: 
+   60: const disableUser = asyncHandler(async (req, res) => {
+   61:   const user = await userService.disableUser(req.params.id, req.user.id);
+   62: 
+   63:   return sendSuccess(res, {
+   64:     message: "User disabled successfully",
+   65:     data: user,
+   66:   });
+   67: });
+   68: 
+   69: module.exports = {
+   70:   createUser,
+   71:   listUsers,
+   72:   getUserById,
+   73:   updateUser,
+   74:   approveUser,
+   75:   rejectUser,
+   76:   disableUser,
+   77: };
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\users\routes\user.routes.js
+============================================================
+    1: const express = require("express");
+    2: 
+    3: const validate = require("../../../middlewares/validate.middleware");
+    4: const { protect } = require("../../../middlewares/auth.middleware");
+    5: const { requirePermission } = require("../../../middlewares/permission.middleware");
+    6: const { PERMISSIONS } = require("../../../constants/permissions");
+    7: const userController = require("../controllers/user.controller");
+    8: const {
+    9:   createUserSchema,
+   10:   updateUserSchema,
+   11:   userIdParamSchema,
+   12: } = require("../validations/user.validation");
+   13: 
+   14: const router = express.Router();
+   15: 
+   16: router.post("/", userController.createUser);
+   17: 
+   18: router.get(
+   19:   "/",
+   20:   protect,
+   21:   requirePermission(PERMISSIONS.VIEW_USERS),
+   22:   userController.listUsers
+   23: );
+   24: 
+   25: router.get(
+   26:   "/:id",
+   27:   protect,
+   28:   requirePermission(PERMISSIONS.VIEW_USERS),
+   29:   validate(userIdParamSchema),
+   30:   userController.getUserById
+   31: );
+   32: 
+   33: router.patch(
+   34:   "/:id",
+   35:   protect,
+   36:   requirePermission(PERMISSIONS.MANAGE_USERS),
+   37:   validate(updateUserSchema),
+   38:   userController.updateUser
+   39: );
+   40: 
+   41: router.patch(
+   42:   "/:id/approve",
+   43:   protect,
+   44:   requirePermission(PERMISSIONS.APPROVE_USERS),
+   45:   validate(userIdParamSchema),
+   46:   userController.approveUser
+   47: );
+   48: 
+   49: router.patch(
+   50:   "/:id/reject",
+   51:   protect,
+   52:   requirePermission(PERMISSIONS.APPROVE_USERS),
+   53:   validate(userIdParamSchema),
+   54:   userController.rejectUser
+   55: );
+   56: 
+   57: router.patch(
+   58:   "/:id/disable",
+   59:   protect,
+   60:   requirePermission(PERMISSIONS.DISABLE_USERS),
+   61:   validate(userIdParamSchema),
+   62:   userController.disableUser
+   63: );
+   64: 
+   65: module.exports = router;
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\users\services\user.service.js
+============================================================
+    1: const bcrypt = require("bcryptjs");
+    2: 
+    3: const prisma = require("../../../config/prisma");
+    4: const AppError = require("../../../utils/appError");
+    5: const {
+    6:   USER_ROLES,
+    7:   BRANCH_SCOPED_ROLES,
+    8: } = require("../../../constants/roles");
+    9: 
+   10: const SAFE_USER_SELECT = {
+   11:   id: true,
+   12:   employeeCode: true,
+   13:   username: true,
+   14:   email: true,
+   15:   firstName: true,
+   16:   middleName: true,
+   17:   lastName: true,
+   18:   fullName: true,
+   19:   role: true,
+   20:   status: true,
+   21:   branchId: true,
+   22:   branch: {
+   23:     select: {
+   24:       id: true,
+   25:       code: true,
+   26:       name: true,
+   27:       status: true,
+   28:     },
+   29:   },
+   30:   approvedById: true,
+   31:   approvedAt: true,
+   32:   rejectedAt: true,
+   33:   disabledAt: true,
+   34:   lastLoginAt: true,
+   35:   createdAt: true,
+   36:   updatedAt: true,
+   37: };
+   38: 
+   39: const buildFullName = ({ firstName, middleName, lastName }) => {
+   40:   return [firstName, middleName, lastName]
+   41:     .filter(Boolean)
+   42:     .join(" ")
+   43:     .replace(/\s+/g, " ")
+   44:     .trim();
+   45: };
+   46: 
+   47: const normalizeNullableString = (value) => {
+   48:   if (value === undefined || value === null || value === "") {
+   49:     return null;
+   50:   }
+   51: 
+   52:   return value;
+   53: };
+   54: 
+   55: const normalizeUniqueInput = (value) => {
+   56:   if (value === undefined || value === null || value === "") {
+   57:     return null;
+   58:   }
+   59: 
+   60:   return value.trim().toLowerCase();
+   61: };
+   62: 
+   63: const assertUniqueUserFields = async ({ username, email, employeeCode }, excludeUserId = null) => {
+   64:   const orConditions = [];
+   65: 
+   66:   if (username) {
+   67:     orConditions.push({ username });
+   68:   }
+   69: 
+   70:   if (email) {
+   71:     orConditions.push({ email });
+   72:   }
+   73: 
+   74:   if (employeeCode) {
+   75:     orConditions.push({ employeeCode });
+   76:   }
+   77: 
+   78:   if (orConditions.length === 0) {
+   79:     return;
+   80:   }
+   81: 
+   82:   const existingUser = await prisma.user.findFirst({
+   83:     where: {
+   84:       OR: orConditions,
+   85:       NOT: excludeUserId ? { id: excludeUserId } : undefined,
+   86:     },
+   87:   });
+   88: 
+   89:   if (!existingUser) {
+   90:     return;
+   91:   }
+   92: 
+   93:   if (existingUser.username === username) {
+   94:     throw new AppError("Username already exists", 409, "USERNAME_EXISTS");
+   95:   }
+   96: 
+   97:   if (email && existingUser.email === email) {
+   98:     throw new AppError("Email already exists", 409, "EMAIL_EXISTS");
+   99:   }
+  100: 
+  101:   if (employeeCode && existingUser.employeeCode === employeeCode) {
+  102:     throw new AppError("Employee code already exists", 409, "EMPLOYEE_CODE_EXISTS");
+  103:   }
+  104: };
+  105: 
+  106: const assertSuperOwnerRule = async ({ role }, excludeUserId = null) => {
+  107:   if (role !== USER_ROLES.SUPER_OWNER) {
+  108:     return;
+  109:   }
+  110: 
+  111:   const existingSuperOwner = await prisma.user.findFirst({
+  112:     where: {
+  113:       role: USER_ROLES.SUPER_OWNER,
+  114:       NOT: excludeUserId ? { id: excludeUserId } : undefined,
+  115:     },
+  116:   });
+  117: 
+  118:   if (existingSuperOwner) {
+  119:     throw new AppError("Only one Super Owner is allowed", 409, "SUPER_OWNER_EXISTS");
+  120:   }
+  121: };
+  122: 
+  123: const assertBranchRule = async ({ role, branchId }) => {
+  124:   const isBranchScoped = BRANCH_SCOPED_ROLES.includes(role);
+  125: 
+  126:   if (role === USER_ROLES.SUPER_OWNER) {
+  127:     return;
+  128:   }
+  129: 
+  130:   if (isBranchScoped && !branchId) {
+  131:     throw new AppError("Branch is required for this role", 400, "BRANCH_REQUIRED");
+  132:   }
+  133: 
+  134:   if (!branchId) {
+  135:     return;
+  136:   }
+  137: 
+  138:   const branch = await prisma.branch.findUnique({
+  139:     where: { id: branchId },
+  140:   });
+  141: 
+  142:   if (!branch) {
+  143:     throw new AppError("Branch not found", 404, "BRANCH_NOT_FOUND");
+  144:   }
+  145: 
+  146:   if (branch.status !== "ACTIVE") {
+  147:     throw new AppError("Branch is inactive", 400, "BRANCH_INACTIVE");
+  148:   }
+  149: };
+  150: 
+  151: const getUserByIdOrThrow = async (id) => {
+  152:   const user = await prisma.user.findUnique({
+  153:     where: { id },
+  154:   });
+  155: 
+  156:   if (!user) {
+  157:     throw new AppError("User not found", 404, "USER_NOT_FOUND");
+  158:   }
+  159: 
+  160:   return user;
+  161: };
+  162: 
+  163: const createUser = async (payload) => {
+  164:   const username = normalizeUniqueInput(payload.username);
+  165:   const email = normalizeUniqueInput(payload.email);
+  166:   const employeeCode = normalizeNullableString(payload.employeeCode);
+  167:   const branchId = normalizeNullableString(payload.branchId);
+  168:   const fullName = buildFullName(payload);
+  169: 
+  170:   await assertUniqueUserFields({
+  171:     username,
+  172:     email,
+  173:     employeeCode,
+  174:   });
+  175: 
+  176:   await assertSuperOwnerRule({
+  177:     role: payload.role,
+  178:   });
+  179: 
+  180:   await assertBranchRule({
+  181:     role: payload.role,
+  182:     branchId,
+  183:   });
+  184: 
+  185:   const passwordHash = await bcrypt.hash(payload.password, 12);
+  186: 
+  187:   return prisma.user.create({
+  188:     data: {
+  189:       employeeCode,
+  190:       username,
+  191:       email,
+  192:       passwordHash,
+  193:       firstName: payload.firstName,
+  194:       middleName: normalizeNullableString(payload.middleName),
+  195:       lastName: payload.lastName,
+  196:       fullName,
+  197:       role: payload.role,
+  198:       status: payload.status || "PENDING",
+  199:       branchId: payload.role === USER_ROLES.SUPER_OWNER ? null : branchId,
+  200:     },
+  201:     select: SAFE_USER_SELECT,
+  202:   });
+  203: };
+  204: 
+  205: const listUsers = async ({ status, role, branchId } = {}) => {
+  206:   return prisma.user.findMany({
+  207:     where: {
+  208:       status,
+  209:       role,
+  210:       branchId,
+  211:     },
+  212:     orderBy: {
+  213:       createdAt: "desc",
+  214:     },
+  215:     select: SAFE_USER_SELECT,
+  216:   });
+  217: };
+  218: 
+  219: const getUserById = async (id) => {
+  220:   const user = await prisma.user.findUnique({
+  221:     where: { id },
+  222:     select: SAFE_USER_SELECT,
+  223:   });
+  224: 
+  225:   if (!user) {
+  226:     throw new AppError("User not found", 404, "USER_NOT_FOUND");
+  227:   }
+  228: 
+  229:   return user;
+  230: };
+  231: 
+  232: const updateUser = async (id, payload) => {
+  233:   const existingUser = await getUserByIdOrThrow(id);
+  234: 
+  235:   const nextUsername = payload.username
+  236:     ? normalizeUniqueInput(payload.username)
+  237:     : existingUser.username;
+  238: 
+  239:   const nextEmail = payload.email !== undefined
+  240:     ? normalizeUniqueInput(payload.email)
+  241:     : existingUser.email;
+  242: 
+  243:   const nextEmployeeCode = payload.employeeCode !== undefined
+  244:     ? normalizeNullableString(payload.employeeCode)
+  245:     : existingUser.employeeCode;
+  246: 
+  247:   const nextRole = payload.role || existingUser.role;
+  248: 
+  249:   const nextBranchId = payload.branchId !== undefined
+  250:     ? normalizeNullableString(payload.branchId)
+  251:     : existingUser.branchId;
+  252: 
+  253:   await assertUniqueUserFields(
+  254:     {
+  255:       username: nextUsername,
+  256:       email: nextEmail,
+  257:       employeeCode: nextEmployeeCode,
+  258:     },
+  259:     id
+  260:   );
+  261: 
+  262:   await assertSuperOwnerRule(
+  263:     {
+  264:       role: nextRole,
+  265:     },
+  266:     id
+  267:   );
+  268: 
+  269:   await assertBranchRule({
+  270:     role: nextRole,
+  271:     branchId: nextRole === USER_ROLES.SUPER_OWNER ? null : nextBranchId,
+  272:   });
+  273: 
+  274:   const nextFirstName = payload.firstName || existingUser.firstName;
+  275:   const nextMiddleName = payload.middleName !== undefined
+  276:     ? normalizeNullableString(payload.middleName)
+  277:     : existingUser.middleName;
+  278:   const nextLastName = payload.lastName || existingUser.lastName;
+  279: 
+  280:   const fullName = buildFullName({
+  281:     firstName: nextFirstName,
+  282:     middleName: nextMiddleName,
+  283:     lastName: nextLastName,
+  284:   });
+  285: 
+  286:   return prisma.user.update({
+  287:     where: { id },
+  288:     data: {
+  289:       employeeCode: nextEmployeeCode,
+  290:       username: nextUsername,
+  291:       email: nextEmail,
+  292:       firstName: nextFirstName,
+  293:       middleName: nextMiddleName,
+  294:       lastName: nextLastName,
+  295:       fullName,
+  296:       role: nextRole,
+  297:       branchId: nextRole === USER_ROLES.SUPER_OWNER ? null : nextBranchId,
+  298:     },
+  299:     select: SAFE_USER_SELECT,
+  300:   });
+  301: };
+  302: 
+  303: const approveUser = async (id, actorUserId) => {
+  304:   const user = await getUserByIdOrThrow(id);
+  305: 
+  306:   if (user.id === actorUserId) {
+  307:     throw new AppError("You cannot approve your own account", 400, "SELF_ACTION_NOT_ALLOWED");
+  308:   }
+  309: 
+  310:   if (user.status !== "PENDING") {
+  311:     throw new AppError("Only pending users can be approved", 400, "USER_NOT_PENDING");
+  312:   }
+  313: 
+  314:   return prisma.user.update({
+  315:     where: { id },
+  316:     data: {
+  317:       status: "ACTIVE",
+  318:       approvedById: actorUserId,
+  319:       approvedAt: new Date(),
+  320:       rejectedAt: null,
+  321:       disabledAt: null,
+  322:     },
+  323:     select: SAFE_USER_SELECT,
+  324:   });
+  325: };
+  326: 
+  327: const rejectUser = async (id, actorUserId) => {
+  328:   const user = await getUserByIdOrThrow(id);
+  329: 
+  330:   if (user.id === actorUserId) {
+  331:     throw new AppError("You cannot reject your own account", 400, "SELF_ACTION_NOT_ALLOWED");
+  332:   }
+  333: 
+  334:   if (user.status !== "PENDING") {
+  335:     throw new AppError("Only pending users can be rejected", 400, "USER_NOT_PENDING");
+  336:   }
+  337: 
+  338:   return prisma.user.update({
+  339:     where: { id },
+  340:     data: {
+  341:       status: "REJECTED",
+  342:       approvedById: null,
+  343:       approvedAt: null,
+  344:       rejectedAt: new Date(),
+  345:       disabledAt: null,
+  346:     },
+  347:     select: SAFE_USER_SELECT,
+  348:   });
+  349: };
+  350: 
+  351: const disableUser = async (id, actorUserId) => {
+  352:   const user = await getUserByIdOrThrow(id);
+  353: 
+  354:   if (user.id === actorUserId) {
+  355:     throw new AppError("You cannot disable your own account", 400, "SELF_ACTION_NOT_ALLOWED");
+  356:   }
+  357: 
+  358:   if (user.status === "DISABLED") {
+  359:     throw new AppError("User is already disabled", 400, "USER_ALREADY_DISABLED");
+  360:   }
+  361: 
+  362:   return prisma.user.update({
+  363:     where: { id },
+  364:     data: {
+  365:       status: "DISABLED",
+  366:       disabledAt: new Date(),
+  367:     },
+  368:     select: SAFE_USER_SELECT,
+  369:   });
+  370: };
+  371: 
+  372: module.exports = {
+  373:   createUser,
+  374:   listUsers,
+  375:   getUserById,
+  376:   updateUser,
+  377:   approveUser,
+  378:   rejectUser,
+  379:   disableUser,
+  380: };
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\modules\users\validations\user.validation.js
+============================================================
+    1: const { z } = require("zod");
+    2: const { USER_ROLES } = require("../../../constants/roles");
+    3: 
+    4: const userRoleValues = Object.values(USER_ROLES);
+    5: 
+    6: const userStatusValues = ["PENDING", "ACTIVE", "REJECTED", "DISABLED"];
+    7: 
+    8: const createUserSchema = z.object({
+    9:   body: z.object({
+   10:     employeeCode: z.string().trim().optional().nullable(),
+   11:     username: z.string().trim().min(3, "Username must be at least 3 characters"),
+   12:     email: z.string().trim().email("Invalid email").optional().nullable(),
+   13:     password: z.string().min(8, "Password must be at least 8 characters"),
+   14:     firstName: z.string().trim().min(1, "First name is required"),
+   15:     middleName: z.string().trim().optional().nullable(),
+   16:     lastName: z.string().trim().min(1, "Last name is required"),
+   17:     role: z.enum(userRoleValues),
+   18:     status: z.enum(userStatusValues).optional(),
+   19:     branchId: z.string().trim().optional().nullable(),
+   20:   }),
+   21: });
+   22: 
+   23: const updateUserSchema = z.object({
+   24:   params: z.object({
+   25:     id: z.string().trim().min(1, "User ID is required"),
+   26:   }),
+   27:   body: z.object({
+   28:     employeeCode: z.string().trim().optional().nullable(),
+   29:     username: z.string().trim().min(3, "Username must be at least 3 characters").optional(),
+   30:     email: z.string().trim().email("Invalid email").optional().nullable(),
+   31:     firstName: z.string().trim().min(1, "First name is required").optional(),
+   32:     middleName: z.string().trim().optional().nullable(),
+   33:     lastName: z.string().trim().min(1, "Last name is required").optional(),
+   34:     role: z.enum(userRoleValues).optional(),
+   35:     branchId: z.string().trim().optional().nullable(),
+   36:   }),
+   37: });
+   38: 
+   39: const userIdParamSchema = z.object({
+   40:   params: z.object({
+   41:     id: z.string().trim().min(1, "User ID is required"),
+   42:   }),
+   43: });
+   44: 
+   45: module.exports = {
+   46:   createUserSchema,
+   47:   updateUserSchema,
+   48:   userIdParamSchema,
+   49: };
+
+============================================================
+USER / TECHNICIAN REFERENCES ACROSS SRC
+============================================================
+
+  src\constants\permissions.js:3:
+  src\constants\permissions.js:4:  VIEW_BRANCHES: "branches:view",
+  src\constants\permissions.js:5:  MANAGE_BRANCHES: "branches:manage",
+  src\constants\permissions.js:6:
+> src\constants\permissions.js:7:  VIEW_USERS: "users:view",
+> src\constants\permissions.js:8:  MANAGE_USERS: "users:manage",
+  src\constants\permissions.js:9:  APPROVE_USERS: "users:approve",
+  src\constants\permissions.js:10:  DISABLE_USERS: "users:disable",
+  src\constants\permissions.js:11:
+  src\constants\permissions.js:12:  VIEW_SETTINGS: "settings:view",
+  src\constants\permissions.js:13:  MANAGE_SETTINGS: "settings:manage",
+  src\constants\permissions.js:14:
+  src\constants\permissions.js:15:  VIEW_CUSTOMERS: "customers:view",
+  src\constants\permissions.js:16:  MANAGE_CUSTOMERS: "customers:manage",
+  src\constants\permissions.js:51:    PERMISSIONS.ACCESS_SYSTEM,
+  src\constants\permissions.js:52:
+  src\constants\permissions.js:53:    PERMISSIONS.VIEW_BRANCHES,
+  src\constants\permissions.js:54:
+> src\constants\permissions.js:55:    PERMISSIONS.VIEW_USERS,
+> src\constants\permissions.js:56:    PERMISSIONS.MANAGE_USERS,
+  src\constants\permissions.js:57:    PERMISSIONS.APPROVE_USERS,
+  src\constants\permissions.js:58:    PERMISSIONS.DISABLE_USERS,
+  src\constants\permissions.js:59:
+  src\constants\permissions.js:60:    PERMISSIONS.VIEW_SETTINGS,
+  src\constants\permissions.js:61:    PERMISSIONS.MANAGE_SETTINGS,
+  src\constants\permissions.js:62:
+  src\constants\permissions.js:63:    PERMISSIONS.VIEW_CUSTOMERS,
+  src\constants\permissions.js:64:    PERMISSIONS.MANAGE_CUSTOMERS,
+  src\constants\permissions.js:96:    PERMISSIONS.ACCESS_SYSTEM,
+  src\constants\permissions.js:97:
+  src\constants\permissions.js:98:    PERMISSIONS.VIEW_BRANCHES,
+  src\constants\permissions.js:99:
+> src\constants\permissions.js:100:    PERMISSIONS.VIEW_USERS,
+> src\constants\permissions.js:101:    PERMISSIONS.MANAGE_USERS,
+  src\constants\permissions.js:102:    PERMISSIONS.APPROVE_USERS,
+  src\constants\permissions.js:103:    PERMISSIONS.DISABLE_USERS,
+  src\constants\permissions.js:104:
+  src\constants\permissions.js:105:    PERMISSIONS.VIEW_SETTINGS,
+  src\constants\permissions.js:106:
+  src\constants\permissions.js:107:    PERMISSIONS.VIEW_CUSTOMERS,
+  src\constants\permissions.js:108:    PERMISSIONS.MANAGE_CUSTOMERS,
+  src\constants\permissions.js:109:
+  src\constants\permissions.js:147:    PERMISSIONS.VIEW_SALES,
+  src\constants\permissions.js:148:    PERMISSIONS.MANAGE_SALES,
+  src\constants\permissions.js:149:  ],
+  src\constants\permissions.js:150:
+> src\constants\permissions.js:151:  TECHNICIAN: [
+  src\constants\permissions.js:152:    PERMISSIONS.ACCESS_SYSTEM,
+  src\constants\permissions.js:153:    PERMISSIONS.VIEW_BRANCHES,
+  src\constants\permissions.js:154:    PERMISSIONS.VIEW_CUSTOMERS,
+  src\constants\permissions.js:155:    PERMISSIONS.VIEW_CATALOG,
+  src\constants\permissions.js:156:    PERMISSIONS.VIEW_INVENTORY,
+  src\constants\permissions.js:157:    PERMISSIONS.VIEW_QUOTATIONS,
+  src\constants\permissions.js:158:    PERMISSIONS.MANAGE_QUOTATIONS,
+  src\constants\permissions.js:159:    PERMISSIONS.VIEW_SALES,
+  src\constants\roles.js:2:  SUPER_OWNER: "SUPER_OWNER",
+  src\constants\roles.js:3:  BRANCH_OWNER: "BRANCH_OWNER",
+  src\constants\roles.js:4:  ADMIN: "ADMIN",
+  src\constants\roles.js:5:  CASHIER: "CASHIER",
+> src\constants\roles.js:6:  TECHNICIAN: "TECHNICIAN",
+  src\constants\roles.js:7:  CASH_CUSTODIAN: "CASH_CUSTODIAN",
+  src\constants\roles.js:8:});
+  src\constants\roles.js:9:
+  src\constants\roles.js:10:const OWNER_ADMIN_ROLES = Object.freeze([
+  src\constants\roles.js:11:  USER_ROLES.SUPER_OWNER,
+  src\constants\roles.js:12:  USER_ROLES.BRANCH_OWNER,
+  src\constants\roles.js:13:  USER_ROLES.ADMIN,
+  src\constants\roles.js:14:]);
+  src\constants\roles.js:15:
+  src\constants\roles.js:16:const STAFF_ROLES = Object.freeze([
+  src\constants\roles.js:17:  USER_ROLES.CASHIER,
+> src\constants\roles.js:18:  USER_ROLES.TECHNICIAN,
+  src\constants\roles.js:19:  USER_ROLES.CASH_CUSTODIAN,
+  src\constants\roles.js:20:]);
+  src\constants\roles.js:21:
+  src\constants\roles.js:22:const BRANCH_SCOPED_ROLES = Object.freeze([
+  src\constants\roles.js:23:  USER_ROLES.BRANCH_OWNER,
+  src\constants\roles.js:24:  USER_ROLES.ADMIN,
+  src\constants\roles.js:25:  USER_ROLES.CASHIER,
+> src\constants\roles.js:26:  USER_ROLES.TECHNICIAN,
+  src\constants\roles.js:27:  USER_ROLES.CASH_CUSTODIAN,
+  src\constants\roles.js:28:]);
+  src\constants\roles.js:29:
+  src\constants\roles.js:30:module.exports = {
+  src\constants\roles.js:31:  USER_ROLES,
+  src\constants\roles.js:32:  OWNER_ADMIN_ROLES,
+  src\constants\roles.js:33:  STAFF_ROLES,
+  src\constants\roles.js:34:  BRANCH_SCOPED_ROLES,
+  src\modules\quotations\services\quotation.service.js:1:const prisma = require("../../../config/prisma");
+  src\modules\quotations\services\quotation.service.js:2:
+  src\modules\quotations\services\quotation.service.js:3:const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+> src\modules\quotations\services\quotation.service.js:4:const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
+  src\modules\quotations\services\quotation.service.js:5:
+  src\modules\quotations\services\quotation.service.js:6:const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+  src\modules\quotations\services\quotation.service.js:7:
+  src\modules\quotations\services\quotation.service.js:8:const toMoney = (value) => {
+  src\modules\quotations\services\quotation.service.js:9:  return Math.round(Number(value) * 100) / 100;
+  src\modules\quotations\services\quotation.service.js:10:};
+  src\modules\quotations\services\quotation.service.js:11:
+  src\modules\quotations\services\quotation.service.js:12:const toMoneyString = (value) => {
+  src\modules\reports\services\report.service.js:490:    completedAt: job.completedAt,
+  src\modules\reports\services\report.service.js:491:    cancelledAt: job.cancelledAt,
+  src\modules\reports\services\report.service.js:492:    branch: job.branch,
+  src\modules\reports\services\report.service.js:493:    customer: job.customer,
+> src\modules\reports\services\report.service.js:494:    assignedTechnician: job.assignedTechnician,
+  src\modules\reports\services\report.service.js:495:    estimatedServiceCharge: toNumber(job.estimatedServiceCharge),
+  src\modules\reports\services\report.service.js:496:    finalServiceCharge: toNumber(job.finalServiceCharge),
+  src\modules\reports\services\report.service.js:497:    isPaid: Boolean(job.payment),
+  src\modules\reports\services\report.service.js:498:    payment: job.payment
+  src\modules\reports\services\report.service.js:499:      ? {
+  src\modules\reports\services\report.service.js:500:          id: job.payment.id,
+  src\modules\reports\services\report.service.js:501:          paymentCode: job.payment.paymentCode,
+  src\modules\reports\services\report.service.js:502:          paymentMethod: job.payment.paymentMethod,
+  src\modules\reports\services\report.service.js:516:  const where = {
+  src\modules\reports\services\report.service.js:517:    ...(branchId ? { branchId } : {}),
+  src\modules\reports\services\report.service.js:518:    ...(query.status ? { status: query.status } : {}),
+  src\modules\reports\services\report.service.js:519:    ...(query.customerId ? { customerId: query.customerId } : {}),
+> src\modules\reports\services\report.service.js:520:    ...(query.assignedTechnicianId
+> src\modules\reports\services\report.service.js:521:      ? { assignedTechnicianId: query.assignedTechnicianId }
+  src\modules\reports\services\report.service.js:522:      : {}),
+  src\modules\reports\services\report.service.js:523:    ...(receivedAt ? { receivedAt } : {}),
+  src\modules\reports\services\report.service.js:524:    ...(query.paymentMethod
+  src\modules\reports\services\report.service.js:525:      ? {
+  src\modules\reports\services\report.service.js:526:          payment: {
+  src\modules\reports\services\report.service.js:527:            paymentMethod: query.paymentMethod,
+  src\modules\reports\services\report.service.js:528:          },
+  src\modules\reports\services\report.service.js:529:        }
+  src\modules\reports\services\report.service.js:566:          fullName: true,
+  src\modules\reports\services\report.service.js:567:          mobileNumber: true,
+  src\modules\reports\services\report.service.js:568:        },
+  src\modules\reports\services\report.service.js:569:      },
+> src\modules\reports\services\report.service.js:570:      assignedTechnician: {
+  src\modules\reports\services\report.service.js:571:        select: {
+  src\modules\reports\services\report.service.js:572:          id: true,
+  src\modules\reports\services\report.service.js:573:          username: true,
+  src\modules\reports\services\report.service.js:574:          fullName: true,
+  src\modules\reports\services\report.service.js:575:          role: true,
+  src\modules\reports\services\report.service.js:576:        },
+  src\modules\reports\services\report.service.js:577:      },
+  src\modules\reports\services\report.service.js:578:      payment: {
+  src\modules\reports\services\report.service.js:633:      filters: {
+  src\modules\reports\services\report.service.js:634:        branchId: branchId || null,
+  src\modules\reports\services\report.service.js:635:        status: query.status || null,
+  src\modules\reports\services\report.service.js:636:        paymentMethod: query.paymentMethod || null,
+> src\modules\reports\services\report.service.js:637:        assignedTechnicianId: query.assignedTechnicianId || null,
+  src\modules\reports\services\report.service.js:638:        customerId: query.customerId || null,
+  src\modules\reports\services\report.service.js:639:        dateFrom: query.dateFrom || null,
+  src\modules\reports\services\report.service.js:640:        dateTo: query.dateTo || null,
+  src\modules\reports\services\report.service.js:641:      },
+  src\modules\reports\services\report.service.js:642:      totals,
+  src\modules\reports\services\report.service.js:643:    },
+  src\modules\reports\services\report.service.js:644:    records: paginatedRecords,
+  src\modules\reports\services\report.service.js:645:    meta: {
+  src\modules\reports\validations\report.validation.js:34:  query: z.object({
+  src\modules\reports\validations\report.validation.js:35:    branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
+  src\modules\reports\validations\report.validation.js:36:    status: z.enum(["PENDING", "IN_PROGRESS", "READY_FOR_RELEASE", "COMPLETED", "CANCELLED"]).optional(),
+  src\modules\reports\validations\report.validation.js:37:    paymentMethod: z.enum(["CASH", "GCASH", "BANK_TRANSFER", "CARD", "OTHER"]).optional(),
+> src\modules\reports\validations\report.validation.js:38:    assignedTechnicianId: z.string().trim().min(1, "Assigned technician ID cannot be empty").optional(),
+  src\modules\reports\validations\report.validation.js:39:    customerId: z.string().trim().min(1, "Customer ID cannot be empty").optional(),
+  src\modules\reports\validations\report.validation.js:40:    dateFrom: z.string().trim().optional(),
+  src\modules\reports\validations\report.validation.js:41:    dateTo: z.string().trim().optional(),
+  src\modules\reports\validations\report.validation.js:42:    page: optionalPositiveIntegerString,
+  src\modules\reports\validations\report.validation.js:43:    limit: optionalPositiveIntegerString,
+  src\modules\reports\validations\report.validation.js:44:  }),
+  src\modules\reports\validations\report.validation.js:45:});
+  src\modules\reports\validations\report.validation.js:46:
+  src\modules\sales\services\sale.service.js:2:const settingService = require("../../settings/services/setting.service");
+  src\modules\sales\services\sale.service.js:3:const cashLinkService = require("../../cash-boxes/services/cashLink.service");
+  src\modules\sales\services\sale.service.js:4:
+  src\modules\sales\services\sale.service.js:5:const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+> src\modules\sales\services\sale.service.js:6:const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
+  src\modules\sales\services\sale.service.js:7:
+  src\modules\sales\services\sale.service.js:8:const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+  src\modules\sales\services\sale.service.js:9:
+  src\modules\sales\services\sale.service.js:10:const toMoney = (value) => {
+  src\modules\sales\services\sale.service.js:11:  return Math.round(Number(value) * 100) / 100;
+  src\modules\sales\services\sale.service.js:12:};
+  src\modules\sales\services\sale.service.js:13:
+  src\modules\sales\services\sale.service.js:14:const toMoneyString = (value) => {
+  src\modules\service-jobs\controllers\serviceJob.controller.js:6:    USER_BRANCH_REQUIRED: [400, "User branch is required."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:7:    BRANCH_ID_REQUIRED: [400, "Branch ID is required."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:8:    BRANCH_NOT_FOUND: [404, "Branch not found."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:9:    CUSTOMER_NOT_FOUND: [404, "Customer not found."],
+> src\modules\service-jobs\controllers\serviceJob.controller.js:10:    ASSIGNED_TECHNICIAN_NOT_FOUND: [404, "Assigned technician not found."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:11:    SERVICE_PAYMENT_CREATE_FORBIDDEN: [403, "You are not allowed to create service payments."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:12:    SERVICE_JOB_NOT_COMPLETED: [400, "Only completed service jobs can be paid."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:13:    SERVICE_JOB_ALREADY_PAID: [400, "Service job is already paid."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:14:    SERVICE_PAYMENT_AMOUNT_MISMATCH: [400, "Service payment amount must match final service charge."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:15:    SERVICE_PAYMENT_AMOUNT_REQUIRED: [400, "Service payment amount is required."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:16:    SERVICE_JOB_VIEW_FORBIDDEN: [403, "You are not allowed to view service jobs."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:17:    SERVICE_JOB_STATUS_UPDATE_FORBIDDEN: [403, "You are not allowed to update service job status."],
+  src\modules\service-jobs\controllers\serviceJob.controller.js:18:    SERVICE_JOB_NOT_FOUND: [404, "Service job not found."],
+  src\modules\service-jobs\services\serviceJob.service.js:4:const CREATE_SERVICE_JOB_ROLES = new Set([
+  src\modules\service-jobs\services\serviceJob.service.js:5:  "SUPER_OWNER",
+  src\modules\service-jobs\services\serviceJob.service.js:6:  "BRANCH_OWNER",
+  src\modules\service-jobs\services\serviceJob.service.js:7:  "ADMIN",
+> src\modules\service-jobs\services\serviceJob.service.js:8:  "TECHNICIAN",
+  src\modules\service-jobs\services\serviceJob.service.js:9:  "CASHIER",
+  src\modules\service-jobs\services\serviceJob.service.js:10:]);
+  src\modules\service-jobs\services\serviceJob.service.js:11:
+  src\modules\service-jobs\services\serviceJob.service.js:12:const isSuperOwner = (actor) => actor.role === "SUPER_OWNER";
+  src\modules\service-jobs\services\serviceJob.service.js:13:
+  src\modules\service-jobs\services\serviceJob.service.js:14:const toMoney = (value) => {
+  src\modules\service-jobs\services\serviceJob.service.js:15:  return Math.round(Number(value) * 100) / 100;
+  src\modules\service-jobs\services\serviceJob.service.js:16:};
+  src\modules\service-jobs\services\serviceJob.service.js:136:const VIEW_SERVICE_JOB_ROLES = new Set([
+  src\modules\service-jobs\services\serviceJob.service.js:137:  "SUPER_OWNER",
+  src\modules\service-jobs\services\serviceJob.service.js:138:  "BRANCH_OWNER",
+  src\modules\service-jobs\services\serviceJob.service.js:139:  "ADMIN",
+> src\modules\service-jobs\services\serviceJob.service.js:140:  "TECHNICIAN",
+  src\modules\service-jobs\services\serviceJob.service.js:141:  "CASHIER",
+  src\modules\service-jobs\services\serviceJob.service.js:142:]);
+  src\modules\service-jobs\services\serviceJob.service.js:143:
+  src\modules\service-jobs\services\serviceJob.service.js:144:const ensureCanViewServiceJobs = (actor) => {
+  src\modules\service-jobs\services\serviceJob.service.js:145:  if (!VIEW_SERVICE_JOB_ROLES.has(actor.role)) {
+  src\modules\service-jobs\services\serviceJob.service.js:146:    const error = new Error("SERVICE_JOB_VIEW_FORBIDDEN");
+  src\modules\service-jobs\services\serviceJob.service.js:147:    error.statusCode = 403;
+  src\modules\service-jobs\services\serviceJob.service.js:148:    throw error;
+  src\modules\service-jobs\services\serviceJob.service.js:158:const UPDATE_SERVICE_JOB_STATUS_ROLES = new Set([
+  src\modules\service-jobs\services\serviceJob.service.js:159:  "SUPER_OWNER",
+  src\modules\service-jobs\services\serviceJob.service.js:160:  "BRANCH_OWNER",
+  src\modules\service-jobs\services\serviceJob.service.js:161:  "ADMIN",
+> src\modules\service-jobs\services\serviceJob.service.js:162:  "TECHNICIAN",
+  src\modules\service-jobs\services\serviceJob.service.js:163:]);
+  src\modules\service-jobs\services\serviceJob.service.js:164:
+  src\modules\service-jobs\services\serviceJob.service.js:165:const STATUS_TRANSITIONS = {
+  src\modules\service-jobs\services\serviceJob.service.js:166:  PENDING: new Set(["IN_PROGRESS", "CANCELLED"]),
+  src\modules\service-jobs\services\serviceJob.service.js:167:  IN_PROGRESS: new Set(["READY_FOR_RELEASE", "CANCELLED"]),
+  src\modules\service-jobs\services\serviceJob.service.js:168:  READY_FOR_RELEASE: new Set(["COMPLETED", "CANCELLED"]),
+  src\modules\service-jobs\services\serviceJob.service.js:169:  COMPLETED: new Set([]),
+  src\modules\service-jobs\services\serviceJob.service.js:170:  CANCELLED: new Set([]),
+  src\modules\service-jobs\services\serviceJob.service.js:252:      mobileNumber: true,
+  src\modules\service-jobs\services\serviceJob.service.js:253:      email: true,
+  src\modules\service-jobs\services\serviceJob.service.js:254:    },
+  src\modules\service-jobs\services\serviceJob.service.js:255:  },
+> src\modules\service-jobs\services\serviceJob.service.js:256:  assignedTechnician: {
+  src\modules\service-jobs\services\serviceJob.service.js:257:    select: {
+  src\modules\service-jobs\services\serviceJob.service.js:258:      id: true,
+  src\modules\service-jobs\services\serviceJob.service.js:259:      username: true,
+  src\modules\service-jobs\services\serviceJob.service.js:260:      fullName: true,
+  src\modules\service-jobs\services\serviceJob.service.js:261:      role: true,
+  src\modules\service-jobs\services\serviceJob.service.js:262:      status: true,
+  src\modules\service-jobs\services\serviceJob.service.js:263:    },
+  src\modules\service-jobs\services\serviceJob.service.js:264:  },
+  src\modules\service-jobs\services\serviceJob.service.js:362:
+  src\modules\service-jobs\services\serviceJob.service.js:363:  return customer;
+  src\modules\service-jobs\services\serviceJob.service.js:364:};
+  src\modules\service-jobs\services\serviceJob.service.js:365:
+> src\modules\service-jobs\services\serviceJob.service.js:366:const validateAssignedTechnician = async (tx, branchId, assignedTechnicianId) => {
+> src\modules\service-jobs\services\serviceJob.service.js:367:  if (!assignedTechnicianId) {
+  src\modules\service-jobs\services\serviceJob.service.js:368:    return null;
+  src\modules\service-jobs\services\serviceJob.service.js:369:  }
+  src\modules\service-jobs\services\serviceJob.service.js:370:
+> src\modules\service-jobs\services\serviceJob.service.js:371:  const technician = await tx.user.findUnique({
+  src\modules\service-jobs\services\serviceJob.service.js:372:    where: {
+> src\modules\service-jobs\services\serviceJob.service.js:373:      id: assignedTechnicianId,
+  src\modules\service-jobs\services\serviceJob.service.js:374:    },
+  src\modules\service-jobs\services\serviceJob.service.js:375:    select: {
+  src\modules\service-jobs\services\serviceJob.service.js:376:      id: true,
+  src\modules\service-jobs\services\serviceJob.service.js:377:      branchId: true,
+  src\modules\service-jobs\services\serviceJob.service.js:378:      role: true,
+  src\modules\service-jobs\services\serviceJob.service.js:379:      status: true,
+  src\modules\service-jobs\services\serviceJob.service.js:380:    },
+  src\modules\service-jobs\services\serviceJob.service.js:381:  });
+  src\modules\service-jobs\services\serviceJob.service.js:382:
+  src\modules\service-jobs\services\serviceJob.service.js:383:  if (
+> src\modules\service-jobs\services\serviceJob.service.js:384:    !technician ||
+> src\modules\service-jobs\services\serviceJob.service.js:385:    technician.status !== "ACTIVE" ||
+> src\modules\service-jobs\services\serviceJob.service.js:386:    technician.role !== "TECHNICIAN" ||
+> src\modules\service-jobs\services\serviceJob.service.js:387:    technician.branchId !== branchId
+  src\modules\service-jobs\services\serviceJob.service.js:388:  ) {
+> src\modules\service-jobs\services\serviceJob.service.js:389:    const error = new Error("ASSIGNED_TECHNICIAN_NOT_FOUND");
+  src\modules\service-jobs\services\serviceJob.service.js:390:    error.statusCode = 404;
+  src\modules\service-jobs\services\serviceJob.service.js:391:    throw error;
+  src\modules\service-jobs\services\serviceJob.service.js:392:  }
+  src\modules\service-jobs\services\serviceJob.service.js:393:
+> src\modules\service-jobs\services\serviceJob.service.js:394:  return technician;
+  src\modules\service-jobs\services\serviceJob.service.js:395:};
+  src\modules\service-jobs\services\serviceJob.service.js:396:
+  src\modules\service-jobs\services\serviceJob.service.js:397:const createServiceJob = async (actor, payload) => {
+  src\modules\service-jobs\services\serviceJob.service.js:398:  ensureCanCreateServiceJob(actor);
+  src\modules\service-jobs\services\serviceJob.service.js:399:
+  src\modules\service-jobs\services\serviceJob.service.js:400:  return prisma.$transaction(async (tx) => {
+  src\modules\service-jobs\services\serviceJob.service.js:401:    const branch = await resolveBranchForCreate(tx, actor, payload);
+  src\modules\service-jobs\services\serviceJob.service.js:402:
+  src\modules\service-jobs\services\serviceJob.service.js:403:    const customer = await validateCustomer(tx, branch.id, payload.customerId);
+> src\modules\service-jobs\services\serviceJob.service.js:404:    const assignedTechnician = await validateAssignedTechnician(
+  src\modules\service-jobs\services\serviceJob.service.js:405:      tx,
+  src\modules\service-jobs\services\serviceJob.service.js:406:      branch.id,
+> src\modules\service-jobs\services\serviceJob.service.js:407:      payload.assignedTechnicianId
+  src\modules\service-jobs\services\serviceJob.service.js:408:    );
+  src\modules\service-jobs\services\serviceJob.service.js:409:
+  src\modules\service-jobs\services\serviceJob.service.js:410:    const jobCode = await generateServiceJobCode(tx, branch.code, branch.id);
+  src\modules\service-jobs\services\serviceJob.service.js:411:    const estimatedServiceCharge = toMoney(payload.estimatedServiceCharge || 0);
+  src\modules\service-jobs\services\serviceJob.service.js:412:
+  src\modules\service-jobs\services\serviceJob.service.js:413:    const serviceJob = await tx.serviceJob.create({
+  src\modules\service-jobs\services\serviceJob.service.js:414:      data: {
+  src\modules\service-jobs\services\serviceJob.service.js:415:        jobCode,
+  src\modules\service-jobs\services\serviceJob.service.js:422:        estimatedServiceCharge: toMoneyString(estimatedServiceCharge),
+  src\modules\service-jobs\services\serviceJob.service.js:423:        finalServiceCharge: "0.00",
+  src\modules\service-jobs\services\serviceJob.service.js:424:        branchId: branch.id,
+  src\modules\service-jobs\services\serviceJob.service.js:425:        customerId: customer ? customer.id : null,
+> src\modules\service-jobs\services\serviceJob.service.js:426:        assignedTechnicianId: assignedTechnician ? assignedTechnician.id : null,
+  src\modules\service-jobs\services\serviceJob.service.js:427:        createdById: actor.id,
+  src\modules\service-jobs\services\serviceJob.service.js:428:        updatedById: actor.id,
+  src\modules\service-jobs\services\serviceJob.service.js:429:      },
+  src\modules\service-jobs\services\serviceJob.service.js:430:      include: SERVICE_JOB_INCLUDE,
+  src\modules\service-jobs\services\serviceJob.service.js:431:    });
+  src\modules\service-jobs\services\serviceJob.service.js:432:
+  src\modules\service-jobs\services\serviceJob.service.js:433:    return serviceJob;
+  src\modules\service-jobs\services\serviceJob.service.js:434:  });
+  src\modules\service-jobs\services\serviceJob.service.js:454:  if (query.customerId) {
+  src\modules\service-jobs\services\serviceJob.service.js:455:    where.customerId = query.customerId;
+  src\modules\service-jobs\services\serviceJob.service.js:456:  }
+  src\modules\service-jobs\services\serviceJob.service.js:457:
+> src\modules\service-jobs\services\serviceJob.service.js:458:  if (query.assignedTechnicianId) {
+> src\modules\service-jobs\services\serviceJob.service.js:459:    where.assignedTechnicianId = query.assignedTechnicianId;
+  src\modules\service-jobs\services\serviceJob.service.js:460:  }
+  src\modules\service-jobs\services\serviceJob.service.js:461:
+  src\modules\service-jobs\services\serviceJob.service.js:462:  if (query.dateFrom || query.dateTo) {
+  src\modules\service-jobs\services\serviceJob.service.js:463:    where.receivedAt = {};
+  src\modules\service-jobs\services\serviceJob.service.js:464:
+  src\modules\service-jobs\services\serviceJob.service.js:465:    if (query.dateFrom) {
+  src\modules\service-jobs\services\serviceJob.service.js:466:      const dateFrom = new Date(query.dateFrom);
+  src\modules\service-jobs\services\serviceJob.service.js:467:      dateFrom.setHours(0, 0, 0, 0);
+  src\modules\service-jobs\validations\serviceJob.validation.js:19:const createServiceJobSchema = z.object({
+  src\modules\service-jobs\validations\serviceJob.validation.js:20:  body: z.object({
+  src\modules\service-jobs\validations\serviceJob.validation.js:21:    branchId: z.string().trim().min(1).optional(),
+  src\modules\service-jobs\validations\serviceJob.validation.js:22:    customerId: z.string().trim().min(1).optional(),
+> src\modules\service-jobs\validations\serviceJob.validation.js:23:    assignedTechnicianId: z.string().trim().min(1).optional(),
+  src\modules\service-jobs\validations\serviceJob.validation.js:24:
+  src\modules\service-jobs\validations\serviceJob.validation.js:25:    jobTitle: z.string().trim().min(1, "Job title is required"),
+  src\modules\service-jobs\validations\serviceJob.validation.js:26:    deviceDescription: optionalString,
+  src\modules\service-jobs\validations\serviceJob.validation.js:27:    problemDescription: optionalString,
+  src\modules\service-jobs\validations\serviceJob.validation.js:28:    diagnosis: optionalString,
+  src\modules\service-jobs\validations\serviceJob.validation.js:29:    serviceNotes: optionalString,
+  src\modules\service-jobs\validations\serviceJob.validation.js:30:
+  src\modules\service-jobs\validations\serviceJob.validation.js:31:    estimatedServiceCharge: nonNegativeMoney.optional().default(0),
+  src\modules\service-jobs\validations\serviceJob.validation.js:70:        "CANCELLED",
+  src\modules\service-jobs\validations\serviceJob.validation.js:71:      ])
+  src\modules\service-jobs\validations\serviceJob.validation.js:72:      .optional(),
+  src\modules\service-jobs\validations\serviceJob.validation.js:73:    customerId: z.string().trim().min(1).optional(),
+> src\modules\service-jobs\validations\serviceJob.validation.js:74:    assignedTechnicianId: z.string().trim().min(1).optional(),
+  src\modules\service-jobs\validations\serviceJob.validation.js:75:    search: z.string().trim().optional(),
+  src\modules\service-jobs\validations\serviceJob.validation.js:76:    dateFrom: z.coerce.date().optional(),
+  src\modules\service-jobs\validations\serviceJob.validation.js:77:    dateTo: z.coerce.date().optional(),
+  src\modules\service-jobs\validations\serviceJob.validation.js:78:    page: z.coerce.number().int().min(1).optional().default(1),
+  src\modules\service-jobs\validations\serviceJob.validation.js:79:    limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  src\modules\service-jobs\validations\serviceJob.validation.js:80:  }),
+  src\modules\service-jobs\validations\serviceJob.validation.js:81:});
+  src\modules\service-jobs\validations\serviceJob.validation.js:82:
+  src\modules\settings\validations\setting.validation.js:23:];
+  src\modules\settings\validations\setting.validation.js:24:
+  src\modules\settings\validations\setting.validation.js:25:const cashBoxRecordedByRoleValues = [
+  src\modules\settings\validations\setting.validation.js:26:  "CASHIER",
+> src\modules\settings\validations\setting.validation.js:27:  "TECHNICIAN",
+  src\modules\settings\validations\setting.validation.js:28:  "ADMIN",
+  src\modules\settings\validations\setting.validation.js:29:  "BRANCH_OWNER",
+  src\modules\settings\validations\setting.validation.js:30:  "SUPER_OWNER",
+  src\modules\settings\validations\setting.validation.js:31:];
+  src\modules\settings\validations\setting.validation.js:32:
+  src\modules\settings\validations\setting.validation.js:33:const listSettingsSchema = z.object({
+  src\modules\settings\validations\setting.validation.js:34:  query: z.object({
+  src\modules\settings\validations\setting.validation.js:35:    category: z.enum(settingCategoryValues).optional(),
+  src\modules\users\controllers\user.controller.js:11:    data: user,
+  src\modules\users\controllers\user.controller.js:12:  });
+  src\modules\users\controllers\user.controller.js:13:});
+  src\modules\users\controllers\user.controller.js:14:
+> src\modules\users\controllers\user.controller.js:15:const listUsers = asyncHandler(async (req, res) => {
+> src\modules\users\controllers\user.controller.js:16:  const users = await userService.listUsers(req.query);
+  src\modules\users\controllers\user.controller.js:17:
+  src\modules\users\controllers\user.controller.js:18:  return sendSuccess(res, {
+  src\modules\users\controllers\user.controller.js:19:    message: "Users retrieved successfully",
+  src\modules\users\controllers\user.controller.js:20:    data: users,
+  src\modules\users\controllers\user.controller.js:21:  });
+  src\modules\users\controllers\user.controller.js:22:});
+  src\modules\users\controllers\user.controller.js:23:
+  src\modules\users\controllers\user.controller.js:24:const getUserById = asyncHandler(async (req, res) => {
+  src\modules\users\controllers\user.controller.js:67:});
+  src\modules\users\controllers\user.controller.js:68:
+  src\modules\users\controllers\user.controller.js:69:module.exports = {
+  src\modules\users\controllers\user.controller.js:70:  createUser,
+> src\modules\users\controllers\user.controller.js:71:  listUsers,
+  src\modules\users\controllers\user.controller.js:72:  getUserById,
+  src\modules\users\controllers\user.controller.js:73:  updateUser,
+  src\modules\users\controllers\user.controller.js:74:  approveUser,
+  src\modules\users\controllers\user.controller.js:75:  rejectUser,
+  src\modules\users\controllers\user.controller.js:76:  disableUser,
+  src\modules\users\controllers\user.controller.js:77:};
+  src\modules\users\routes\user.routes.js:17:
+  src\modules\users\routes\user.routes.js:18:router.get(
+  src\modules\users\routes\user.routes.js:19:  "/",
+  src\modules\users\routes\user.routes.js:20:  protect,
+> src\modules\users\routes\user.routes.js:21:  requirePermission(PERMISSIONS.VIEW_USERS),
+> src\modules\users\routes\user.routes.js:22:  userController.listUsers
+  src\modules\users\routes\user.routes.js:23:);
+  src\modules\users\routes\user.routes.js:24:
+  src\modules\users\routes\user.routes.js:25:router.get(
+  src\modules\users\routes\user.routes.js:26:  "/:id",
+  src\modules\users\routes\user.routes.js:27:  protect,
+> src\modules\users\routes\user.routes.js:28:  requirePermission(PERMISSIONS.VIEW_USERS),
+  src\modules\users\routes\user.routes.js:29:  validate(userIdParamSchema),
+  src\modules\users\routes\user.routes.js:30:  userController.getUserById
+  src\modules\users\routes\user.routes.js:31:);
+  src\modules\users\routes\user.routes.js:32:
+  src\modules\users\routes\user.routes.js:33:router.patch(
+  src\modules\users\routes\user.routes.js:34:  "/:id",
+  src\modules\users\routes\user.routes.js:35:  protect,
+> src\modules\users\routes\user.routes.js:36:  requirePermission(PERMISSIONS.MANAGE_USERS),
+  src\modules\users\routes\user.routes.js:37:  validate(updateUserSchema),
+  src\modules\users\routes\user.routes.js:38:  userController.updateUser
+  src\modules\users\routes\user.routes.js:39:);
+  src\modules\users\routes\user.routes.js:40:
+  src\modules\users\routes\user.routes.js:41:router.patch(
+  src\modules\users\routes\user.routes.js:42:  "/:id/approve",
+  src\modules\users\routes\user.routes.js:43:  protect,
+  src\modules\users\routes\user.routes.js:44:  requirePermission(PERMISSIONS.APPROVE_USERS),
+  src\modules\users\services\user.service.js:201:    select: SAFE_USER_SELECT,
+  src\modules\users\services\user.service.js:202:  });
+  src\modules\users\services\user.service.js:203:};
+  src\modules\users\services\user.service.js:204:
+> src\modules\users\services\user.service.js:205:const listUsers = async ({ status, role, branchId } = {}) => {
+> src\modules\users\services\user.service.js:206:  return prisma.user.findMany({
+  src\modules\users\services\user.service.js:207:    where: {
+  src\modules\users\services\user.service.js:208:      status,
+  src\modules\users\services\user.service.js:209:      role,
+  src\modules\users\services\user.service.js:210:      branchId,
+  src\modules\users\services\user.service.js:211:    },
+  src\modules\users\services\user.service.js:212:    orderBy: {
+  src\modules\users\services\user.service.js:213:      createdAt: "desc",
+  src\modules\users\services\user.service.js:214:    },
+  src\modules\users\services\user.service.js:370:};
+  src\modules\users\services\user.service.js:371:
+  src\modules\users\services\user.service.js:372:module.exports = {
+  src\modules\users\services\user.service.js:373:  createUser,
+> src\modules\users\services\user.service.js:374:  listUsers,
+  src\modules\users\services\user.service.js:375:  getUserById,
+  src\modules\users\services\user.service.js:376:  updateUser,
+  src\modules\users\services\user.service.js:377:  approveUser,
+  src\modules\users\services\user.service.js:378:  rejectUser,
+  src\modules\users\services\user.service.js:379:  disableUser,
+  src\modules\users\services\user.service.js:380:};
+  src\modules\warranty-claims\services\warrantyClaim.service.js:4:  "SUPER_OWNER",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:5:  "BRANCH_OWNER",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:6:  "ADMIN",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:7:  "CASHIER",
+> src\modules\warranty-claims\services\warrantyClaim.service.js:8:  "TECHNICIAN",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:9:]);
+  src\modules\warranty-claims\services\warrantyClaim.service.js:10:
+  src\modules\warranty-claims\services\warrantyClaim.service.js:11:const UPDATE_WARRANTY_STATUS_ROLES = new Set([
+  src\modules\warranty-claims\services\warrantyClaim.service.js:12:  "SUPER_OWNER",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:13:  "BRANCH_OWNER",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:14:  "ADMIN",
+> src\modules\warranty-claims\services\warrantyClaim.service.js:15:  "TECHNICIAN",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:16:]);
+  src\modules\warranty-claims\services\warrantyClaim.service.js:17:
+  src\modules\warranty-claims\services\warrantyClaim.service.js:18:
+  src\modules\warranty-claims\services\warrantyClaim.service.js:19:
+  src\modules\warranty-claims\services\warrantyClaim.service.js:20:const VIEW_WARRANTY_CLAIM_ROLES = new Set([
+  src\modules\warranty-claims\services\warrantyClaim.service.js:21:  "SUPER_OWNER",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:22:  "BRANCH_OWNER",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:23:  "ADMIN",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:24:  "CASHIER",
+> src\modules\warranty-claims\services\warrantyClaim.service.js:25:  "TECHNICIAN",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:26:]);
+  src\modules\warranty-claims\services\warrantyClaim.service.js:27:
+  src\modules\warranty-claims\services\warrantyClaim.service.js:28:const ensureCanViewWarrantyClaim = (actor) => {
+  src\modules\warranty-claims\services\warrantyClaim.service.js:29:  if (!VIEW_WARRANTY_CLAIM_ROLES.has(actor.role)) {
+  src\modules\warranty-claims\services\warrantyClaim.service.js:30:    const error = new Error("WARRANTY_CLAIM_VIEW_FORBIDDEN");
+  src\modules\warranty-claims\services\warrantyClaim.service.js:31:    error.statusCode = 403;
+  src\modules\warranty-claims\services\warrantyClaim.service.js:32:    throw error;
+  src\modules\warranty-claims\services\warrantyClaim.service.js:33:  }
+  src\modules\warranty-claims\services\warrantyClaim.service.js:42:const RELEASE_WARRANTY_STATUS_ROLES = new Set([
+  src\modules\warranty-claims\services\warrantyClaim.service.js:43:  "SUPER_OWNER",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:44:  "BRANCH_OWNER",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:45:  "ADMIN",
+> src\modules\warranty-claims\services\warrantyClaim.service.js:46:  "TECHNICIAN",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:47:]);
+  src\modules\warranty-claims\services\warrantyClaim.service.js:48:
+  src\modules\warranty-claims\services\warrantyClaim.service.js:49:const RELEASE_ALLOWED_STATUSES = new Set([
+  src\modules\warranty-claims\services\warrantyClaim.service.js:50:  "REPAIRED",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:51:  "REPLACED",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:52:  "REJECTED",
+  src\modules\warranty-claims\services\warrantyClaim.service.js:53:]);
+  src\modules\warranty-claims\services\warrantyClaim.service.js:54:
+
+
+
+
+============================================================
+FILE: D:\Arunafeltz\arunafeltz-backend\src\constants\permissions.js
+============================================================
+    1: const PERMISSIONS = {
+    2:   ACCESS_SYSTEM: "system:access",
+    3: 
+    4:   VIEW_BRANCHES: "branches:view",
+    5:   MANAGE_BRANCHES: "branches:manage",
+    6: 
+    7:   VIEW_USERS: "users:view",
+    8:   MANAGE_USERS: "users:manage",
+    9:   APPROVE_USERS: "users:approve",
+   10:   DISABLE_USERS: "users:disable",
+   11: 
+   12:   VIEW_SETTINGS: "settings:view",
+   13:   MANAGE_SETTINGS: "settings:manage",
+   14: 
+   15:   VIEW_CUSTOMERS: "customers:view",
+   16:   MANAGE_CUSTOMERS: "customers:manage",
+   17: 
+   18:   VIEW_SUPPLIERS: "suppliers:view",
+   19:   MANAGE_SUPPLIERS: "suppliers:manage",
+   20: 
+   21:   VIEW_PURCHASE_ORDERS: "purchase_orders:view",
+   22:   MANAGE_PURCHASE_ORDERS: "purchase_orders:manage",
+   23: 
+   24:   VIEW_PURCHASE_RECEIVINGS: "purchase_receivings:view",
+   25:   MANAGE_PURCHASE_RECEIVINGS: "purchase_receivings:manage",
+   26: 
+   27:   VIEW_STOCK_TRANSFERS: "stock_transfers:view",
+   28:   MANAGE_STOCK_TRANSFERS: "stock_transfers:manage",
+   29: 
+   30:   VIEW_CATALOG: "catalog:view",
+   31:   VIEW_INVENTORY: "inventory:view",
+   32:   MANAGE_CATALOG: "catalog:manage",
+   33:   MANAGE_INVENTORY: "inventory:manage",
+   34: 
+   35:   VIEW_CASH_BOX: "cash_box:view",
+   36:   MANAGE_CASH_BOX: "cash_box:manage",
+   37:   CONFIRM_CASH_HANDOVER: "cash_box:confirm_handover",
+   38: 
+   39:   VIEW_AUDIT_LOGS: "audit_logs:view",
+   40:   VIEW_REPORTS: "reports:view",
+   41:   VIEW_QUOTATIONS: "quotations:view",
+   42:   MANAGE_QUOTATIONS: "quotations:manage",
+   43:   VIEW_SALES: "sales:view",
+   44:   MANAGE_SALES: "sales:manage",
+   45: };
+   46: 
+   47: const ROLE_PERMISSIONS = {
+   48:   SUPER_OWNER: Object.values(PERMISSIONS),
+   49: 
+   50:   BRANCH_OWNER: [
+   51:     PERMISSIONS.ACCESS_SYSTEM,
+   52: 
+   53:     PERMISSIONS.VIEW_BRANCHES,
+   54: 
+   55:     PERMISSIONS.VIEW_USERS,
+   56:     PERMISSIONS.MANAGE_USERS,
+   57:     PERMISSIONS.APPROVE_USERS,
+   58:     PERMISSIONS.DISABLE_USERS,
+   59: 
+   60:     PERMISSIONS.VIEW_SETTINGS,
+   61:     PERMISSIONS.MANAGE_SETTINGS,
+   62: 
+   63:     PERMISSIONS.VIEW_CUSTOMERS,
+   64:     PERMISSIONS.MANAGE_CUSTOMERS,
+   65: 
+   66:     PERMISSIONS.VIEW_SUPPLIERS,
+   67:     PERMISSIONS.MANAGE_SUPPLIERS,
+   68: 
+   69:     PERMISSIONS.VIEW_PURCHASE_ORDERS,
+   70:     PERMISSIONS.MANAGE_PURCHASE_ORDERS,
+   71: 
+   72:     PERMISSIONS.VIEW_PURCHASE_RECEIVINGS,
+   73:     PERMISSIONS.MANAGE_PURCHASE_RECEIVINGS,
+   74: 
+   75:     PERMISSIONS.VIEW_STOCK_TRANSFERS,
+   76:     PERMISSIONS.MANAGE_STOCK_TRANSFERS,
+   77: 
+   78:     PERMISSIONS.VIEW_CATALOG,
+   79:     PERMISSIONS.VIEW_INVENTORY,
+   80:     PERMISSIONS.MANAGE_INVENTORY,
+   81:     PERMISSIONS.MANAGE_CATALOG,
+   82: 
+   83:     PERMISSIONS.VIEW_CASH_BOX,
+   84:     PERMISSIONS.MANAGE_CASH_BOX,
+   85:     PERMISSIONS.CONFIRM_CASH_HANDOVER,
+   86: 
+   87:     PERMISSIONS.VIEW_AUDIT_LOGS,
+   88:     PERMISSIONS.VIEW_REPORTS,
+   89:     PERMISSIONS.VIEW_QUOTATIONS,
+   90:     PERMISSIONS.MANAGE_QUOTATIONS,
+   91:     PERMISSIONS.VIEW_SALES,
+   92:     PERMISSIONS.MANAGE_SALES,
+   93:   ],
+   94: 
+   95:   ADMIN: [
+   96:     PERMISSIONS.ACCESS_SYSTEM,
+   97: 
+   98:     PERMISSIONS.VIEW_BRANCHES,
+   99: 
+  100:     PERMISSIONS.VIEW_USERS,
+  101:     PERMISSIONS.MANAGE_USERS,
+  102:     PERMISSIONS.APPROVE_USERS,
+  103:     PERMISSIONS.DISABLE_USERS,
+  104: 
+  105:     PERMISSIONS.VIEW_SETTINGS,
+  106: 
+  107:     PERMISSIONS.VIEW_CUSTOMERS,
+  108:     PERMISSIONS.MANAGE_CUSTOMERS,
+  109: 
+  110:     PERMISSIONS.VIEW_SUPPLIERS,
+  111:     PERMISSIONS.MANAGE_SUPPLIERS,
+  112: 
+  113:     PERMISSIONS.VIEW_PURCHASE_ORDERS,
+  114:     PERMISSIONS.MANAGE_PURCHASE_ORDERS,
+  115: 
+  116:     PERMISSIONS.VIEW_PURCHASE_RECEIVINGS,
+  117:     PERMISSIONS.MANAGE_PURCHASE_RECEIVINGS,
+  118: 
+  119:     PERMISSIONS.VIEW_STOCK_TRANSFERS,
+  120:     PERMISSIONS.MANAGE_STOCK_TRANSFERS,
+  121: 
+  122:     PERMISSIONS.VIEW_CATALOG,
+  123:     PERMISSIONS.VIEW_INVENTORY,
+  124:     PERMISSIONS.MANAGE_INVENTORY,
+  125:     PERMISSIONS.MANAGE_CATALOG,
+  126: 
+  127:     PERMISSIONS.VIEW_CASH_BOX,
+  128:     PERMISSIONS.MANAGE_CASH_BOX,
+  129:     PERMISSIONS.CONFIRM_CASH_HANDOVER,
+  130: 
+  131:     PERMISSIONS.VIEW_AUDIT_LOGS,
+  132:     PERMISSIONS.VIEW_REPORTS,
+  133:     PERMISSIONS.VIEW_QUOTATIONS,
+  134:     PERMISSIONS.MANAGE_QUOTATIONS,
+  135:     PERMISSIONS.VIEW_SALES,
+  136:     PERMISSIONS.MANAGE_SALES,
+  137:   ],
+  138: 
+  139:   CASHIER: [
+  140:     PERMISSIONS.ACCESS_SYSTEM,
+  141:     PERMISSIONS.VIEW_BRANCHES,
+  142:     PERMISSIONS.VIEW_CUSTOMERS,
+  143:     PERMISSIONS.VIEW_CATALOG,
+  144:     PERMISSIONS.VIEW_INVENTORY,
+  145:     PERMISSIONS.VIEW_QUOTATIONS,
+  146:     PERMISSIONS.MANAGE_QUOTATIONS,
+  147:     PERMISSIONS.VIEW_SALES,
+  148:     PERMISSIONS.MANAGE_SALES,
+  149:   ],
+  150: 
+  151:   TECHNICIAN: [
+  152:     PERMISSIONS.ACCESS_SYSTEM,
+  153:     PERMISSIONS.VIEW_BRANCHES,
+  154:     PERMISSIONS.VIEW_CUSTOMERS,
+  155:     PERMISSIONS.VIEW_CATALOG,
+  156:     PERMISSIONS.VIEW_INVENTORY,
+  157:     PERMISSIONS.VIEW_QUOTATIONS,
+  158:     PERMISSIONS.MANAGE_QUOTATIONS,
+  159:     PERMISSIONS.VIEW_SALES,
+  160:   ],
+  161: 
+  162:   CASH_CUSTODIAN: [
+  163:     PERMISSIONS.ACCESS_SYSTEM,
+  164:     PERMISSIONS.VIEW_BRANCHES,
+  165:     PERMISSIONS.VIEW_CASH_BOX,
+  166:     PERMISSIONS.CONFIRM_CASH_HANDOVER,
+  167:   ],
+  168: };
+  169: 
+  170: module.exports = {
+  171:   PERMISSIONS,
+  172:   ROLE_PERMISSIONS,
+  173: };

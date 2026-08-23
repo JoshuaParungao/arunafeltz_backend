@@ -1,0 +1,310 @@
+﻿PHASE 16I-B - SYSTEM PREFERENCES USAGE CHECK
+Generated: 08/08/2026 11:49:50
+
+===== SEARCH: allow_branch_specific_settings =====
+
+
+===== SEARCH: system settings usage =====
+
+  src\modules\settings\controllers\setting.controller.js:13:
+> src\modules\settings\controllers\setting.controller.js:14:const getSettingByScopeKey = asyncHandler(async (req, res) => {
+> src\modules\settings\controllers\setting.controller.js:15:  const setting = await settingService.getSettingByScopeKey(req.params.scopeKey);
+  src\modules\settings\controllers\setting.controller.js:16:
+  src\modules\settings\controllers\setting.controller.js:17:  return sendSuccess(res, {
+  src\modules\settings\controllers\setting.controller.js:18:    message: "Setting retrieved successfully",
+  src\modules\settings\controllers\setting.controller.js:22:
+> src\modules\settings\controllers\setting.controller.js:23:const updateSettingByScopeKey = asyncHandler(async (req, res) => {
+  src\modules\settings\controllers\setting.controller.js:24:  const actorUserId = req.user ? req.user.id : null;
+  src\modules\settings\controllers\setting.controller.js:25:
+> src\modules\settings\controllers\setting.controller.js:26:  const setting = await settingService.updateSettingByScopeKey(
+> src\modules\settings\controllers\setting.controller.js:27:    req.params.scopeKey,
+  src\modules\settings\controllers\setting.controller.js:28:    req.body,
+  src\modules\settings\controllers\setting.controller.js:29:    actorUserId
+  src\modules\settings\controllers\setting.controller.js:30:  );
+  src\modules\settings\controllers\setting.controller.js:111:  listSettings,
+> src\modules\settings\controllers\setting.controller.js:112:  getSettingByScopeKey,
+> src\modules\settings\controllers\setting.controller.js:113:  updateSettingByScopeKey,
+  src\modules\settings\controllers\setting.controller.js:114:  getQuotationBasisSettings,
+  src\modules\settings\controllers\setting.controller.js:115:  computeQuotationTest,
+  src\modules\settings\controllers\setting.controller.js:116:  getInstallmentBasisSettings,
+  src\modules\settings\routes\setting.routes.js:9:  listSettingsSchema,
+> src\modules\settings\routes\setting.routes.js:10:  scopeKeyParamSchema,
+  src\modules\settings\routes\setting.routes.js:11:  updateSettingSchema,
+  src\modules\settings\routes\setting.routes.js:12:  quotationTestComputeSchema,
+  src\modules\settings\routes\setting.routes.js:13:  installmentTestComputeSchema,
+  src\modules\settings\routes\setting.routes.js:88:router.get(
+> src\modules\settings\routes\setting.routes.js:89:  "/scope/:scopeKey",
+  src\modules\settings\routes\setting.routes.js:90:  protect,
+  src\modules\settings\routes\setting.routes.js:91:  requirePermission(PERMISSIONS.VIEW_SETTINGS),
+> src\modules\settings\routes\setting.routes.js:92:  validate(scopeKeyParamSchema),
+> src\modules\settings\routes\setting.routes.js:93:  settingController.getSettingByScopeKey
+  src\modules\settings\routes\setting.routes.js:94:);
+  src\modules\settings\routes\setting.routes.js:95:
+  src\modules\settings\routes\setting.routes.js:96:router.patch(
+> src\modules\settings\routes\setting.routes.js:97:  "/scope/:scopeKey",
+  src\modules\settings\routes\setting.routes.js:98:  protect,
+  src\modules\settings\routes\setting.routes.js:99:  requirePermission(PERMISSIONS.MANAGE_SETTINGS),
+  src\modules\settings\routes\setting.routes.js:100:  validate(updateSettingSchema),
+> src\modules\settings\routes\setting.routes.js:101:  settingController.updateSettingByScopeKey
+  src\modules\settings\routes\setting.routes.js:102:);
+  src\modules\settings\routes\setting.routes.js:103:
+  src\modules\settings\routes\setting.routes.js:104:module.exports = router;
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:39:  id: true,
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:40:  scopeKey: true,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:41:  key: true,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:42:  category: true,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:43:  valueType: true,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:80:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:81:  return prisma.businessSetting.findMany({
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:82:    where,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:83:    select: SETTING_SELECT,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:84:    orderBy: [
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:88:      {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:89:        scopeKey: "asc",
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:90:      },
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:91:    ],
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:92:  });
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:94:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:95:const getSettingByScopeKey = async (scopeKey) => {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:96:  const setting = await prisma.businessSetting.findUnique({
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:97:    where: {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:98:      scopeKey,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:99:    },
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:100:    select: SETTING_SELECT,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:101:  });
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:142:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:143:const updateSettingByScopeKey = async (scopeKey, payload, actorUserId = null) => {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:144:  const existingSetting = await prisma.businessSetting.findUnique({
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:145:    where: {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:146:      scopeKey,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:147:    },
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:148:  });
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:149:
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:185:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:186:  return prisma.businessSetting.update({
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:187:    where: {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:188:      scopeKey,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:189:    },
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:190:    data: updateData,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:191:    select: SETTING_SELECT,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:194:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:195:const getRequiredActiveSettingsByScopeKeys = async (scopeKeys = []) => {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:196:  const settings = await prisma.businessSetting.findMany({
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:197:    where: {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:198:      scopeKey: {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:199:        in: scopeKeys,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:200:      },
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:201:      isActive: true,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:202:    },
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:206:  const settingsMap = new Map(
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:207:    settings.map((setting) => [setting.scopeKey, setting])
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:208:  );
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:209:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:210:  for (const scopeKey of scopeKeys) {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:211:    if (!settingsMap.has(scopeKey)) {
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:212:      throw new AppError(
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:213:        `Required setting is missing or inactive: ${scopeKey}`,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:214:        500,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:215:        "REQUIRED_SETTING_MISSING"
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:216:      );
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:225:    throw new AppError(
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:226:      `Setting ${setting.scopeKey} must be a number`,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:227:      500,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:228:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:229:    );
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:240:    throw new AppError(
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:241:      `Setting ${setting.scopeKey} must be a JSON object`,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:242:      500,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:243:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:244:    );
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:250:    throw new AppError(
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:251:      `Setting ${setting.scopeKey} must be a string`,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:252:      500,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:253:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:254:    );
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:260:    throw new AppError(
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:261:      `Setting ${setting.scopeKey} must be a boolean`,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:262:      500,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:263:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:264:    );
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:272:    throw new AppError(
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:273:      `Setting ${setting.scopeKey} must be greater than zero`,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:274:      500,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:275:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:276:    );
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:310:const getQuotationBasisSettings = async () => {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:311:  const scopeKeys = Object.values(QUOTATION_SETTING_SCOPE_KEYS);
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:312:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:313:  const settingsMap = await getRequiredActiveSettingsByScopeKeys(scopeKeys);
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:314:
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:315:  const cashDiscountedAmountFormula = settingsMap.get(
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:316:    QUOTATION_SETTING_SCOPE_KEYS.CASH_DISCOUNTED_AMOUNT_FORMULA
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:406:const getInstallmentBasisSettings = async () => {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:407:  const scopeKeys = Object.values(INSTALLMENT_SETTING_SCOPE_KEYS);
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:408:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:409:  const settingsMap = await getRequiredActiveSettingsByScopeKeys(scopeKeys);
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:410:
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:411:  const termBasis = settingsMap.get(
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:412:    INSTALLMENT_SETTING_SCOPE_KEYS.TERM_BASIS
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:496:const getWarrantyRuleSettings = async () => {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:497:  const scopeKeys = Object.values(WARRANTY_SETTING_SCOPE_KEYS);
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:498:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:499:  const settingsMap = await getRequiredActiveSettingsByScopeKeys(scopeKeys);
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:500:
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:501:  const majorPartsMonths = settingsMap.get(
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:502:    WARRANTY_SETTING_SCOPE_KEYS.MAJOR_PARTS_MONTHS
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:574:const getCashBoxRuleSettings = async () => {
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:575:  const scopeKeys = Object.values(CASH_BOX_SETTING_SCOPE_KEYS);
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:576:
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:577:  const settingsMap = await getRequiredActiveSettingsByScopeKeys(scopeKeys);
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:578:
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:579:  const requireHandoverConfirmation = settingsMap.get(
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:580:    CASH_BOX_SETTING_SCOPE_KEYS.REQUIRE_HANDOVER_CONFIRMATION
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:643:  listSettings,
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:644:  getSettingByScopeKey,
+> src\modules\settings\services\setting.service.backup-before-phase9-module3.js:645:  updateSettingByScopeKey,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:646:  getQuotationBasisSettings,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:647:  computeQuotationTest,
+  src\modules\settings\services\setting.service.backup-before-phase9-module3.js:648:  getInstallmentBasisSettings,
+  src\modules\settings\services\setting.service.js:39:  id: true,
+> src\modules\settings\services\setting.service.js:40:  scopeKey: true,
+  src\modules\settings\services\setting.service.js:41:  key: true,
+  src\modules\settings\services\setting.service.js:42:  category: true,
+  src\modules\settings\services\setting.service.js:43:  valueType: true,
+  src\modules\settings\services\setting.service.js:80:
+> src\modules\settings\services\setting.service.js:81:  return prisma.businessSetting.findMany({
+  src\modules\settings\services\setting.service.js:82:    where,
+  src\modules\settings\services\setting.service.js:83:    select: SETTING_SELECT,
+  src\modules\settings\services\setting.service.js:84:    orderBy: [
+  src\modules\settings\services\setting.service.js:88:      {
+> src\modules\settings\services\setting.service.js:89:        scopeKey: "asc",
+  src\modules\settings\services\setting.service.js:90:      },
+  src\modules\settings\services\setting.service.js:91:    ],
+  src\modules\settings\services\setting.service.js:92:  });
+  src\modules\settings\services\setting.service.js:94:
+> src\modules\settings\services\setting.service.js:95:const getSettingByScopeKey = async (scopeKey) => {
+> src\modules\settings\services\setting.service.js:96:  const setting = await prisma.businessSetting.findUnique({
+  src\modules\settings\services\setting.service.js:97:    where: {
+> src\modules\settings\services\setting.service.js:98:      scopeKey,
+  src\modules\settings\services\setting.service.js:99:    },
+  src\modules\settings\services\setting.service.js:100:    select: SETTING_SELECT,
+  src\modules\settings\services\setting.service.js:101:  });
+  src\modules\settings\services\setting.service.js:142:
+> src\modules\settings\services\setting.service.js:143:const updateSettingByScopeKey = async (scopeKey, payload, actorUserId = null) => {
+> src\modules\settings\services\setting.service.js:144:  const existingSetting = await prisma.businessSetting.findUnique({
+  src\modules\settings\services\setting.service.js:145:    where: {
+> src\modules\settings\services\setting.service.js:146:      scopeKey,
+  src\modules\settings\services\setting.service.js:147:    },
+  src\modules\settings\services\setting.service.js:148:  });
+  src\modules\settings\services\setting.service.js:149:
+  src\modules\settings\services\setting.service.js:185:
+> src\modules\settings\services\setting.service.js:186:  return prisma.businessSetting.update({
+  src\modules\settings\services\setting.service.js:187:    where: {
+> src\modules\settings\services\setting.service.js:188:      scopeKey,
+  src\modules\settings\services\setting.service.js:189:    },
+  src\modules\settings\services\setting.service.js:190:    data: updateData,
+  src\modules\settings\services\setting.service.js:191:    select: SETTING_SELECT,
+  src\modules\settings\services\setting.service.js:194:
+> src\modules\settings\services\setting.service.js:195:const getRequiredActiveSettingsByScopeKeys = async (scopeKeys = []) => {
+> src\modules\settings\services\setting.service.js:196:  const settings = await prisma.businessSetting.findMany({
+  src\modules\settings\services\setting.service.js:197:    where: {
+> src\modules\settings\services\setting.service.js:198:      scopeKey: {
+> src\modules\settings\services\setting.service.js:199:        in: scopeKeys,
+  src\modules\settings\services\setting.service.js:200:      },
+  src\modules\settings\services\setting.service.js:201:      isActive: true,
+  src\modules\settings\services\setting.service.js:202:    },
+  src\modules\settings\services\setting.service.js:206:  const settingsMap = new Map(
+> src\modules\settings\services\setting.service.js:207:    settings.map((setting) => [setting.scopeKey, setting])
+  src\modules\settings\services\setting.service.js:208:  );
+  src\modules\settings\services\setting.service.js:209:
+> src\modules\settings\services\setting.service.js:210:  for (const scopeKey of scopeKeys) {
+> src\modules\settings\services\setting.service.js:211:    if (!settingsMap.has(scopeKey)) {
+  src\modules\settings\services\setting.service.js:212:      throw new AppError(
+> src\modules\settings\services\setting.service.js:213:        `Required setting is missing or inactive: ${scopeKey}`,
+  src\modules\settings\services\setting.service.js:214:        500,
+  src\modules\settings\services\setting.service.js:215:        "REQUIRED_SETTING_MISSING"
+  src\modules\settings\services\setting.service.js:216:      );
+  src\modules\settings\services\setting.service.js:225:    throw new AppError(
+> src\modules\settings\services\setting.service.js:226:      `Setting ${setting.scopeKey} must be a number`,
+  src\modules\settings\services\setting.service.js:227:      500,
+  src\modules\settings\services\setting.service.js:228:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.js:229:    );
+  src\modules\settings\services\setting.service.js:240:    throw new AppError(
+> src\modules\settings\services\setting.service.js:241:      `Setting ${setting.scopeKey} must be a JSON object`,
+  src\modules\settings\services\setting.service.js:242:      500,
+  src\modules\settings\services\setting.service.js:243:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.js:244:    );
+  src\modules\settings\services\setting.service.js:250:    throw new AppError(
+> src\modules\settings\services\setting.service.js:251:      `Setting ${setting.scopeKey} must be a string`,
+  src\modules\settings\services\setting.service.js:252:      500,
+  src\modules\settings\services\setting.service.js:253:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.js:254:    );
+  src\modules\settings\services\setting.service.js:260:    throw new AppError(
+> src\modules\settings\services\setting.service.js:261:      `Setting ${setting.scopeKey} must be a boolean`,
+  src\modules\settings\services\setting.service.js:262:      500,
+  src\modules\settings\services\setting.service.js:263:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.js:264:    );
+  src\modules\settings\services\setting.service.js:272:    throw new AppError(
+> src\modules\settings\services\setting.service.js:273:      `Setting ${setting.scopeKey} must be greater than zero`,
+  src\modules\settings\services\setting.service.js:274:      500,
+  src\modules\settings\services\setting.service.js:275:      "INVALID_SETTING_VALUE"
+  src\modules\settings\services\setting.service.js:276:    );
+  src\modules\settings\services\setting.service.js:310:const getQuotationBasisSettings = async () => {
+> src\modules\settings\services\setting.service.js:311:  const scopeKeys = Object.values(QUOTATION_SETTING_SCOPE_KEYS);
+  src\modules\settings\services\setting.service.js:312:
+> src\modules\settings\services\setting.service.js:313:  const settingsMap = await getRequiredActiveSettingsByScopeKeys(scopeKeys);
+  src\modules\settings\services\setting.service.js:314:
+  src\modules\settings\services\setting.service.js:315:  const cashDiscountedAmountFormula = settingsMap.get(
+  src\modules\settings\services\setting.service.js:316:    QUOTATION_SETTING_SCOPE_KEYS.CASH_DISCOUNTED_AMOUNT_FORMULA
+  src\modules\settings\services\setting.service.js:406:const getInstallmentBasisSettings = async () => {
+> src\modules\settings\services\setting.service.js:407:  const scopeKeys = Object.values(INSTALLMENT_SETTING_SCOPE_KEYS);
+  src\modules\settings\services\setting.service.js:408:
+> src\modules\settings\services\setting.service.js:409:  const settingsMap = await getRequiredActiveSettingsByScopeKeys(scopeKeys);
+  src\modules\settings\services\setting.service.js:410:
+  src\modules\settings\services\setting.service.js:411:  const termBasis = settingsMap.get(
+  src\modules\settings\services\setting.service.js:412:    INSTALLMENT_SETTING_SCOPE_KEYS.TERM_BASIS
+  src\modules\settings\services\setting.service.js:496:const getWarrantyRuleSettings = async () => {
+> src\modules\settings\services\setting.service.js:497:  const scopeKeys = Object.values(WARRANTY_SETTING_SCOPE_KEYS);
+  src\modules\settings\services\setting.service.js:498:
+> src\modules\settings\services\setting.service.js:499:  const settingsMap = await getRequiredActiveSettingsByScopeKeys(scopeKeys);
+  src\modules\settings\services\setting.service.js:500:
+  src\modules\settings\services\setting.service.js:501:  const majorPartsMonths = settingsMap.get(
+  src\modules\settings\services\setting.service.js:502:    WARRANTY_SETTING_SCOPE_KEYS.MAJOR_PARTS_MONTHS
+  src\modules\settings\services\setting.service.js:574:const getCashBoxRuleSettings = async () => {
+> src\modules\settings\services\setting.service.js:575:  const scopeKeys = Object.values(CASH_BOX_SETTING_SCOPE_KEYS);
+  src\modules\settings\services\setting.service.js:576:
+> src\modules\settings\services\setting.service.js:577:  const settingsMap = await getRequiredActiveSettingsByScopeKeys(scopeKeys);
+  src\modules\settings\services\setting.service.js:578:
+  src\modules\settings\services\setting.service.js:579:  const requireHandoverConfirmation = settingsMap.get(
+  src\modules\settings\services\setting.service.js:580:    CASH_BOX_SETTING_SCOPE_KEYS.REQUIRE_HANDOVER_CONFIRMATION
+  src\modules\settings\services\setting.service.js:643:  listSettings,
+> src\modules\settings\services\setting.service.js:644:  getSettingByScopeKey,
+> src\modules\settings\services\setting.service.js:645:  updateSettingByScopeKey,
+  src\modules\settings\services\setting.service.js:646:  getQuotationBasisSettings,
+  src\modules\settings\services\setting.service.js:647:  computeQuotationTest,
+  src\modules\settings\services\setting.service.js:648:  getInstallmentBasisSettings,
+  src\modules\settings\validations\setting.validation.js:6:  "DOCUMENT",
+> src\modules\settings\validations\setting.validation.js:7:  "SYSTEM_ADMIN",
+  src\modules\settings\validations\setting.validation.js:8:];
+  src\modules\settings\validations\setting.validation.js:9:
+  src\modules\settings\validations\setting.validation.js:10:const installmentTermValues = [
+  src\modules\settings\validations\setting.validation.js:43:
+> src\modules\settings\validations\setting.validation.js:44:const scopeKeyParamSchema = z.object({
+  src\modules\settings\validations\setting.validation.js:45:  params: z.object({
+> src\modules\settings\validations\setting.validation.js:46:    scopeKey: z.string().trim().min(1, "Scope key is required"),
+  src\modules\settings\validations\setting.validation.js:47:  }),
+  src\modules\settings\validations\setting.validation.js:48:});
+  src\modules\settings\validations\setting.validation.js:49:
+  src\modules\settings\validations\setting.validation.js:51:  params: z.object({
+> src\modules\settings\validations\setting.validation.js:52:    scopeKey: z.string().trim().min(1, "Scope key is required"),
+  src\modules\settings\validations\setting.validation.js:53:  }),
+  src\modules\settings\validations\setting.validation.js:54:  body: z.object({
+  src\modules\settings\validations\setting.validation.js:55:    value: z.any().optional(),
+  src\modules\settings\validations\setting.validation.js:115:  listSettingsSchema,
+> src\modules\settings\validations\setting.validation.js:116:  scopeKeyParamSchema,
+  src\modules\settings\validations\setting.validation.js:117:  updateSettingSchema,
+  src\modules\settings\validations\setting.validation.js:118:  quotationTestComputeSchema,
+  src\modules\settings\validations\setting.validation.js:119:  installmentTestComputeSchema,
+
+
+
