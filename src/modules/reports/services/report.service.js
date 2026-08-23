@@ -1063,7 +1063,7 @@ const getServiceSummary = async (actor, query = {}) => {
       lastAction: latestActionByJobId.get(record.id) || null,
     };
   });
-  const totalItems = records.length;
+  const totalItems = totalCount;
   const totalPages = Math.ceil(totalItems / limit) || 1;
 
   return {
