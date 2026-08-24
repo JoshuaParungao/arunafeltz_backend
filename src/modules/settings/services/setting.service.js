@@ -161,6 +161,42 @@ const listSettings = async (filters = {}, actor = null) => {
   return settings;
 };
 
+const findSettingByScopeKeyOrKey = async (rawScopeKey, select = null) => {
+  if (!rawScopeKey) return null;
+  let decoded = rawScopeKey;
+  try {
+    decoded = decodeURIComponent(rawScopeKey);
+  } catch {
+    decoded = rawScopeKey;
+  }
+
+  const candidates = Array.from(
+    new Set([
+      rawScopeKey,
+      decoded,
+      `GLOBAL:${rawScopeKey}`,
+      `GLOBAL:${decoded}`,
+      rawScopeKey.replace(/^GLOBAL:/i, ""),
+      decoded.replace(/^GLOBAL:/i, ""),
+    ])
+  ).filter(Boolean);
+
+  const query = {
+    where: {
+      OR: [
+        { scopeKey: { in: candidates } },
+        { key: { in: candidates } },
+      ],
+    },
+  };
+
+  if (select) {
+    query.select = select;
+  }
+
+  return prisma.businessSetting.findFirst(query);
+};
+
 const getSettingByScopeKey = async (scopeKey, actor = null) => {
   const cacheKey = `settings:scope:${scopeKey}`;
   const cached = cache.get(cacheKey);
@@ -168,12 +204,7 @@ const getSettingByScopeKey = async (scopeKey, actor = null) => {
     return cached;
   }
 
-  const setting = await prisma.businessSetting.findUnique({
-    where: {
-      scopeKey,
-    },
-    select: SETTING_SELECT,
-  });
+  const setting = await findSettingByScopeKeyOrKey(scopeKey, SETTING_SELECT);
 
   if (!setting) {
     throw new AppError("Setting not found", 404, "SETTING_NOT_FOUND");
@@ -219,11 +250,7 @@ const assertValueMatchesType = (valueType, value) => {
 };
 
 const updateSettingByScopeKey = async (scopeKey, payload, actor = null) => {
-  const existingSetting = await prisma.businessSetting.findUnique({
-    where: {
-      scopeKey,
-    },
-  });
+  const existingSetting = await findSettingByScopeKeyOrKey(scopeKey);
 
   if (!existingSetting) {
     throw new AppError("Setting not found", 404, "SETTING_NOT_FOUND");
@@ -326,7 +353,7 @@ const updateSettingByScopeKey = async (scopeKey, payload, actor = null) => {
 
   return prisma.$transaction(async (tx) => {
     const setting = await tx.businessSetting.update({
-      where: { scopeKey },
+      where: { id: existingSetting.id },
       data: updateData,
       select: SETTING_SELECT,
     });
