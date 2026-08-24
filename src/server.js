@@ -2,12 +2,14 @@ const app = require("./app");
 const env = require("./config/env");
 const logger = require("./utils/logger");
 const prisma = require("./config/prisma");
+const { initBackupScheduler } = require("./modules/backup/services/backupScheduler.service");
 
 const server = app.listen(env.port, () => {
   logger.info("Arunafeltz Backend API started", {
     port: env.port,
     environment: env.nodeEnv,
   });
+  initBackupScheduler();
 });
 
 let isShuttingDown = false;
