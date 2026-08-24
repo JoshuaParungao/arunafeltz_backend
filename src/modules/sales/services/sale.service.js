@@ -1313,6 +1313,7 @@ const getSaleById = async (actor, saleId) => {
               itemCode: true,
               itemName: true,
               isSerialized: true,
+              hasWarranty: true,
             },
           },
           batch: {
