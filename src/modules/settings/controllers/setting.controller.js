@@ -36,6 +36,20 @@ const updateSettingByScopeKey = asyncHandler(async (req, res) => {
   });
 });
 
+const updateSettingFromBody = asyncHandler(async (req, res) => {
+  const scopeKeyOrKey = req.body.scopeKey || req.body.key || req.body.id;
+  const setting = await settingService.updateSettingByScopeKey(
+    scopeKeyOrKey,
+    req.body,
+    req.user
+  );
+
+  return sendSuccess(res, {
+    message: "Setting updated successfully",
+    data: setting,
+  });
+});
+
 const getQuotationBasisSettings = asyncHandler(async (req, res) => {
   const quotationSettings = await settingService.getQuotationBasisSettings();
 
@@ -112,6 +126,7 @@ module.exports = {
   listSettings,
   getSettingByScopeKey,
   updateSettingByScopeKey,
+  updateSettingFromBody,
   getQuotationBasisSettings,
   computeQuotationTest,
   getInstallmentBasisSettings,

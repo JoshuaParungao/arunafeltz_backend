@@ -25,6 +25,13 @@ router.get(
   settingController.listSettings
 );
 
+router.patch(
+  "/",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_SETTINGS),
+  settingController.updateSettingFromBody
+);
+
 router.get(
   "/business-rules/quotation",
   protect,
