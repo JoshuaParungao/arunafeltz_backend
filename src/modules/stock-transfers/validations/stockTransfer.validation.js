@@ -131,6 +131,19 @@ const updateStockTransferStatusSchema = z.object({
     status: z.enum(updatableStockTransferStatusValues),
     rejectionReason: optionalString,
     cancellationReason: optionalString,
+    items: z
+      .array(
+        z.object({
+          stockTransferItemId: z
+            .string()
+            .trim()
+            .min(1, "Stock transfer item ID is required"),
+          serialIds: z
+            .array(z.string().trim().min(1, "Serial ID cannot be empty"))
+            .optional(),
+        }).strict()
+      )
+      .optional(),
   }).strict(),
 });
 

@@ -3002,6 +3002,77 @@ const updateStockTransferStatusById = async (stockTransferId, payload, actor) =>
         );
       }
 
+      if (Array.isArray(payload.items) && payload.items.length > 0) {
+        for (const itemPayload of payload.items) {
+          const transferItem = existingTransfer.items.find(
+            (item) => item.id === itemPayload.stockTransferItemId
+          );
+
+          if (!transferItem) {
+            throw new AppError(
+              "Stock transfer item not found in transfer",
+              400,
+              "STOCK_TRANSFER_ITEM_MISMATCH"
+            );
+          }
+
+          if (transferItem.item?.isSerialized) {
+            const serialIds = Array.isArray(itemPayload.serialIds)
+              ? itemPayload.serialIds
+              : [];
+            const quantity = Number(transferItem.quantity);
+
+            if (serialIds.length !== quantity) {
+              throw new AppError(
+                `Item ${transferItem.item.itemName} requires exactly ${quantity} serial(s), got ${serialIds.length}`,
+                400,
+                "SERIAL_COUNT_MISMATCH"
+              );
+            }
+
+            if (new Set(serialIds).size !== serialIds.length) {
+              throw new AppError(
+                "Duplicate serial ID found in fulfillment request",
+                400,
+                "DUPLICATE_SERIAL_IN_REQUEST"
+              );
+            }
+
+            const validSerials = await tx.itemSerial.findMany({
+              where: {
+                id: { in: serialIds },
+                branchId: existingTransfer.fromBranchId,
+                itemId: transferItem.itemId,
+                status: "AVAILABLE",
+              },
+            });
+
+            if (validSerials.length !== serialIds.length) {
+              throw new AppError(
+                "One or more selected serials are no longer available in source branch",
+                400,
+                "SERIAL_NOT_AVAILABLE"
+              );
+            }
+
+            await tx.stockTransferSerial.deleteMany({
+              where: {
+                stockTransferItemId: transferItem.id,
+                allocationId: null,
+              },
+            });
+
+            await tx.stockTransferSerial.createMany({
+              data: validSerials.map((s) => ({
+                stockTransferItemId: transferItem.id,
+                itemSerialId: s.id,
+                serialNumberSnapshot: s.serialNumber,
+              })),
+            });
+          }
+        }
+      }
+
       const stockTransfer = await tx.stockTransfer.findUnique({
         where: {
           id: existingTransfer.id,
