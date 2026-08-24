@@ -3,6 +3,7 @@ const env = require("./config/env");
 const logger = require("./utils/logger");
 const prisma = require("./config/prisma");
 const { initBackupScheduler } = require("./modules/backup/services/backupScheduler.service");
+const { ensureDefaultSettings } = require("./modules/settings/services/setting.service");
 
 const server = app.listen(env.port, () => {
   logger.info("Arunafeltz Backend API started", {
@@ -10,6 +11,9 @@ const server = app.listen(env.port, () => {
     environment: env.nodeEnv,
   });
   initBackupScheduler();
+  ensureDefaultSettings().catch((err) => {
+    logger.warn("Initial settings sync warning", { error: err.message });
+  });
 });
 
 let isShuttingDown = false;

@@ -95,6 +95,281 @@ const SETTING_SELECT = {
   updatedAt: true,
 };
 
+const DEFAULT_SETTINGS_LIST = [
+  {
+    scopeKey: "GLOBAL:quotation.cash_discounted_amount_formula",
+    key: "quotation.cash_discounted_amount_formula",
+    category: "BUSINESS_RULE",
+    valueType: "STRING",
+    value: "quantity * cashDiscountedPrice",
+    label: "Quotation Cash Discounted Amount Formula",
+    description: "Formula used for item amount in quotation: QTY multiplied by Cash Discounted Price.",
+  },
+  {
+    scopeKey: "GLOBAL:quotation.total_cash_discounted_price_formula",
+    key: "quotation.total_cash_discounted_price_formula",
+    category: "BUSINESS_RULE",
+    valueType: "STRING",
+    value: "sum(itemAmounts)",
+    label: "Total Cash Discounted Price Formula",
+    description: "Formula used to compute quotation total cash discounted price.",
+  },
+  {
+    scopeKey: "GLOBAL:quotation.suggested_retail_price_basis",
+    key: "quotation.suggested_retail_price_basis",
+    category: "BUSINESS_RULE",
+    valueType: "NUMBER",
+    value: 0.96,
+    label: "Suggested Retail Price Basis",
+    description: "Client formula: Suggested Retail Price = Total Cash Discounted Price / 0.96.",
+  },
+  {
+    scopeKey: "GLOBAL:quotation.regular_price_basis",
+    key: "quotation.regular_price_basis",
+    category: "BUSINESS_RULE",
+    valueType: "NUMBER",
+    value: 0.875,
+    label: "Regular Price Basis",
+    description: "Client formula: Regular Price = Total Cash Discounted Price / 0.875.",
+  },
+  {
+    scopeKey: "GLOBAL:installment.term_basis",
+    key: "installment.term_basis",
+    category: "BUSINESS_RULE",
+    valueType: "JSON",
+    value: {
+      STRAIGHT: 0.96,
+      MONTH_3: 0.96,
+      MONTH_6: 0.935,
+      MONTH_9: 0.905,
+      MONTH_12: 0.875,
+      MONTH_18: 0.815,
+      MONTH_24: 0.755,
+    },
+    label: "Installment Term Basis",
+    description: "Client installment basis values used for credit-card or installment computations.",
+  },
+  {
+    scopeKey: "GLOBAL:installment.balance_formula",
+    key: "installment.balance_formula",
+    category: "BUSINESS_RULE",
+    valueType: "STRING",
+    value: "(cashPromoTotalAmount - cashDownpayment) / termBasis",
+    label: "Installment Balance Formula",
+    description: "Client formula for installment balance after cash downpayment.",
+  },
+  {
+    scopeKey: "GLOBAL:warranty.major_parts_months",
+    key: "warranty.major_parts_months",
+    category: "BUSINESS_RULE",
+    valueType: "NUMBER",
+    value: 12,
+    label: "Major Parts Warranty Months",
+    description: "Default warranty duration for major parts.",
+  },
+  {
+    scopeKey: "GLOBAL:warranty.accessories_days",
+    key: "warranty.accessories_days",
+    category: "BUSINESS_RULE",
+    valueType: "NUMBER",
+    value: 30,
+    label: "Accessories Warranty Days",
+    description: "Default warranty duration for accessories.",
+  },
+  {
+    scopeKey: "GLOBAL:warranty.outright_replacement_days",
+    key: "warranty.outright_replacement_days",
+    category: "BUSINESS_RULE",
+    valueType: "NUMBER",
+    value: 7,
+    label: "Outright Replacement Days",
+    description: "Default outright replacement period except excluded products such as printers.",
+  },
+  {
+    scopeKey: "GLOBAL:cash_box.require_handover_confirmation",
+    key: "cash_box.require_handover_confirmation",
+    category: "OPERATION",
+    valueType: "BOOLEAN",
+    value: true,
+    label: "Require Cash Handover Confirmation",
+    description: "Requires cash custodian confirmation before cash is considered received.",
+  },
+  {
+    scopeKey: "GLOBAL:cash_box.default_payment_status",
+    key: "cash_box.default_payment_status",
+    category: "OPERATION",
+    valueType: "STRING",
+    value: "PENDING_HANDOVER",
+    label: "Default Payment Status",
+    description: "Default cash status after cashier or technician records a payment.",
+  },
+  {
+    scopeKey: "GLOBAL:receipt.business_name",
+    key: "receipt.business_name",
+    category: "DOCUMENT",
+    valueType: "STRING",
+    value: "Arunafeltz",
+    label: "Receipt Business Name",
+    description: "Default business name shown on receipts and printable documents.",
+  },
+  {
+    scopeKey: "GLOBAL:receipt.default_footer_notes",
+    key: "receipt.default_footer_notes",
+    category: "DOCUMENT",
+    valueType: "ARRAY",
+    value: [
+      "Thank you for your purchase.",
+      "Please keep this receipt for warranty purposes.",
+    ],
+    label: "Receipt Default Footer Notes",
+    description: "Default footer notes shown on receipts.",
+  },
+  {
+    scopeKey: "GLOBAL:system.allow_branch_specific_settings",
+    key: "system.allow_branch_specific_settings",
+    category: "SYSTEM_ADMIN",
+    valueType: "BOOLEAN",
+    value: true,
+    label: "Allow Branch Specific Settings",
+    description: "Allows future branch-level overrides for selected settings.",
+  },
+  {
+    scopeKey: "GLOBAL:document.numbering",
+    key: "document.numbering",
+    category: "DOCUMENT",
+    valueType: "JSON",
+    value: {
+      quotationPrefix: "QT-",
+      quotationNextNumber: 10001,
+      salePrefix: "INV-",
+      saleNextNumber: 10001,
+      orderPrefix: "PO-",
+      orderNextNumber: 10001,
+      transferPrefix: "TR-",
+      transferNextNumber: 10001,
+    },
+    label: "Document Numbering Sequences",
+    description: "Default prefixes and sequence starting points for generated documents.",
+  },
+  {
+    scopeKey: "GLOBAL:price.tier_labels",
+    key: "price.tier_labels",
+    category: "BUSINESS_RULE",
+    valueType: "JSON",
+    value: {
+      price1: "Price 1",
+      price2: "Price 2",
+      price3: "Price 3",
+      price4: "Price 4",
+      price5: "Price 5",
+    },
+    label: "Price Tier Labels",
+    description: "Configurable labels for price tiers 1 through 5.",
+  },
+  {
+    scopeKey: "GLOBAL:payment.methods",
+    key: "payment.methods",
+    category: "OPERATION",
+    valueType: "JSON",
+    value: {
+      cash: true,
+      gcash: true,
+      maya: true,
+      bankTransfer: true,
+      card: true,
+    },
+    label: "Enabled Payment Methods",
+    description: "Configurable payment methods accepted at checkout.",
+  },
+  {
+    scopeKey: "GLOBAL:discount.rules",
+    key: "discount.rules",
+    category: "BUSINESS_RULE",
+    valueType: "JSON",
+    value: {
+      maxStaffDiscountPercent: 5,
+      requireApprovalAbovePercent: 5,
+      allowCustomPriceOverride: false,
+    },
+    label: "Discount Rules & Limitations",
+    description: "Staff discount caps and manager approval thresholds.",
+  },
+  {
+    scopeKey: "GLOBAL:inventory.rules",
+    key: "inventory.rules",
+    category: "OPERATION",
+    valueType: "JSON",
+    value: {
+      defaultLowStockThreshold: 5,
+      preventNegativeStock: true,
+      autoTrackSerialMovements: true,
+    },
+    label: "Inventory Rules & Controls",
+    description: "Low stock alert levels, negative stock prevention, and serial audit toggles.",
+  },
+  {
+    scopeKey: "GLOBAL:service.rules",
+    key: "service.rules",
+    category: "OPERATION",
+    valueType: "JSON",
+    value: {
+      defaultDiagnosticFee: 0,
+      requireTechnicianAssignment: true,
+    },
+    label: "Service Job Rules",
+    description: "Default diagnostic fee and service workflow requirements.",
+  },
+  {
+    scopeKey: "GLOBAL:incentive.rules",
+    key: "incentive.rules",
+    category: "BUSINESS_RULE",
+    valueType: "JSON",
+    value: {
+      enableItemIncentives: true,
+      enableServiceIncentives: true,
+      staffCanViewOwnIncentives: true,
+      ownerCanViewAllIncentives: true,
+      requireOwnerApprovalBeforePayout: true,
+      defaultItemIncentivePercent: 1,
+      defaultServiceIncentivePercent: 5,
+    },
+    label: "Incentive System Rules",
+    description: "Commission and incentive calculation and payout rules.",
+  },
+];
+
+const ensureDefaultSettings = async () => {
+  try {
+    for (const item of DEFAULT_SETTINGS_LIST) {
+      await prisma.businessSetting.upsert({
+        where: { scopeKey: item.scopeKey },
+        update: {
+          key: item.key,
+          category: item.category,
+          valueType: item.valueType,
+          label: item.label,
+          description: item.description,
+          isEditable: true,
+          isActive: true,
+        },
+        create: {
+          scopeKey: item.scopeKey,
+          key: item.key,
+          category: item.category,
+          valueType: item.valueType,
+          value: item.value,
+          label: item.label,
+          description: item.description,
+          isEditable: true,
+          isActive: true,
+        },
+      });
+    }
+  } catch (err) {
+    // Non-blocking logger
+  }
+};
+
 const assertSettingBranchAccess = (setting, actor) => {
   if (!actor || actor.role === "SUPER_OWNER" || !setting.branchId) return;
 
@@ -144,7 +419,7 @@ const listSettings = async (filters = {}, actor = null) => {
     ];
   }
 
-  const settings = await prisma.businessSetting.findMany({
+  let settings = await prisma.businessSetting.findMany({
     where,
     select: SETTING_SELECT,
     orderBy: [
@@ -156,6 +431,22 @@ const listSettings = async (filters = {}, actor = null) => {
       },
     ],
   });
+
+  if (settings.length === 0 && !filters.category && !filters.key && !filters.branchId) {
+    await ensureDefaultSettings();
+    settings = await prisma.businessSetting.findMany({
+      where,
+      select: SETTING_SELECT,
+      orderBy: [
+        {
+          category: "asc",
+        },
+        {
+          scopeKey: "asc",
+        },
+      ],
+    });
+  }
 
   cache.set(cacheKey, settings, SETTINGS_CACHE_TTL);
   return settings;
@@ -194,7 +485,40 @@ const findSettingByScopeKeyOrKey = async (rawScopeKey, select = null) => {
     query.select = select;
   }
 
-  return prisma.businessSetting.findFirst(query);
+  let setting = await prisma.businessSetting.findFirst(query);
+
+  if (!setting) {
+    const defaultItem = DEFAULT_SETTINGS_LIST.find(
+      (d) => candidates.includes(d.scopeKey) || candidates.includes(d.key)
+    );
+
+    if (defaultItem) {
+      setting = await prisma.businessSetting.upsert({
+        where: { scopeKey: defaultItem.scopeKey },
+        update: {},
+        create: {
+          scopeKey: defaultItem.scopeKey,
+          key: defaultItem.key,
+          category: defaultItem.category,
+          valueType: defaultItem.valueType,
+          value: defaultItem.value,
+          label: defaultItem.label,
+          description: defaultItem.description,
+          isEditable: true,
+          isActive: true,
+        },
+      });
+
+      if (select) {
+        setting = await prisma.businessSetting.findUnique({
+          where: { id: setting.id },
+          select,
+        });
+      }
+    }
+  }
+
+  return setting;
 };
 
 const getSettingByScopeKey = async (scopeKey, actor = null) => {
@@ -848,6 +1172,7 @@ module.exports = {
   listSettings,
   getSettingByScopeKey,
   updateSettingByScopeKey,
+  ensureDefaultSettings,
   getQuotationBasisSettings,
   computeQuotationTest,
   getInstallmentBasisSettings,
