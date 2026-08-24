@@ -7,10 +7,10 @@ const { createAuditLog } = require("../../../utils/auditLogger");
 
 const ALLOWED_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
 
-const TABLES_IN_ORDER = [
+const ALL_MODELS = [
   "branch",
   "user",
-  "setting",
+  "businessSetting",
   "itemCategory",
   "unit",
   "item",
@@ -26,9 +26,10 @@ const TABLES_IN_ORDER = [
   "purchaseReceivingSerial",
   "stockTransfer",
   "stockTransferItem",
+  "stockTransferAllocation",
   "stockTransferSerial",
   "stockTransferDispatchAllocation",
-  "stockTransferAllocation",
+  "stockTransferSettlement",
   "quotation",
   "quotationItem",
   "sale",
@@ -36,11 +37,10 @@ const TABLES_IN_ORDER = [
   "salePayment",
   "creditAccount",
   "creditCollection",
-  "creditSchedule",
   "cashBox",
+  "cashCustodianAssignment",
   "cashTransaction",
   "cashHandover",
-  "cashHandoverRecipient",
   "serviceJob",
   "servicePayment",
   "warrantyClaim",
@@ -49,6 +49,18 @@ const TABLES_IN_ORDER = [
   "deliveryReceipt",
   "deliveryReceiptItem",
   "incentive",
+  "incentiveAccountConfigVersion",
+  "incentiveProgramRuleVersion",
+  "incentiveProgramScheduleVersion",
+  "incentiveRateVersion",
+  "incentiveRate",
+  "incentiveScheduleVersion",
+  "incentiveCycle",
+  "incentiveItemCycleRevision",
+  "incentiveItemBasisSnapshot",
+  "incentiveItemRecipientSnapshot",
+  "incentiveClaim",
+  "incentiveClaimLine",
   "auditLog",
 ];
 
@@ -57,14 +69,14 @@ const generateDatabaseSnapshot = async (actor = null) => {
   const counts = {};
   let totalRecords = 0;
 
-  for (const modelKey of TABLES_IN_ORDER) {
+  for (const modelKey of ALL_MODELS) {
     if (prisma[modelKey] && typeof prisma[modelKey].findMany === "function") {
       try {
         const rows = await prisma[modelKey].findMany();
         data[modelKey] = rows;
         counts[modelKey] = rows.length;
         totalRecords += rows.length;
-      } catch {
+      } catch (err) {
         data[modelKey] = [];
         counts[modelKey] = 0;
       }
@@ -128,88 +140,121 @@ const restoreDatabaseSnapshot = async ({ backupData, actor, password }) => {
     throw new AppError("Incorrect password. Database restore cancelled.", 400, "INVALID_PASSWORD");
   }
 
-  const tablesData = backupData.data;
-  if (!tablesData || typeof tablesData !== "object") {
+  const rawTablesData = backupData.data;
+  if (!rawTablesData || typeof rawTablesData !== "object") {
     throw new AppError("Invalid backup file: missing tables data.", 400, "INVALID_BACKUP");
   }
 
-  return await prisma.$transaction(async (tx) => {
-    // Delete in reverse dependency order
-    const reverseTables = [...TABLES_IN_ORDER].reverse();
-    for (const modelKey of reverseTables) {
-      if (tx[modelKey] && typeof tx[modelKey].deleteMany === "function") {
-        try {
-          await tx[modelKey].deleteMany({});
-        } catch (e) {
-          // ignore if table doesn't exist
-        }
-      }
-    }
+  // Handle legacy table key name mappings if present
+  const tablesData = { ...rawTablesData };
+  if (tablesData.setting && !tablesData.businessSetting) {
+    tablesData.businessSetting = tablesData.setting;
+  }
 
-    // Insert in forward dependency order
-    const restoredCounts = {};
-    for (const modelKey of TABLES_IN_ORDER) {
-      const rows = tablesData[modelKey];
-      if (Array.isArray(rows) && rows.length > 0 && tx[modelKey]) {
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        // In PostgreSQL, disable FK trigger checks during bulk restore to prevent order/constraint errors
         try {
-          // Create in chunks of 50 to avoid parameter limits
-          const chunkSize = 50;
-          for (let i = 0; i < rows.length; i += chunkSize) {
-            const chunk = rows.slice(i, i + chunkSize);
-            await tx[modelKey].createMany({
-              data: chunk,
-              skipDuplicates: true,
-            });
-          }
-          restoredCounts[modelKey] = rows.length;
-        } catch (err) {
-          // Attempt individual inserts if batch has constraints
-          let inserted = 0;
-          for (const row of rows) {
+          await tx.$executeRawUnsafe("SET session_replication_role = 'replica';");
+        } catch {
+          // Ignore if unsupported
+        }
+
+        // Clean tables
+        const reverseModels = [...ALL_MODELS].reverse();
+        for (const modelKey of reverseModels) {
+          if (tx[modelKey] && typeof tx[modelKey].deleteMany === "function") {
             try {
-              await tx[modelKey].create({ data: row });
-              inserted += 1;
-            } catch {
-              // skip unresolvable row
+              await tx[modelKey].deleteMany({});
+            } catch (delErr) {
+              console.warn(`[Restore] Could not delete table ${modelKey}:`, delErr.message);
             }
           }
-          restoredCounts[modelKey] = inserted;
         }
-      } else {
-        restoredCounts[modelKey] = 0;
-      }
-    }
 
-    await createAuditLog(
-      {
-        actor,
-        branchId: actor.branchId || null,
-        action: "DATABASE_RESTORED",
-        entityType: "Database",
-        entityId: "system-database",
-        description: `Full database restored from backup dated ${backupData.exportedAt || "unknown"}.`,
-        metadata: {
+        // Insert restored tables in order
+        const restoredCounts = {};
+        for (const modelKey of ALL_MODELS) {
+          const rows = tablesData[modelKey];
+          if (Array.isArray(rows) && rows.length > 0 && tx[modelKey]) {
+            try {
+              // Try chunked insert
+              const chunkSize = 50;
+              for (let i = 0; i < rows.length; i += chunkSize) {
+                const chunk = rows.slice(i, i + chunkSize);
+                await tx[modelKey].createMany({
+                  data: chunk,
+                  skipDuplicates: true,
+                });
+              }
+              restoredCounts[modelKey] = rows.length;
+            } catch (chunkErr) {
+              // Fallback to row-by-row insert
+              let inserted = 0;
+              for (const row of rows) {
+                try {
+                  await tx[modelKey].create({ data: row });
+                  inserted += 1;
+                } catch (rowErr) {
+                  console.warn(`[Restore] Skipped row in ${modelKey}:`, rowErr.message);
+                }
+              }
+              restoredCounts[modelKey] = inserted;
+            }
+          } else {
+            restoredCounts[modelKey] = 0;
+          }
+        }
+
+        // Re-enable trigger checks
+        try {
+          await tx.$executeRawUnsafe("SET session_replication_role = 'origin';");
+        } catch {
+          // Ignore
+        }
+
+        await createAuditLog(
+          {
+            actor,
+            branchId: actor.branchId || null,
+            action: "DATABASE_RESTORED",
+            entityType: "Database",
+            entityId: "system-database",
+            description: `Full database restored from backup dated ${backupData.exportedAt || "unknown"}.`,
+            metadata: {
+              restoredCounts,
+              backupVersion: backupData.version || "1.0.0",
+              restoredBy: actor.username,
+            },
+          },
+          tx
+        );
+
+        return {
+          success: true,
           restoredCounts,
-          backupVersion: backupData.version || "1.0.0",
-          restoredBy: actor.username,
-        },
+          restoredAt: new Date().toISOString(),
+        };
       },
-      tx
+      {
+        timeout: 120000,
+        maxWait: 15000,
+      }
     );
-
-    return {
-      success: true,
-      restoredCounts,
-      restoredAt: new Date().toISOString(),
-    };
-  }, {
-    timeout: 60000,
-    maxWait: 10000,
-  });
+  } catch (txError) {
+    console.error("[Restore Error]", txError);
+    throw new AppError(
+      `Database restore failed: ${txError.message}`,
+      400,
+      "RESTORE_TRANSACTION_FAILED"
+    );
+  }
 };
 
 module.exports = {
   ALLOWED_ROLES,
+  ALL_MODELS,
   generateDatabaseSnapshot,
   restoreDatabaseSnapshot,
 };
