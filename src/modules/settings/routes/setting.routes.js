@@ -101,4 +101,20 @@ router.patch(
   settingController.updateSettingByScopeKey
 );
 
+router.get(
+  "/:scopeKey",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_SETTINGS),
+  validate(scopeKeyParamSchema),
+  settingController.getSettingByScopeKey
+);
+
+router.patch(
+  "/:scopeKey",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_SETTINGS),
+  validate(updateSettingSchema),
+  settingController.updateSettingByScopeKey
+);
+
 module.exports = router;
