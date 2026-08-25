@@ -9,15 +9,13 @@ const resolveBranchFilter = (actor, requestedBranchId) => {
     return requestedBranchId || undefined;
   }
 
+  if (requestedBranchId) {
+    return requestedBranchId;
+  }
+
   if (!actor?.branchId) {
     const error = new Error("BRANCH_REQUIRED");
     error.statusCode = 400;
-    throw error;
-  }
-
-  if (requestedBranchId && requestedBranchId !== actor.branchId) {
-    const error = new Error("BRANCH_ACCESS_DENIED");
-    error.statusCode = 403;
     throw error;
   }
 
