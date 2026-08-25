@@ -292,8 +292,8 @@ const ensureQuotationBelongsToBranch = async (tx, quotationId, branchId) => {
     throw error;
   }
 
-  if (quotation.status !== "APPROVED") {
-    const error = new Error("QUOTATION_NOT_APPROVED");
+  if (quotation.status === "CANCELLED" || quotation.status === "REJECTED") {
+    const error = new Error("QUOTATION_CANCELLED");
     error.statusCode = 400;
     throw error;
   }
