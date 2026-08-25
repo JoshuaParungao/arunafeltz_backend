@@ -99,10 +99,64 @@ const releaseWarrantyClaimSchema = z.object({
   }),
 });
 
+const immediateReplacementSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Warranty claim ID is required"),
+  }),
+  body: z.object({
+    replacementItemId: optionalString,
+    replacementBatchId: optionalString,
+    replacementSerialId: optionalString,
+    replacementSerialNumber: optionalString,
+    replacementWarrantyType: optionalString,
+    replacementWarrantyDuration: optionalString,
+    actionTaken: optionalString,
+    remarks: optionalString,
+  }),
+});
+
+const dispatchSupplierSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Warranty claim ID is required"),
+  }),
+  body: z.object({
+    supplierName: z.string().trim().min(1, "Supplier name is required"),
+    supplierReferenceNo: optionalString,
+    remarks: optionalString,
+  }),
+});
+
+const resolveSupplierRmaSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Warranty claim ID is required"),
+  }),
+  body: z.object({
+    outcome: z.enum(["REPLACED_BY_SUPPLIER", "REPAIRED", "REJECTED"]),
+    rejectionReason: optionalString,
+    newSerial: optionalString,
+    actionTaken: optionalString,
+    remarks: optionalString,
+  }),
+});
+
+const rejectCustomerClaimSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Warranty claim ID is required"),
+  }),
+  body: z.object({
+    rejectionReason: z.string().trim().min(1, "Rejection reason is required"),
+    remarks: optionalString,
+  }),
+});
+
 module.exports = {
   createWarrantyClaimSchema,
   listWarrantyClaimsSchema,
   releaseWarrantyClaimSchema,
   updateWarrantyClaimStatusSchema,
   warrantyClaimIdParamSchema,
+  immediateReplacementSchema,
+  dispatchSupplierSchema,
+  resolveSupplierRmaSchema,
+  rejectCustomerClaimSchema,
 };

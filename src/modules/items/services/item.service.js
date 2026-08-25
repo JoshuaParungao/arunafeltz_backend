@@ -287,7 +287,7 @@ const assertCategoryBelongsToBranchId = (category, branchId) => {
 };
 
 const generateItemCode = async (branch) => {
-  const prefix = `ITEM-${branch.code}-API-`;
+  const prefix = `ITEM-${branch.code}-`;
 
   const existingItems = await prisma.item.findMany({
     where: {
@@ -304,7 +304,7 @@ const generateItemCode = async (branch) => {
   let highestNumber = 0;
 
   for (const item of existingItems) {
-    const suffix = item.itemCode.replace(prefix, "");
+    const suffix = item.itemCode.replace(prefix, "").replace(/^API-/, "");
     const parsedNumber = Number.parseInt(suffix, 10);
 
     if (!Number.isNaN(parsedNumber) && parsedNumber > highestNumber) {
@@ -314,7 +314,7 @@ const generateItemCode = async (branch) => {
 
   const nextNumber = highestNumber + 1;
 
-  return `${prefix}${String(nextNumber).padStart(3, "0")}`;
+  return `${prefix}${String(nextNumber).padStart(4, "0")}`;
 };
 
 const assertItemCodeIsUnique = async (branchId, itemCode) => {

@@ -594,85 +594,198 @@ const buildSaleItems = async (
           throw error;
         }
 
-        if (!resolvedSerialId) {
+        const inputSerialString = itemPayload.serialNumber
+          ? String(itemPayload.serialNumber).trim()
+          : "";
+
+        let serial = null;
+
+        if (resolvedSerialId) {
+          await tx.$queryRaw`
+            SELECT "id"
+            FROM "ItemSerial"
+            WHERE "id" = ${resolvedSerialId}
+            FOR UPDATE
+          `;
+
+          serial = await tx.itemSerial.findFirst({
+            where: {
+              id: resolvedSerialId,
+              branchId,
+              itemId: item.id,
+            },
+          });
+        } else if (inputSerialString) {
+          serial = await tx.itemSerial.findFirst({
+            where: {
+              branchId,
+              itemId: item.id,
+              serialNumber: inputSerialString,
+            },
+          });
+
+          if (serial) {
+            await tx.$queryRaw`
+              SELECT "id"
+              FROM "ItemSerial"
+              WHERE "id" = ${serial.id}
+              FOR UPDATE
+            `;
+          }
+        }
+
+        if (serial) {
+          if (serial.status !== "AVAILABLE") {
+            const error = new Error("SERIAL_NOT_AVAILABLE");
+            error.statusCode = 400;
+            throw error;
+          }
+
+          if (!serial.batchId) {
+            const error = new Error("SERIAL_BATCH_REQUIRED");
+            error.statusCode = 400;
+            throw error;
+          }
+
+          if (resolvedBatchId && resolvedBatchId !== serial.batchId) {
+            const error = new Error("SERIAL_BATCH_MISMATCH");
+            error.statusCode = 400;
+            throw error;
+          }
+
+          resolvedBatchId = serial.batchId;
+
+          const deduction = await deductBatchStock({
+            tx,
+            actor,
+            branchId,
+            item,
+            batchId: resolvedBatchId,
+            quantity,
+          });
+
+          await tx.itemSerial.update({
+            where: {
+              id: serial.id,
+            },
+            data: {
+              status: "SOLD",
+              updatedById: actor.id,
+            },
+          });
+
+          resolvedSerialId = serial.id;
+
+          stockDeduction = {
+            branchId,
+            itemId: item.id,
+            itemCode: item.itemCode,
+            batchId: deduction.batch.id,
+            serialId: serial.id,
+            quantity,
+            previousQuantity: deduction.previousQuantity,
+            newQuantity: deduction.newQuantity,
+            acquisitionUnitCost: deduction.batch.unitCost,
+            operationalUnitCost:
+              deduction.batch.operationalUnitCost ?? deduction.batch.unitCost,
+          };
+        } else if (inputSerialString) {
+          // On-the-fly auto registration of scanned/typed serial not currently in inventory
+          let targetBatch = null;
+
+          if (resolvedBatchId) {
+            targetBatch = await tx.inventoryBatch.findFirst({
+              where: {
+                id: resolvedBatchId,
+                branchId,
+                itemId: item.id,
+                status: "ACTIVE",
+              },
+            });
+          }
+
+          if (!targetBatch) {
+            targetBatch = await tx.inventoryBatch.findFirst({
+              where: {
+                branchId,
+                itemId: item.id,
+                status: "ACTIVE",
+                quantityAvailable: { gt: "0" },
+              },
+              orderBy: { createdAt: "desc" },
+            });
+          }
+
+          if (!targetBatch) {
+            const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+            const count = await tx.inventoryBatch.count({ where: { branchId } });
+            const autoBatchCode = `BAT-${dateStr}-${String(count + 1).padStart(4, "0")}`;
+
+            targetBatch = await tx.inventoryBatch.create({
+              data: {
+                branchId,
+                itemId: item.id,
+                batchCode: autoBatchCode,
+                quantityIn: "1",
+                quantityAvailable: "1",
+                unitCost: item.costPrice.toString(),
+                operationalUnitCost: item.costPrice.toString(),
+                sellingPrice1: item.price1.toString(),
+                sellingPrice2: item.price2.toString(),
+                sellingPrice3: item.price3.toString(),
+                sellingPrice4: item.price4.toString(),
+                sellingPrice5: item.price5.toString(),
+                remarks: "Auto-created from POS serial barcode scan",
+                status: "ACTIVE",
+                createdById: actor.id,
+                updatedById: actor.id,
+              },
+            });
+          }
+
+          const deduction = await deductBatchStock({
+            tx,
+            actor,
+            branchId,
+            item,
+            batchId: targetBatch.id,
+            quantity: 1,
+          });
+
+          const newSerial = await tx.itemSerial.create({
+            data: {
+              branchId,
+              itemId: item.id,
+              batchId: targetBatch.id,
+              serialNumber: inputSerialString,
+              status: "SOLD",
+              remarks: "Auto-registered from POS scanner",
+              createdById: actor.id,
+              updatedById: actor.id,
+            },
+          });
+
+          resolvedSerialId = newSerial.id;
+          resolvedBatchId = targetBatch.id;
+
+          stockDeduction = {
+            branchId,
+            itemId: item.id,
+            itemCode: item.itemCode,
+            batchId: deduction.batch.id,
+            serialId: newSerial.id,
+            quantity,
+            previousQuantity: deduction.previousQuantity,
+            newQuantity: deduction.newQuantity,
+            acquisitionUnitCost: deduction.batch.unitCost,
+            operationalUnitCost:
+              deduction.batch.operationalUnitCost ?? deduction.batch.unitCost,
+          };
+        } else {
           const error = new Error("SERIAL_REQUIRED");
           error.statusCode = 400;
           throw error;
         }
-
-        await tx.$queryRaw`
-          SELECT "id"
-          FROM "ItemSerial"
-          WHERE "id" = ${resolvedSerialId}
-          FOR UPDATE
-        `;
-
-        const serial = await tx.itemSerial.findFirst({
-          where: {
-            id: resolvedSerialId,
-            branchId,
-            itemId: item.id,
-          },
-        });
-
-        if (!serial) {
-          const error = new Error("SERIAL_NOT_FOUND");
-          error.statusCode = 404;
-          throw error;
-        }
-
-        if (serial.status !== "AVAILABLE") {
-          const error = new Error("SERIAL_NOT_AVAILABLE");
-          error.statusCode = 400;
-          throw error;
-        }
-
-        if (!serial.batchId) {
-          const error = new Error("SERIAL_BATCH_REQUIRED");
-          error.statusCode = 400;
-          throw error;
-        }
-
-        if (resolvedBatchId && resolvedBatchId !== serial.batchId) {
-          const error = new Error("SERIAL_BATCH_MISMATCH");
-          error.statusCode = 400;
-          throw error;
-        }
-
-        resolvedBatchId = serial.batchId;
-
-        const deduction = await deductBatchStock({
-          tx,
-          actor,
-          branchId,
-          item,
-          batchId: resolvedBatchId,
-          quantity,
-        });
-
-        await tx.itemSerial.update({
-          where: {
-            id: serial.id,
-          },
-          data: {
-            status: "SOLD",
-            updatedById: actor.id,
-          },
-        });
-
-        stockDeduction = {
-          branchId,
-          itemId: item.id,
-          itemCode: item.itemCode,
-          batchId: deduction.batch.id,
-          serialId: serial.id,
-          quantity,
-          previousQuantity: deduction.previousQuantity,
-          newQuantity: deduction.newQuantity,
-          acquisitionUnitCost: deduction.batch.unitCost,
-          operationalUnitCost:
-            deduction.batch.operationalUnitCost ?? deduction.batch.unitCost,
-        };
       } else {
         if (resolvedSerialId) {
           const error = new Error("SERIAL_NOT_ALLOWED_FOR_NON_SERIALIZED_ITEM");
@@ -1593,41 +1706,67 @@ const restoreReturnedSaleItemStock = async ({
   quantity,
   returnCode,
 }) => {
-  await tx.$queryRaw`
-    SELECT "id"
-    FROM "InventoryBatch"
-    WHERE "id" = ${saleItem.batchId}
-    FOR UPDATE
-  `;
-
-  const batch = await tx.inventoryBatch.findFirst({
-    where: {
-      id: saleItem.batchId,
-      branchId: sale.branchId,
-      itemId: saleItem.itemId,
-    },
-  });
+  let batch = null;
+  if (saleItem.batchId) {
+    batch = await tx.inventoryBatch.findFirst({
+      where: {
+        id: saleItem.batchId,
+        branchId: sale.branchId,
+        itemId: saleItem.itemId,
+      },
+    });
+  }
 
   if (!batch) {
-    const error = new Error("BATCH_NOT_FOUND");
-    error.statusCode = 404;
-    throw error;
+    batch = await tx.inventoryBatch.findFirst({
+      where: {
+        branchId: sale.branchId,
+        itemId: saleItem.itemId,
+        status: "ACTIVE",
+      },
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   const restoreQuantity = toQuantityDecimal(quantity);
-  const previousQuantity = toQuantityDecimal(batch.quantityAvailable);
-  const newQuantity = previousQuantity.plus(restoreQuantity);
+  let previousQuantity = toDecimal(0);
+  let newQuantity = restoreQuantity;
 
-  await tx.inventoryBatch.update({
-    where: {
-      id: batch.id,
-    },
-    data: {
-      quantityAvailable: newQuantity.toFixed(2),
-      status: "ACTIVE",
-      updatedById: actor.id,
-    },
-  });
+  if (!batch) {
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const count = await tx.inventoryBatch.count({ where: { branchId: sale.branchId } });
+    const autoBatchCode = `BAT-${dateStr}-${String(count + 1).padStart(4, "0")}`;
+
+    batch = await tx.inventoryBatch.create({
+      data: {
+        branchId: sale.branchId,
+        itemId: saleItem.itemId,
+        batchCode: autoBatchCode,
+        quantityIn: restoreQuantity.toFixed(2),
+        quantityAvailable: restoreQuantity.toFixed(2),
+        unitCost: saleItem.acquisitionUnitCostSnapshot ? saleItem.acquisitionUnitCostSnapshot.toString() : "0.00",
+        operationalUnitCost: saleItem.operationalUnitCostSnapshot ? saleItem.operationalUnitCostSnapshot.toString() : "0.00",
+        status: "ACTIVE",
+        remarks: `Auto-generated from cancelled sale ${sale.receiptCode}`,
+        createdById: actor.id,
+        updatedById: actor.id,
+      },
+    });
+  } else {
+    previousQuantity = toQuantityDecimal(batch.quantityAvailable);
+    newQuantity = previousQuantity.plus(restoreQuantity);
+
+    await tx.inventoryBatch.update({
+      where: {
+        id: batch.id,
+      },
+      data: {
+        quantityAvailable: newQuantity.toFixed(2),
+        status: "ACTIVE",
+        updatedById: actor.id,
+      },
+    });
+  }
 
   if (saleItem.serialId) {
     await tx.$queryRaw`
@@ -1642,31 +1781,21 @@ const restoreReturnedSaleItemStock = async ({
         id: saleItem.serialId,
         branchId: sale.branchId,
         itemId: saleItem.itemId,
-        batchId: saleItem.batchId,
       },
     });
 
-    if (!serial) {
-      const error = new Error("SERIAL_NOT_FOUND");
-      error.statusCode = 404;
-      throw error;
+    if (serial) {
+      await tx.itemSerial.update({
+        where: {
+          id: serial.id,
+        },
+        data: {
+          status: "AVAILABLE",
+          batchId: batch.id,
+          updatedById: actor.id,
+        },
+      });
     }
-
-    if (serial.status !== "SOLD") {
-      const error = new Error("SERIAL_RETURN_STATUS_INVALID");
-      error.statusCode = 400;
-      throw error;
-    }
-
-    await tx.itemSerial.update({
-      where: {
-        id: serial.id,
-      },
-      data: {
-        status: "RETURNED",
-        updatedById: actor.id,
-      },
-    });
   }
 
   const movementCode = await generateReturnMovementCode(

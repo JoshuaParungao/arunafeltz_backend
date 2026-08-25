@@ -47,9 +47,13 @@ const saleItemSchema = z.object({
   markupPercent: optionalMarkupPercent,
   quantity: positiveNumber,
   unitPrice: nonNegativeNumber.optional(),
-  discountAmount: nonNegativeNumber.optional().default(0),
   batchId: z.string().trim().min(1).optional(),
   serialId: z.string().trim().min(1).optional(),
+  serialNumber: optionalString,
+  warrantyType: optionalString,
+  warrantyDuration: optionalString,
+  warrantyDays: z.coerce.number().nonnegative().optional(),
+  warrantyMonths: z.coerce.number().nonnegative().optional(),
 });
 
 const salePaymentSchema = z.object({

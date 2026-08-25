@@ -24,6 +24,16 @@ const handleWarrantyClaimError = (error, res, next) => {
     SALE_ITEM_SERIAL_MISMATCH: [400, "Sale item does not belong to the selected serial."],
     WARRANTY_CLAIM_NOT_FOUND: [404, "Warranty claim not found."],
     INVALID_WARRANTY_STATUS_TRANSITION: [400, "Invalid warranty status transition."],
+    SERIAL_ALREADY_CLAIMED: [400, "Fraud Prevention: This item / serial was already claimed and resolved."],
+    WARRANTY_CLAIM_ALREADY_SETTLED_OR_REJECTED: [400, "This warranty claim has already been settled or rejected."],
+    REPLACEMENT_ITEM_REQUIRED: [400, "Replacement item is required."],
+    REPLACEMENT_SERIAL_REQUIRED: [400, "Replacement serial number is required for serialized items."],
+    REPLACEMENT_SERIAL_NOT_AVAILABLE: [400, "Selected replacement serial is not available in branch stock."],
+    INSUFFICIENT_STOCK_FOR_REPLACEMENT: [400, "Insufficient branch stock to issue replacement unit."],
+    SUPPLIER_NAME_REQUIRED: [400, "Supplier name is required."],
+    INVALID_SUPPLIER_OUTCOME: [400, "Invalid supplier RMA outcome."],
+    SUPPLIER_REJECTION_REASON_REQUIRED: [400, "Supplier rejection reason is required."],
+    REJECTION_REASON_REQUIRED: [400, "Rejection reason is required."],
   };
 
   if (errorMap[error.message]) {
@@ -57,8 +67,6 @@ const createWarrantyClaim = async (req, res, next) => {
     return handleWarrantyClaimError(error, res, next);
   }
 };
-
-
 
 const getWarrantyClaims = async (req, res, next) => {
   try {
@@ -131,10 +139,86 @@ const updateWarrantyClaimStatus = async (req, res, next) => {
   }
 };
 
+const processImmediateReplacement = async (req, res, next) => {
+  try {
+    const warrantyClaim = await warrantyClaimService.processImmediateReplacement(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Immediate replacement processed and branch stock updated successfully",
+      data: warrantyClaim,
+    });
+  } catch (error) {
+    return handleWarrantyClaimError(error, res, next);
+  }
+};
+
+const dispatchToSupplier = async (req, res, next) => {
+  try {
+    const warrantyClaim = await warrantyClaimService.dispatchToSupplier(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Item marked as dispatched to supplier",
+      data: warrantyClaim,
+    });
+  } catch (error) {
+    return handleWarrantyClaimError(error, res, next);
+  }
+};
+
+const resolveSupplierRma = async (req, res, next) => {
+  try {
+    const warrantyClaim = await warrantyClaimService.resolveSupplierRma(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Supplier RMA resolved successfully",
+      data: warrantyClaim,
+    });
+  } catch (error) {
+    return handleWarrantyClaimError(error, res, next);
+  }
+};
+
+const rejectCustomerClaim = async (req, res, next) => {
+  try {
+    const warrantyClaim = await warrantyClaimService.rejectCustomerClaim(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Customer warranty claim rejected",
+      data: warrantyClaim,
+    });
+  } catch (error) {
+    return handleWarrantyClaimError(error, res, next);
+  }
+};
+
 module.exports = {
   createWarrantyClaim,
   getWarrantyClaimById,
   getWarrantyClaims,
   releaseWarrantyClaim,
   updateWarrantyClaimStatus,
+  processImmediateReplacement,
+  dispatchToSupplier,
+  resolveSupplierRma,
+  rejectCustomerClaim,
 };

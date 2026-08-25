@@ -486,6 +486,34 @@ const createWarrantyClaim = async (actor, payload) => {
       throw error;
     }
 
+    // Anti-Fraud check: Ensure this serial / saleItem hasn't already been claimed and replaced or released
+    if (resolvedSerialId || payload.saleItemId) {
+      const existingSettledClaim = await tx.warrantyClaim.findFirst({
+        where: {
+          branchId: branch.id,
+          OR: [
+            ...(resolvedSerialId ? [{ serialId: resolvedSerialId }] : []),
+            ...(payload.saleItemId ? [{ saleItemId: payload.saleItemId }] : []),
+          ],
+          status: {
+            in: ["REPLACED", "OUT", "REPAIRED"],
+          },
+        },
+        select: {
+          id: true,
+          claimCode: true,
+          status: true,
+          createdAt: true,
+        },
+      });
+
+      if (existingSettledClaim) {
+        const error = new Error("SERIAL_ALREADY_CLAIMED");
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
     const claimCode = await generateWarrantyClaimCode(tx, branch.code, branch.id);
 
     const warrantyClaim = await tx.warrantyClaim.create({
@@ -900,10 +928,417 @@ const releaseWarrantyClaim = async (actor, warrantyClaimId, payload) => {
   });
 };
 
+const processImmediateReplacement = async (actor, warrantyClaimId, payload) => {
+  ensureCanUpdateWarrantyStatus(actor);
+
+  return prisma.$transaction(async (tx) => {
+    const warrantyClaim = await tx.warrantyClaim.findUnique({
+      where: { id: warrantyClaimId },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    if (!warrantyClaim) {
+      const error = new Error("WARRANTY_CLAIM_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    ensureCanAccessWarrantyClaimBranch(actor, warrantyClaim);
+
+    if (["REPLACED", "OUT", "REJECTED"].includes(warrantyClaim.status)) {
+      const error = new Error("WARRANTY_CLAIM_ALREADY_SETTLED_OR_REJECTED");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const branchId = warrantyClaim.branchId;
+    const replacementItemId = payload.replacementItemId || warrantyClaim.itemId;
+    if (!replacementItemId) {
+      const error = new Error("REPLACEMENT_ITEM_REQUIRED");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const item = await tx.item.findUnique({
+      where: { id: replacementItemId },
+    });
+    if (!item || item.branchId !== branchId) {
+      const error = new Error("ITEM_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    let batchId = payload.replacementBatchId;
+    let serialId = payload.replacementSerialId;
+
+    if (item.isSerialized) {
+      if (!serialId) {
+        const error = new Error("REPLACEMENT_SERIAL_REQUIRED");
+        error.statusCode = 400;
+        throw error;
+      }
+      const serial = await tx.itemSerial.findUnique({
+        where: { id: serialId },
+      });
+      if (!serial || serial.branchId !== branchId || serial.itemId !== item.id || serial.status !== "AVAILABLE") {
+        const error = new Error("REPLACEMENT_SERIAL_NOT_AVAILABLE");
+        error.statusCode = 400;
+        throw error;
+      }
+      batchId = serial.batchId;
+
+      await tx.itemSerial.update({
+        where: { id: serial.id },
+        data: {
+          status: "SOLD",
+          updatedById: actor.id,
+        },
+      });
+    }
+
+    const batch = await tx.inventoryBatch.findFirst({
+      where: { id: batchId, branchId },
+    });
+    if (!batch || Number(batch.quantityAvailable) < 1) {
+      const error = new Error("INSUFFICIENT_STOCK_FOR_REPLACEMENT");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await tx.inventoryBatch.update({
+      where: { id: batch.id },
+      data: {
+        quantityAvailable: { decrement: 1 },
+        updatedById: actor.id,
+      },
+    });
+
+    const movementCount = await tx.inventoryMovement.count({
+      where: { branchId },
+    });
+    const movementCode = `MOV-${warrantyClaim.branch.code}-${item.itemCode}-WARROUT-${String(movementCount + 1).padStart(4, "0")}`;
+
+    await tx.inventoryMovement.create({
+      data: {
+        movementCode,
+        type: "WARRANTY_OUT",
+        source: "WARRANTY",
+        quantity: 1,
+        previousQuantity: Number(batch.quantityAvailable),
+        newQuantity: Number(batch.quantityAvailable) - 1,
+        unitCost: batch.unitCost,
+        referenceNo: warrantyClaim.claimCode,
+        remarks: `Replacement for Claim ${warrantyClaim.claimCode}: ${payload.remarks || "Direct customer replacement"}${payload.replacementWarrantyDuration ? ` (New Warranty: ${payload.replacementWarrantyDuration})` : ""}`,
+        branchId,
+        itemId: item.id,
+        batchId: batch.id,
+        serialId: serialId || null,
+        createdById: actor.id,
+      },
+    });
+
+    if (warrantyClaim.serialId) {
+      await tx.itemSerial.update({
+        where: { id: warrantyClaim.serialId },
+        data: {
+          status: "WARRANTY",
+          updatedById: actor.id,
+        },
+      });
+    }
+
+    const updatedClaim = await tx.warrantyClaim.update({
+      where: { id: warrantyClaim.id },
+      data: {
+        status: "REPLACED",
+        replacedAt: new Date(),
+        actionTaken: `Immediate Replacement: ${item.itemName} (SN: ${payload.replacementSerialNumber || "Non-serialized"}). ${payload.actionTaken || ""}`.trim(),
+        remarks: `${warrantyClaim.remarks ? warrantyClaim.remarks + " | " : ""}Replaced on ${new Date().toLocaleDateString("en-PH")}. New Warranty: ${payload.replacementWarrantyDuration || "Standard"}`.trim(),
+        statusUpdatedById: actor.id,
+        updatedById: actor.id,
+      },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    await createAuditLog({
+      actor,
+      branchId,
+      action: "WARRANTY_IMMEDIATE_REPLACEMENT",
+      entityType: "WarrantyClaim",
+      entityId: updatedClaim.id,
+      description: `Immediate replacement released for ${updatedClaim.claimCode}`,
+      metadata: {
+        claimCode: updatedClaim.claimCode,
+        replacementItemId: item.id,
+        replacementSerialId: serialId,
+        newWarranty: payload.replacementWarrantyDuration,
+      },
+    }, tx);
+
+    return updatedClaim;
+  });
+};
+
+const dispatchToSupplier = async (actor, warrantyClaimId, payload) => {
+  ensureCanUpdateWarrantyStatus(actor);
+
+  return prisma.$transaction(async (tx) => {
+    const warrantyClaim = await tx.warrantyClaim.findUnique({
+      where: { id: warrantyClaimId },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    if (!warrantyClaim) {
+      const error = new Error("WARRANTY_CLAIM_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    ensureCanAccessWarrantyClaimBranch(actor, warrantyClaim);
+
+    if (!payload.supplierName || !payload.supplierName.trim()) {
+      const error = new Error("SUPPLIER_NAME_REQUIRED");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const updatedClaim = await tx.warrantyClaim.update({
+      where: { id: warrantyClaim.id },
+      data: {
+        status: "SENT_TO_SUPPLIER",
+        sentToSupplierAt: new Date(),
+        supplierName: payload.supplierName.trim(),
+        supplierReferenceNo: payload.supplierReferenceNo ? payload.supplierReferenceNo.trim() : null,
+        remarks: `${warrantyClaim.remarks ? warrantyClaim.remarks + " | " : ""}Dispatched to supplier: ${payload.supplierName.trim()} (RMA #${payload.supplierReferenceNo || "N/A"}). ${payload.remarks || ""}`.trim(),
+        statusUpdatedById: actor.id,
+        updatedById: actor.id,
+      },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    await createAuditLog({
+      actor,
+      branchId: warrantyClaim.branchId,
+      action: "WARRANTY_DISPATCHED_TO_SUPPLIER",
+      entityType: "WarrantyClaim",
+      entityId: updatedClaim.id,
+      description: `Claim ${updatedClaim.claimCode} dispatched to ${payload.supplierName}`,
+      metadata: {
+        supplierName: payload.supplierName,
+        supplierReferenceNo: payload.supplierReferenceNo,
+      },
+    }, tx);
+
+    return updatedClaim;
+  });
+};
+
+const resolveSupplierRma = async (actor, warrantyClaimId, payload) => {
+  ensureCanUpdateWarrantyStatus(actor);
+
+  return prisma.$transaction(async (tx) => {
+    const warrantyClaim = await tx.warrantyClaim.findUnique({
+      where: { id: warrantyClaimId },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    if (!warrantyClaim) {
+      const error = new Error("WARRANTY_CLAIM_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    ensureCanAccessWarrantyClaimBranch(actor, warrantyClaim);
+
+    const branchId = warrantyClaim.branchId;
+    const outcome = payload.outcome;
+
+    if (!["REPLACED_BY_SUPPLIER", "REPAIRED", "REJECTED"].includes(outcome)) {
+      const error = new Error("INVALID_SUPPLIER_OUTCOME");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (outcome === "REJECTED") {
+      if (!payload.rejectionReason || !payload.rejectionReason.trim()) {
+        const error = new Error("SUPPLIER_REJECTION_REASON_REQUIRED");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (warrantyClaim.serialId) {
+        await tx.itemSerial.update({
+          where: { id: warrantyClaim.serialId },
+          data: {
+            status: "DAMAGED",
+            updatedById: actor.id,
+          },
+        });
+      }
+
+      const updatedClaim = await tx.warrantyClaim.update({
+        where: { id: warrantyClaim.id },
+        data: {
+          status: "REJECTED",
+          rejectedAt: new Date(),
+          diagnosis: `Supplier RMA Rejected: ${payload.rejectionReason.trim()}`,
+          remarks: `${warrantyClaim.remarks ? warrantyClaim.remarks + " | " : ""}Supplier Rejected (Shrinkage Loss): ${payload.rejectionReason.trim()}`.trim(),
+          statusUpdatedById: actor.id,
+          updatedById: actor.id,
+        },
+        include: WARRANTY_CLAIM_INCLUDE,
+      });
+
+      await createAuditLog({
+        actor,
+        branchId,
+        action: "WARRANTY_SUPPLIER_REJECTED_SHRINKAGE",
+        entityType: "WarrantyClaim",
+        entityId: updatedClaim.id,
+        description: `Supplier rejected RMA for ${updatedClaim.claimCode} - Shrinkage written off`,
+        metadata: {
+          rejectionReason: payload.rejectionReason,
+        },
+      }, tx);
+
+      return updatedClaim;
+    }
+
+    const targetItemId = warrantyClaim.itemId;
+    let targetBatch = null;
+
+    if (targetItemId) {
+      targetBatch = await tx.inventoryBatch.findFirst({
+        where: {
+          itemId: targetItemId,
+          branchId,
+          status: "ACTIVE",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    }
+
+    if (targetBatch) {
+      await tx.inventoryBatch.update({
+        where: { id: targetBatch.id },
+        data: {
+          quantityAvailable: { increment: 1 },
+          updatedById: actor.id,
+        },
+      });
+
+      const movementCount = await tx.inventoryMovement.count({
+        where: { branchId },
+      });
+      const movementCode = `MOV-${warrantyClaim.branch.code}-${warrantyClaim.item?.itemCode || "ITEM"}-WARRRET-${String(movementCount + 1).padStart(4, "0")}`;
+
+      await tx.inventoryMovement.create({
+        data: {
+          movementCode,
+          type: "WARRANTY_RETURN",
+          source: "WARRANTY",
+          quantity: 1,
+          previousQuantity: Number(targetBatch.quantityAvailable),
+          newQuantity: Number(targetBatch.quantityAvailable) + 1,
+          unitCost: targetBatch.unitCost,
+          referenceNo: warrantyClaim.claimCode,
+          remarks: `Supplier RMA Returned (${outcome}): ${payload.remarks || "Stock replenished from supplier"}`,
+          branchId,
+          itemId: targetItemId,
+          batchId: targetBatch.id,
+          createdById: actor.id,
+        },
+      });
+    }
+
+    const nextStatus = outcome === "REPLACED_BY_SUPPLIER" ? "REPLACED" : "REPAIRED";
+    const updatedClaim = await tx.warrantyClaim.update({
+      where: { id: warrantyClaim.id },
+      data: {
+        status: nextStatus,
+        ...(nextStatus === "REPLACED" ? { replacedAt: new Date() } : { repairedAt: new Date() }),
+        actionTaken: `Supplier resolved with ${outcome}. ${payload.actionTaken || ""}`.trim(),
+        remarks: `${warrantyClaim.remarks ? warrantyClaim.remarks + " | " : ""}Received from supplier (${outcome}) on ${new Date().toLocaleDateString("en-PH")}`.trim(),
+        statusUpdatedById: actor.id,
+        updatedById: actor.id,
+      },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    await createAuditLog({
+      actor,
+      branchId,
+      action: "WARRANTY_SUPPLIER_RESOLVED",
+      entityType: "WarrantyClaim",
+      entityId: updatedClaim.id,
+      description: `Supplier resolved RMA for ${updatedClaim.claimCode} (${outcome})`,
+      metadata: { outcome },
+    }, tx);
+
+    return updatedClaim;
+  });
+};
+
+const rejectCustomerClaim = async (actor, warrantyClaimId, payload) => {
+  ensureCanUpdateWarrantyStatus(actor);
+
+  return prisma.$transaction(async (tx) => {
+    const warrantyClaim = await tx.warrantyClaim.findUnique({
+      where: { id: warrantyClaimId },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    if (!warrantyClaim) {
+      const error = new Error("WARRANTY_CLAIM_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    ensureCanAccessWarrantyClaimBranch(actor, warrantyClaim);
+
+    if (!payload.rejectionReason || !payload.rejectionReason.trim()) {
+      const error = new Error("REJECTION_REASON_REQUIRED");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const updatedClaim = await tx.warrantyClaim.update({
+      where: { id: warrantyClaim.id },
+      data: {
+        status: "REJECTED",
+        rejectedAt: new Date(),
+        diagnosis: `Customer Claim Rejected: ${payload.rejectionReason.trim()}`,
+        remarks: `${warrantyClaim.remarks ? warrantyClaim.remarks + " | " : ""}Rejected: ${payload.rejectionReason.trim()}. ${payload.remarks || ""}`.trim(),
+        statusUpdatedById: actor.id,
+        updatedById: actor.id,
+      },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    await createAuditLog({
+      actor,
+      branchId: warrantyClaim.branchId,
+      action: "WARRANTY_CUSTOMER_CLAIM_REJECTED",
+      entityType: "WarrantyClaim",
+      entityId: updatedClaim.id,
+      description: `Warranty claim ${updatedClaim.claimCode} rejected: ${payload.rejectionReason}`,
+      metadata: {
+        rejectionReason: payload.rejectionReason,
+      },
+    }, tx);
+
+    return updatedClaim;
+  });
+};
+
 module.exports = {
   createWarrantyClaim,
   getWarrantyClaimById,
   getWarrantyClaims,
   releaseWarrantyClaim,
   updateWarrantyClaimStatus,
+  processImmediateReplacement,
+  dispatchToSupplier,
+  resolveSupplierRma,
+  rejectCustomerClaim,
 };

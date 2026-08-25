@@ -9,6 +9,10 @@ const {
   releaseWarrantyClaimSchema,
   warrantyClaimIdParamSchema,
   updateWarrantyClaimStatusSchema,
+  immediateReplacementSchema,
+  dispatchSupplierSchema,
+  resolveSupplierRmaSchema,
+  rejectCustomerClaimSchema,
 } = require("../validations/warrantyClaim.validation");
 
 const router = express.Router();
@@ -31,6 +35,30 @@ router.post(
   "/:id/release",
   validate(releaseWarrantyClaimSchema),
   warrantyClaimController.releaseWarrantyClaim
+);
+
+router.post(
+  "/:id/replace",
+  validate(immediateReplacementSchema),
+  warrantyClaimController.processImmediateReplacement
+);
+
+router.post(
+  "/:id/dispatch-supplier",
+  validate(dispatchSupplierSchema),
+  warrantyClaimController.dispatchToSupplier
+);
+
+router.post(
+  "/:id/resolve-supplier",
+  validate(resolveSupplierRmaSchema),
+  warrantyClaimController.resolveSupplierRma
+);
+
+router.post(
+  "/:id/reject",
+  validate(rejectCustomerClaimSchema),
+  warrantyClaimController.rejectCustomerClaim
 );
 
 router.patch(

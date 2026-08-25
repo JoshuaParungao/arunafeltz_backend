@@ -1313,18 +1313,10 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
     const netAcquisitionUnitCost = toMoney(
       Number(receivingItem.lineTotal) / quantityReceived
     );
-    const batchCode = normalizeOptionalString(receivingItem.batchCode);
+    let batchCode = normalizeOptionalString(receivingItem.batchCode);
     const serialNumbers = Array.isArray(receivingItem.serials)
       ? receivingItem.serials.map((serial) => serial.serialNumber)
       : [];
-
-    if (!batchCode) {
-      throw new AppError(
-        "Batch code is required before posting receiving",
-        400,
-        "BATCH_CODE_REQUIRED_FOR_POSTING"
-      );
-    }
 
     await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${receivingItem.itemId} FOR UPDATE`;
 
@@ -1345,6 +1337,17 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
 
     if (!item) {
       throw new AppError("Item not found", 404, "ITEM_NOT_FOUND");
+    }
+
+    if (!batchCode) {
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const count = await tx.inventoryBatch.count({
+        where: {
+          branchId: receiving.branchId,
+          itemId: item.id,
+        },
+      });
+      batchCode = `BAT-${dateStr}-${String(count + 1).padStart(4, "0")}`;
     }
 
     if (item.branchId !== receiving.branchId) {

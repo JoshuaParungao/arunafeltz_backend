@@ -705,11 +705,20 @@ const createStockIn = async (actor, payload) => {
         },
       });
     } else {
+      let resolvedBatchCode = payload.batchCode ? String(payload.batchCode).trim().toUpperCase() : "";
+      if (!resolvedBatchCode) {
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const count = await tx.inventoryBatch.count({
+          where: { branchId, itemId: item.id },
+        });
+        resolvedBatchCode = `BAT-${dateStr}-${String(count + 1).padStart(4, "0")}`;
+      }
+
       const existingBatch = await tx.inventoryBatch.findUnique({
         where: {
           branchId_batchCode: {
             branchId,
-            batchCode: payload.batchCode,
+            batchCode: resolvedBatchCode,
           },
         },
       });
@@ -731,7 +740,7 @@ const createStockIn = async (actor, payload) => {
           data: {
             branchId,
             itemId: item.id,
-            batchCode: payload.batchCode,
+            batchCode: resolvedBatchCode,
             quantityIn: quantity.toString(),
             quantityAvailable: quantity.toString(),
             unitCost: resolvedUnitCost,
