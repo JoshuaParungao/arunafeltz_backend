@@ -2,7 +2,7 @@ const express = require("express");
 
 const validate = require("../../../middlewares/validate.middleware");
 const { protect } = require("../../../middlewares/auth.middleware");
-const { requirePermission } = require("../../../middlewares/permission.middleware");
+const { requirePermission, requireAnyPermission } = require("../../../middlewares/permission.middleware");
 const { PERMISSIONS } = require("../../../constants/permissions");
 const settingController = require("../controllers/setting.controller");
 const {
@@ -50,14 +50,22 @@ router.post(
 router.get(
   "/business-rules/installment",
   protect,
-  requirePermission(PERMISSIONS.VIEW_SETTINGS),
+  requireAnyPermission([
+    PERMISSIONS.VIEW_SETTINGS,
+    PERMISSIONS.VIEW_SALES,
+    PERMISSIONS.VIEW_QUOTATIONS,
+  ]),
   settingController.getInstallmentBasisSettings
 );
 
 router.post(
   "/business-rules/installment/test-compute",
   protect,
-  requirePermission(PERMISSIONS.VIEW_SETTINGS),
+  requireAnyPermission([
+    PERMISSIONS.VIEW_SETTINGS,
+    PERMISSIONS.VIEW_SALES,
+    PERMISSIONS.VIEW_QUOTATIONS,
+  ]),
   validate(installmentTestComputeSchema),
   settingController.computeInstallmentTest
 );

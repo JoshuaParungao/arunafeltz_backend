@@ -82,17 +82,6 @@ const receivableSchema = z
         path: ["term"],
       });
     }
-
-    if (
-      !isInHouse &&
-      (receivable.term || receivable.dueDay || receivable.firstDueDate)
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Installment terms apply only to in-house receivables",
-        path: ["term"],
-      });
-    }
   });
 
 const createSaleSchema = z.object({
