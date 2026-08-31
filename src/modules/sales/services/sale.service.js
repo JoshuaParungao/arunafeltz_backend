@@ -386,6 +386,7 @@ const buildQuotationConversionItems = (quotation, clientItems) => {
             }
           : {}),
         description: quotationItem.description,
+        warrantyDuration: quotationItem.warrantyDuration,
         quantity: isSerialized ? 1 : quotationQuantity,
         unitPrice: Number(quotationItem.unitPrice),
         discountAmount: discounts[unitIndex],
@@ -927,6 +928,9 @@ const buildSaleItems = async (
       itemId: item ? item.id : null,
       batchId: resolvedBatchId,
       serialId: resolvedSerialId,
+      warrantyDuration: itemPayload.warrantyDuration
+        ? String(itemPayload.warrantyDuration).trim()
+        : null,
     });
   }
 

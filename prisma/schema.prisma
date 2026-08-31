@@ -1910,6 +1910,7 @@ model QuotationItem {
   lineTotal             Decimal  @db.Decimal(12, 2)
 
   isPcBuildPart Boolean @default(false)
+  warrantyDuration String?
   remarks       String?
 
   quotationId String
@@ -2013,6 +2014,7 @@ model SaleItem {
   lineTotal                   Decimal  @db.Decimal(12, 2)
   operationalUnitCostSnapshot Decimal? @db.Decimal(12, 2)
   acquisitionUnitCostSnapshot Decimal? @db.Decimal(12, 2)
+  warrantyDuration            String?
 
   saleId String
   sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)

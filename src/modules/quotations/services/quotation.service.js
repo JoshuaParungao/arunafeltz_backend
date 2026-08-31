@@ -1,4 +1,4 @@
-﻿const prisma = require("../../../config/prisma");
+const prisma = require("../../../config/prisma");
 
 const { BRANCH_SCOPED_ROLES } = require("../../../constants/roles");
 const { createAuditLog } = require("../../../utils/auditLogger");
@@ -372,6 +372,7 @@ const buildQuotationItems = async (tx, actor, branchId, items) => {
       discountAmount: toMoneyString(discountAmount),
       lineTotal: toMoneyString(lineTotal),
       isPcBuildPart: Boolean(itemPayload.isPcBuildPart),
+      warrantyDuration: itemPayload.warrantyDuration ? String(itemPayload.warrantyDuration).trim() : null,
       remarks: itemPayload.remarks || null,
       itemId: item ? item.id : null,
     });

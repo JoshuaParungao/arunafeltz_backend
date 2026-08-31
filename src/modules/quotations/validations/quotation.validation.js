@@ -37,6 +37,7 @@ const quotationItemSchema = z.object({
   unitPrice: nonNegativeNumber.optional(),
   discountAmount: nonNegativeNumber.optional().default(0),
   isPcBuildPart: z.boolean().optional().default(false),
+  warrantyDuration: optionalString,
   remarks: optionalString,
 });
 
