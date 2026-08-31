@@ -24,6 +24,7 @@ const auditLogRoutes = require("../modules/audit-logs/routes/auditLog.routes");
 const reportRoutes = require("../modules/reports/routes/report.routes");
 const incentiveRoutes = require("../modules/incentives/routes/incentive.routes");
 const backupRoutes = require("../modules/backup/routes/backup.routes");
+const omnisearchRoutes = require("../modules/omnisearch/routes/omnisearch.routes");
 
 const router = express.Router();
 
@@ -51,6 +52,7 @@ router.use("/audit-logs", auditLogRoutes);
 router.use("/reports", reportRoutes);
 router.use("/incentives", incentiveRoutes);
 router.use("/backups", backupRoutes);
+router.use("/search", omnisearchRoutes);
 
 module.exports = router;
 
