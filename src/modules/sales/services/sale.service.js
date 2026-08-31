@@ -1339,6 +1339,22 @@ const getSales = async (actor, query) => {
           mode: "insensitive",
         },
       },
+      {
+        customer: {
+          fullName: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      },
+      {
+        customer: {
+          customerCode: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      },
     ];
   }
 

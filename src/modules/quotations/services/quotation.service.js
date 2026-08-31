@@ -984,7 +984,7 @@ const assertValidQuotationStatusTransition = (currentStatus, nextStatus) => {
   const allowedTransitions = {
     DRAFT: ["SENT", "CANCELLED"],
     SENT: ["APPROVED", "CANCELLED"],
-    APPROVED: [],
+    APPROVED: ["CANCELLED"],
     CANCELLED: [],
     CONVERTED: [],
   };
