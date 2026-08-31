@@ -100,23 +100,47 @@ const resolveBranchIdForCreate = (actor, requestedBranchId) => {
 };
 
 const generateQuotationCode = async (tx, branchCode, branchId) => {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const datePart = `${yyyy}${mm}${dd}`;
-  const prefix = `QT-${branchCode}-${datePart}`;
-
-  const count = await tx.quotation.count({
+  const existingQuotations = await tx.quotation.findMany({
     where: {
       branchId,
-      quotationCode: {
-        startsWith: prefix,
-      },
+    },
+    select: {
+      quotationCode: true,
     },
   });
 
-  return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+  let highestNumber = 0;
+
+  for (const q of existingQuotations) {
+    const raw = String(q.quotationCode || "").trim();
+    const match = raw.match(/\d+$/);
+    if (match) {
+      const num = Number.parseInt(match[0], 10);
+      if (!Number.isNaN(num) && num > highestNumber) {
+        highestNumber = num;
+      }
+    }
+  }
+
+  let nextNumber = highestNumber + 1;
+  let quotationCode = String(nextNumber).padStart(5, "0");
+
+  while (
+    await tx.quotation.findFirst({
+      where: {
+        branchId,
+        quotationCode,
+      },
+      select: {
+        id: true,
+      },
+    })
+  ) {
+    nextNumber += 1;
+    quotationCode = String(nextNumber).padStart(5, "0");
+  }
+
+  return quotationCode;
 };
 
 const ensureBranchExists = async (tx, branchId) => {
