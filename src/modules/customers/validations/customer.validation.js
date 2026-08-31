@@ -41,6 +41,7 @@ const createCustomerSchema = z.object({
       .min(1, "Notes cannot be empty")
       .optional()
       .nullable(),
+    priceTier: z.coerce.number().int().min(1).max(5).optional(),
   }),
 });
 
@@ -126,6 +127,7 @@ const updateCustomerSchema = z.object({
       .min(1, "Notes cannot be empty")
       .optional()
       .nullable(),
+    priceTier: z.coerce.number().int().min(1).max(5).optional(),
     status: z.enum(customerStatusValues).optional(),
   }),
 });

@@ -11,6 +11,7 @@ const CUSTOMER_SELECT = {
   companyName: true,
   notes: true,
   status: true,
+  priceTier: true,
   branchId: true,
   branch: {
     select: {
@@ -265,6 +266,7 @@ const createCustomer = async (payload, actor) => {
       companyName: normalizeOptionalString(payload.companyName),
       notes: normalizeOptionalString(payload.notes),
       status: "ACTIVE",
+      priceTier: payload.priceTier ? Number(payload.priceTier) : 1,
       branchId: branch.id,
       createdById: actor.id,
       updatedById: actor.id,
@@ -431,6 +433,22 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
             fullName: true,
           },
         },
+        items: {
+          select: {
+            id: true,
+            lineNo: true,
+            description: true,
+            priceTier: true,
+            quantity: true,
+            unitPrice: true,
+            lineTotal: true,
+            warrantyDuration: true,
+            remarks: true,
+          },
+          orderBy: {
+            lineNo: "asc",
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -464,6 +482,27 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
           select: {
             id: true,
             fullName: true,
+          },
+        },
+        items: {
+          select: {
+            id: true,
+            lineNo: true,
+            description: true,
+            priceTier: true,
+            quantity: true,
+            unitPrice: true,
+            lineTotal: true,
+            warrantyDuration: true,
+            serial: {
+              select: {
+                id: true,
+                serialNumber: true,
+              },
+            },
+          },
+          orderBy: {
+            lineNo: "asc",
           },
         },
       },
@@ -644,6 +683,10 @@ const updateCustomerById = async (customerId, payload, actor) => {
 
   if (payload.status !== undefined) {
     updateData.status = payload.status;
+  }
+
+  if (payload.priceTier !== undefined) {
+    updateData.priceTier = Number(payload.priceTier);
   }
 
   return prisma.customer.update({

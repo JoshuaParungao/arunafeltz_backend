@@ -1534,6 +1534,7 @@ model Customer {
   companyName  String?
   notes        String?
   status       CustomerStatus @default(ACTIVE)
+  priceTier    Int            @default(1)
 
   branchId String
   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
@@ -1558,6 +1559,7 @@ model Customer {
   @@unique([branchId, customerCode])
   @@index([branchId])
   @@index([status])
+  @@index([priceTier])
   @@index([fullName])
   @@index([mobileNumber])
   @@index([email])
