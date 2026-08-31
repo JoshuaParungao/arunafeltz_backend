@@ -421,18 +421,58 @@ const buildQuotationConversionPayload = (quotation, payload) => {
 };
 
 const generateReceiptCode = async (tx, branchCode, branchId) => {
-  const prefix = `RCPT-${branchCode}-${businessDateCode()}`;
-
-  const count = await tx.sale.count({
+  const existingSales = await tx.sale.findMany({
     where: {
       branchId,
-      receiptCode: {
-        startsWith: prefix,
-      },
+    },
+    select: {
+      receiptCode: true,
     },
   });
 
-  return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+  let highestNumber = 0;
+
+  for (const sale of existingSales) {
+    const raw = String(sale.receiptCode || "").trim();
+    // Match pure digits or trailing digits from legacy formats (e.g., RCPT-...-005)
+    const match = raw.match(/\d+$/);
+    if (match) {
+      const num = Number.parseInt(match[0], 10);
+      if (!Number.isNaN(num) && num > highestNumber) {
+        highestNumber = num;
+      }
+    }
+  }
+
+  let nextNumber = highestNumber + 1;
+  let receiptCode = String(nextNumber).padStart(5, "0");
+
+  // Collision check
+  let exists = await tx.sale.findFirst({
+    where: {
+      branchId,
+      receiptCode,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  while (exists) {
+    nextNumber += 1;
+    receiptCode = String(nextNumber).padStart(5, "0");
+    exists = await tx.sale.findFirst({
+      where: {
+        branchId,
+        receiptCode,
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  return receiptCode;
 };
 
 const generateSaleInventoryMovementCode = async (tx, branchCode, itemCode, branchId) => {

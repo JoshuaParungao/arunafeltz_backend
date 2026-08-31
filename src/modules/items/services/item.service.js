@@ -287,14 +287,9 @@ const assertCategoryBelongsToBranchId = (category, branchId) => {
 };
 
 const generateItemCode = async (branch) => {
-  const prefix = `ITEM-${branch.code}-`;
-
   const existingItems = await prisma.item.findMany({
     where: {
       branchId: branch.id,
-      itemCode: {
-        startsWith: prefix,
-      },
     },
     select: {
       itemCode: true,
@@ -304,17 +299,50 @@ const generateItemCode = async (branch) => {
   let highestNumber = 0;
 
   for (const item of existingItems) {
-    const suffix = item.itemCode.replace(prefix, "").replace(/^API-/, "");
-    const parsedNumber = Number.parseInt(suffix, 10);
-
-    if (!Number.isNaN(parsedNumber) && parsedNumber > highestNumber) {
-      highestNumber = parsedNumber;
+    const raw = String(item.itemCode || "").trim();
+    // Match pure digits or trailing digits from legacy formats (e.g. ITEM-...-0001)
+    const match = raw.match(/\d+$/);
+    if (match) {
+      const num = Number.parseInt(match[0], 10);
+      if (!Number.isNaN(num) && num > highestNumber) {
+        highestNumber = num;
+      }
     }
   }
 
-  const nextNumber = highestNumber + 1;
+  let nextNumber = highestNumber + 1;
+  let itemCode = String(nextNumber).padStart(5, "0");
 
-  return `${prefix}${String(nextNumber).padStart(4, "0")}`;
+  // Collision check
+  let exists = await prisma.item.findUnique({
+    where: {
+      branchId_itemCode: {
+        branchId: branch.id,
+        itemCode,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  while (exists) {
+    nextNumber += 1;
+    itemCode = String(nextNumber).padStart(5, "0");
+    exists = await prisma.item.findUnique({
+      where: {
+        branchId_itemCode: {
+          branchId: branch.id,
+          itemCode,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  return itemCode;
 };
 
 const assertItemCodeIsUnique = async (branchId, itemCode) => {
