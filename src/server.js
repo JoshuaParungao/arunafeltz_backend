@@ -5,12 +5,25 @@ const prisma = require("./config/prisma");
 const { initBackupScheduler } = require("./modules/backup/services/backupScheduler.service");
 const { ensureDefaultSettings } = require("./modules/settings/services/setting.service");
 
+const ensureSchemaMigrations = async () => {
+  try {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "QuotationItem" ADD COLUMN IF NOT EXISTS "warrantyDuration" TEXT;
+      ALTER TABLE "SaleItem" ADD COLUMN IF NOT EXISTS "warrantyDuration" TEXT;
+    `);
+    logger.info("Database schema warrantyDuration self-check completed");
+  } catch (err) {
+    logger.warn("Database schema warrantyDuration self-check warning", { error: err.message });
+  }
+};
+
 const server = app.listen(env.port, () => {
   logger.info("Arunafeltz Backend API started", {
     port: env.port,
     environment: env.nodeEnv,
   });
   initBackupScheduler();
+  ensureSchemaMigrations();
   ensureDefaultSettings().catch((err) => {
     logger.warn("Initial settings sync warning", { error: err.message });
   });
