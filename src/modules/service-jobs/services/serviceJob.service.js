@@ -1079,21 +1079,11 @@ const validateAssignedTechnician = async (
   if (
     !technician ||
     technician.status !== "ACTIVE" ||
-    technician.role !== "TECHNICIAN" ||
-    technician.branchId !== branchId
+    (technician.branchId && technician.branchId !== branchId && technician.role !== "SUPER_OWNER")
   ) {
     const error = new Error("ASSIGNED_TECHNICIAN_NOT_FOUND");
     error.statusCode = 404;
     throw error;
-  }
-
-  if (
-    repairType &&
-    (!TECHNICAL_CLASSIFICATIONS.has(technician.incentiveClassification) ||
-      (repairType === "BOARD_LEVEL_REPAIR" &&
-        technician.incentiveClassification !== "SENIOR_TECHNICIAN"))
-  ) {
-    throwServiceJobError("ASSIGNED_TECHNICIAN_NOT_ELIGIBLE");
   }
 
   return technician;
@@ -1117,9 +1107,8 @@ const validateServiceDoneBy = async (
   const technician = await tx.user.findFirst({
     where: {
       id: serviceDoneById,
-      branchId,
-      role: "TECHNICIAN",
       status: "ACTIVE",
+      ...(branchId ? { OR: [{ branchId }, { role: "SUPER_OWNER" }] } : {}),
     },
     select: {
       id: true,
@@ -1130,12 +1119,7 @@ const validateServiceDoneBy = async (
     },
   });
 
-  if (
-    !technician ||
-    !TECHNICAL_CLASSIFICATIONS.has(technician.incentiveClassification) ||
-    (repairType === "BOARD_LEVEL_REPAIR" &&
-      technician.incentiveClassification !== "SENIOR_TECHNICIAN")
-  ) {
+  if (!technician) {
     throwServiceJobError("SERVICE_DONE_BY_NOT_ELIGIBLE");
   }
 
@@ -1354,19 +1338,19 @@ const getServiceTechnicians = async (actor, query = {}) => {
 
   const branchId = isSuperOwner(actor) ? query.branchId : actor.branchId;
   const where = {
-    role: "TECHNICIAN",
     status: "ACTIVE",
-    incentiveClassification:
-      query.repairType === "BOARD_LEVEL_REPAIR"
-        ? "SENIOR_TECHNICIAN"
-        : { in: ["TECHNICIAN", "SENIOR_TECHNICIAN"] },
-    ...(branchId ? { branchId } : {}),
+    role: { in: ["TECHNICIAN", "CASHIER", "ADMIN", "BRANCH_OWNER", "SUPER_OWNER"] },
+    ...(branchId ? { OR: [{ branchId }, { role: "SUPER_OWNER" }] } : {}),
   };
 
   if (query.search) {
-    where.OR = [
-      { fullName: { contains: query.search, mode: "insensitive" } },
-      { username: { contains: query.search, mode: "insensitive" } },
+    where.AND = [
+      {
+        OR: [
+          { fullName: { contains: query.search, mode: "insensitive" } },
+          { username: { contains: query.search, mode: "insensitive" } },
+        ],
+      },
     ];
   }
 
