@@ -260,9 +260,13 @@ const createReceivableAccount = async (
 
   let financialSnapshot;
 
-  if (receivable?.term) {
-    if (provider === "IN_HOUSE_INSTALLMENT" && !customerId) {
+  if (provider === "IN_HOUSE_INSTALLMENT") {
+    if (!customerId) {
       throwReceivableError("IN_HOUSE_CUSTOMER_REQUIRED");
+    }
+
+    if (!receivable?.term) {
+      throwReceivableError("IN_HOUSE_TERM_REQUIRED");
     }
 
     let installmentComputation;
@@ -285,11 +289,6 @@ const createReceivableAccount = async (
       firstDueDate: receivable.firstDueDate,
       installmentComputation,
     });
-  } else if (provider === "IN_HOUSE_INSTALLMENT") {
-    if (!customerId) {
-      throwReceivableError("IN_HOUSE_CUSTOMER_REQUIRED");
-    }
-    throwReceivableError("IN_HOUSE_TERM_REQUIRED");
   } else {
     financialSnapshot = calculateExternalReceivableSnapshot({
       sourceTotalAmount,
