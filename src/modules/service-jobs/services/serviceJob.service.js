@@ -1,4 +1,5 @@
 const prisma = require("../../../config/prisma");
+const AppError = require("../../../utils/appError");
 const cashLinkService = require("../../cash-boxes/services/cashLink.service");
 const {
   createReceivableAccount,
@@ -2542,14 +2543,311 @@ const updateServiceJobStatus = async (
   });
 };
 
+const DEFAULT_SERVICE_CATALOG = [
+  {
+    id: "sc-clean-laptop",
+    name: "Laptop Deep Cleaning & Thermal Repaste",
+    deviceType: "Laptop",
+    repairType: "ORDINARY_REPAIR",
+    basePrice: 500,
+    markupPercent: 0,
+    description: "Complete disassembly, dust blower, fan lubrication, and high-performance thermal paste re-application.",
+    isQuickService: true,
+    isActive: true,
+  },
+  {
+    id: "sc-format-os",
+    name: "OS Reformatting & Basic Software Setup",
+    deviceType: "Laptop / Desktop",
+    repairType: "ORDINARY_REPAIR",
+    basePrice: 450,
+    markupPercent: 0,
+    description: "Clean OS installation (Windows/Linux), updated drivers, essential productivity software, and system optimization.",
+    isQuickService: true,
+    isActive: true,
+  },
+  {
+    id: "sc-screen-laptop",
+    name: "Laptop LCD / Screen Replacement Labor",
+    deviceType: "Laptop",
+    repairType: "ORDINARY_REPAIR",
+    basePrice: 800,
+    markupPercent: 0,
+    description: "Bezel and hinge inspection, LCD/eDP cable testing, and replacement screen installation.",
+    isQuickService: false,
+    isActive: true,
+  },
+  {
+    id: "sc-board-power",
+    name: "Motherboard Shorted Line / Power IC Repair",
+    deviceType: "Laptop / Desktop",
+    repairType: "BOARD_LEVEL_REPAIR",
+    basePrice: 2500,
+    markupPercent: 0,
+    description: "Component-level micro-soldering, shorted capacitor/MOSFET tracing, power rail diagnosis, and IC replacement.",
+    isQuickService: false,
+    isActive: true,
+  },
+  {
+    id: "sc-macbook-liquid",
+    name: "MacBook Liquid Damage / Component Repair",
+    deviceType: "MacBook",
+    repairType: "BOARD_LEVEL_REPAIR",
+    basePrice: 4500,
+    markupPercent: 0,
+    description: "Ultrasonic cleaning, corrosion removal, SMC/T2/PMIC circuit repair, and board trace restoration.",
+    isQuickService: false,
+    isActive: true,
+  },
+  {
+    id: "sc-desktop-build",
+    name: "Custom PC Assembly & Cable Management",
+    deviceType: "Desktop",
+    repairType: "ORDINARY_REPAIR",
+    basePrice: 750,
+    markupPercent: 0,
+    description: "Component mounting, cable routing, airflow optimization, BIOS config, and POST stress testing.",
+    isQuickService: false,
+    isActive: true,
+  },
+  {
+    id: "sc-bios-reprogram",
+    name: "BIOS Flashing & EEPROM Reprogramming",
+    deviceType: "Laptop / Desktop",
+    repairType: "BOARD_LEVEL_REPAIR",
+    basePrice: 1200,
+    markupPercent: 0,
+    description: "CH341A / dedicated programmer direct chip flashing, clean ME region, and corrupted firmware recovery.",
+    isQuickService: false,
+    isActive: true,
+  },
+  {
+    id: "sc-printer-clean",
+    name: "Printer Printhead Cleaning & Pad Reset",
+    deviceType: "Printer",
+    repairType: "ORDINARY_REPAIR",
+    basePrice: 600,
+    markupPercent: 0,
+    description: "Flushing clogged nozzles, waste ink counter reset, roller cleaning, and test print alignment.",
+    isQuickService: false,
+    isActive: true,
+  },
+  {
+    id: "sc-gpu-reball",
+    name: "GPU Chipset Reballing / VRAM Repair",
+    deviceType: "Desktop / Laptop",
+    repairType: "BOARD_LEVEL_REPAIR",
+    basePrice: 3500,
+    markupPercent: 0,
+    description: "BGA rework station reflow/reballing, leaded solder ball replacement, and thermal pad upgrade.",
+    isQuickService: false,
+    isActive: true,
+  },
+];
+
+const SERVICE_CATALOG_SCOPE_KEY = "GLOBAL:service.catalog";
+
+const getServiceCatalog = async (actor) => {
+  let setting = await prisma.businessSetting.findUnique({
+    where: { scopeKey: SERVICE_CATALOG_SCOPE_KEY },
+  });
+
+  if (!setting) {
+    try {
+      setting = await prisma.businessSetting.create({
+        data: {
+          scopeKey: SERVICE_CATALOG_SCOPE_KEY,
+          key: "service.catalog",
+          category: "OPERATION",
+          valueType: "JSON",
+          value: DEFAULT_SERVICE_CATALOG,
+          label: "Service & Repair Rates Catalog",
+          description: "Predefined list of standard service rates, repair classifications, and pricing.",
+          isEditable: true,
+          isActive: true,
+        },
+      });
+    } catch {
+      setting = await prisma.businessSetting.findUnique({
+        where: { scopeKey: SERVICE_CATALOG_SCOPE_KEY },
+      });
+    }
+  }
+
+  const items = Array.isArray(setting?.value) ? setting.value : DEFAULT_SERVICE_CATALOG;
+  return items;
+};
+
+const createServiceCatalogItem = async (payload, actor) => {
+  if (!INTERNAL_SERVICE_FINANCIAL_ROLES.has(actor.role)) {
+    throw new AppError("You are not authorized to manage the service catalog", 403);
+  }
+
+  const currentItems = await getServiceCatalog(actor);
+  const newItem = {
+    id: `sc-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    name: payload.name.trim(),
+    deviceType: payload.deviceType.trim(),
+    repairType: payload.repairType,
+    basePrice: Number(payload.basePrice) || 0,
+    markupPercent: Number(payload.markupPercent) || 0,
+    description: payload.description ? payload.description.trim() : "",
+    isQuickService: Boolean(payload.isQuickService),
+    isActive: payload.isActive !== false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updatedItems = [newItem, ...currentItems];
+
+  await prisma.businessSetting.upsert({
+    where: { scopeKey: SERVICE_CATALOG_SCOPE_KEY },
+    create: {
+      scopeKey: SERVICE_CATALOG_SCOPE_KEY,
+      key: "service.catalog",
+      category: "OPERATION",
+      valueType: "JSON",
+      value: updatedItems,
+      label: "Service & Repair Rates Catalog",
+      description: "Predefined list of standard service rates, repair classifications, and pricing.",
+      isEditable: true,
+      isActive: true,
+      updatedById: actor.id,
+    },
+    update: {
+      value: updatedItems,
+      updatedById: actor.id,
+    },
+  });
+
+  await createAuditLog({
+    action: "CREATE",
+    entity: "ServiceCatalog",
+    entityId: newItem.id,
+    details: { name: newItem.name, repairType: newItem.repairType, basePrice: newItem.basePrice },
+    actor,
+    branchId: actor.branchId || null,
+  });
+
+  return newItem;
+};
+
+const updateServiceCatalogItem = async (id, payload, actor) => {
+  if (!INTERNAL_SERVICE_FINANCIAL_ROLES.has(actor.role)) {
+    throw new AppError("You are not authorized to manage the service catalog", 403);
+  }
+
+  const currentItems = await getServiceCatalog(actor);
+  const index = currentItems.findIndex((item) => item.id === id);
+
+  if (index === -1) {
+    throw new AppError("Service catalog item not found", 404);
+  }
+
+  const existingItem = currentItems[index];
+  const updatedItem = {
+    ...existingItem,
+    name: payload.name !== undefined ? payload.name.trim() : existingItem.name,
+    deviceType: payload.deviceType !== undefined ? payload.deviceType.trim() : existingItem.deviceType,
+    repairType: payload.repairType !== undefined ? payload.repairType : existingItem.repairType,
+    basePrice: payload.basePrice !== undefined ? Number(payload.basePrice) : existingItem.basePrice,
+    markupPercent: payload.markupPercent !== undefined ? Number(payload.markupPercent) : existingItem.markupPercent,
+    description: payload.description !== undefined ? (payload.description ? payload.description.trim() : "") : existingItem.description,
+    isQuickService: payload.isQuickService !== undefined ? Boolean(payload.isQuickService) : existingItem.isQuickService,
+    isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : existingItem.isActive,
+    updatedAt: new Date().toISOString(),
+  };
+
+  currentItems[index] = updatedItem;
+
+  await prisma.businessSetting.upsert({
+    where: { scopeKey: SERVICE_CATALOG_SCOPE_KEY },
+    create: {
+      scopeKey: SERVICE_CATALOG_SCOPE_KEY,
+      key: "service.catalog",
+      category: "OPERATION",
+      valueType: "JSON",
+      value: currentItems,
+      label: "Service & Repair Rates Catalog",
+      description: "Predefined list of standard service rates, repair classifications, and pricing.",
+      isEditable: true,
+      isActive: true,
+      updatedById: actor.id,
+    },
+    update: {
+      value: currentItems,
+      updatedById: actor.id,
+    },
+  });
+
+  await createAuditLog({
+    action: "UPDATE",
+    entity: "ServiceCatalog",
+    entityId: id,
+    details: { changes: payload },
+    actor,
+    branchId: actor.branchId || null,
+  });
+
+  return updatedItem;
+};
+
+const deleteServiceCatalogItem = async (id, actor) => {
+  if (!INTERNAL_SERVICE_FINANCIAL_ROLES.has(actor.role)) {
+    throw new AppError("You are not authorized to manage the service catalog", 403);
+  }
+
+  const currentItems = await getServiceCatalog(actor);
+  const filteredItems = currentItems.filter((item) => item.id !== id);
+
+  if (filteredItems.length === currentItems.length) {
+    throw new AppError("Service catalog item not found", 404);
+  }
+
+  await prisma.businessSetting.upsert({
+    where: { scopeKey: SERVICE_CATALOG_SCOPE_KEY },
+    create: {
+      scopeKey: SERVICE_CATALOG_SCOPE_KEY,
+      key: "service.catalog",
+      category: "OPERATION",
+      valueType: "JSON",
+      value: filteredItems,
+      label: "Service & Repair Rates Catalog",
+      description: "Predefined list of standard service rates, repair classifications, and pricing.",
+      isEditable: true,
+      isActive: true,
+      updatedById: actor.id,
+    },
+    update: {
+      value: filteredItems,
+      updatedById: actor.id,
+    },
+  });
+
+  await createAuditLog({
+    action: "DELETE",
+    entity: "ServiceCatalog",
+    entityId: id,
+    details: { deletedId: id },
+    actor,
+    branchId: actor.branchId || null,
+  });
+
+  return { success: true, message: "Service catalog item deleted successfully" };
+};
+
 module.exports = {
   cancelServicePayment,
+  createServiceCatalogItem,
   createServiceJob,
   createServicePayment,
+  deleteServiceCatalogItem,
+  getServiceCatalog,
   getServiceJobs,
   getServiceTechnicians,
   getServiceJobById,
   releaseServiceJob,
+  updateServiceCatalogItem,
   updateServiceJobAssignment,
   updateServiceJobStatus,
   testInternals: Object.freeze({

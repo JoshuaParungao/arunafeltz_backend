@@ -241,14 +241,68 @@ const releaseServiceJob = async (req, res, next) => {
   }
 };
 
+const getServiceCatalog = async (req, res, next) => {
+  try {
+    const catalog = await serviceJobService.getServiceCatalog(req.user);
+    return res.status(200).json({
+      success: true,
+      data: catalog,
+    });
+  } catch (error) {
+    return handleServiceJobError(error, res, next);
+  }
+};
+
+const createServiceCatalogItem = async (req, res, next) => {
+  try {
+    const item = await serviceJobService.createServiceCatalogItem(req.body, req.user);
+    return res.status(201).json({
+      success: true,
+      message: "Service catalog item created successfully",
+      data: item,
+    });
+  } catch (error) {
+    return handleServiceJobError(error, res, next);
+  }
+};
+
+const updateServiceCatalogItem = async (req, res, next) => {
+  try {
+    const item = await serviceJobService.updateServiceCatalogItem(req.params.id, req.body, req.user);
+    return res.status(200).json({
+      success: true,
+      message: "Service catalog item updated successfully",
+      data: item,
+    });
+  } catch (error) {
+    return handleServiceJobError(error, res, next);
+  }
+};
+
+const deleteServiceCatalogItem = async (req, res, next) => {
+  try {
+    const result = await serviceJobService.deleteServiceCatalogItem(req.params.id, req.user);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    return handleServiceJobError(error, res, next);
+  }
+};
+
 module.exports = {
   cancelServicePayment,
+  createServiceCatalogItem,
   createServiceJob,
   createServicePayment,
+  deleteServiceCatalogItem,
+  getServiceCatalog,
   getServiceJobs,
   getServiceTechnicians,
   getServiceJobById,
   releaseServiceJob,
+  updateServiceCatalogItem,
   updateServiceJobAssignment,
   updateServiceJobStatus,
 };

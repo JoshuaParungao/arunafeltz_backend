@@ -259,14 +259,52 @@ const cancelServicePaymentSchema = z.object({
   }),
 });
 
+const createServiceCatalogItemSchema = z.object({
+  body: z.object({
+    name: z.string().trim().min(2, "Service name is required").max(180),
+    deviceType: z.string().trim().min(1, "Unit/Device type is required").max(100),
+    repairType: z.enum(["ORDINARY_REPAIR", "BOARD_LEVEL_REPAIR"]),
+    basePrice: z.coerce.number().min(0, "Base price cannot be negative").max(9999999999.99),
+    markupPercent: z.coerce.number().min(0).max(1000).default(0),
+    description: z.string().trim().max(2000).optional().nullable(),
+    isQuickService: z.boolean().default(false),
+    isActive: z.boolean().default(true),
+  }),
+});
+
+const updateServiceCatalogItemSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Service catalog item ID is required"),
+  }),
+  body: z.object({
+    name: z.string().trim().min(2, "Service name is required").max(180).optional(),
+    deviceType: z.string().trim().min(1, "Unit/Device type is required").max(100).optional(),
+    repairType: z.enum(["ORDINARY_REPAIR", "BOARD_LEVEL_REPAIR"]).optional(),
+    basePrice: z.coerce.number().min(0, "Base price cannot be negative").max(9999999999.99).optional(),
+    markupPercent: z.coerce.number().min(0).max(1000).optional(),
+    description: z.string().trim().max(2000).optional().nullable(),
+    isQuickService: z.boolean().optional(),
+    isActive: z.boolean().optional(),
+  }),
+});
+
+const serviceCatalogIdParamSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Service catalog item ID is required"),
+  }),
+});
+
 module.exports = {
   cancelServicePaymentSchema,
+  createServiceCatalogItemSchema,
   createServiceJobSchema,
   createServicePaymentSchema,
   listServiceJobsSchema,
   listServiceTechniciansSchema,
   releaseServiceJobSchema,
+  serviceCatalogIdParamSchema,
   serviceJobIdParamSchema,
+  updateServiceCatalogItemSchema,
   updateServiceJobAssignmentSchema,
   updateServiceJobStatusSchema,
 };

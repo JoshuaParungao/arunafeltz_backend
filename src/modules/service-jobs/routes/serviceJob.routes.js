@@ -5,12 +5,15 @@ const validate = require("../../../middlewares/validate.middleware");
 const { protect } = require("../../../middlewares/auth.middleware");
 const {
   cancelServicePaymentSchema,
+  createServiceCatalogItemSchema,
   createServiceJobSchema,
   createServicePaymentSchema,
   listServiceJobsSchema,
   listServiceTechniciansSchema,
   releaseServiceJobSchema,
+  serviceCatalogIdParamSchema,
   serviceJobIdParamSchema,
+  updateServiceCatalogItemSchema,
   updateServiceJobAssignmentSchema,
   updateServiceJobStatusSchema,
 } = require("../validations/serviceJob.validation");
@@ -18,6 +21,23 @@ const {
 const router = express.Router();
 
 router.use(protect);
+
+router.get("/catalog", serviceJobController.getServiceCatalog);
+router.post(
+  "/catalog",
+  validate(createServiceCatalogItemSchema),
+  serviceJobController.createServiceCatalogItem
+);
+router.put(
+  "/catalog/:id",
+  validate(updateServiceCatalogItemSchema),
+  serviceJobController.updateServiceCatalogItem
+);
+router.delete(
+  "/catalog/:id",
+  validate(serviceCatalogIdParamSchema),
+  serviceJobController.deleteServiceCatalogItem
+);
 
 router.get(
   "/",
