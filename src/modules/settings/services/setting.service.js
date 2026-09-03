@@ -333,6 +333,7 @@ const DEFAULT_SETTINGS_LIST = [
       defaultItemIncentivePercent: 1,
       defaultServiceIncentivePercent: 5,
       defaultSoloSaleIncentivePercent: 1,
+      defaultPcBuildTechIncentivePercent: 2,
     },
     label: "Incentive System Rules",
     description: "Commission and incentive calculation and payout rules.",
@@ -610,6 +611,7 @@ const updateSettingByScopeKey = async (scopeKey, payload, actor = null) => {
       "defaultItemIncentivePercent",
       "defaultServiceIncentivePercent",
       "defaultSoloSaleIncentivePercent",
+      "defaultPcBuildTechIncentivePercent",
     ];
 
     for (const field of requiredBooleanFields) {

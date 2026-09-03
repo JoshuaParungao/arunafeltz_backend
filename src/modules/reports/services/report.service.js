@@ -2950,6 +2950,10 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     typeof incentiveSetting?.value?.defaultSoloSaleIncentivePercent === "number"
       ? incentiveSetting.value.defaultSoloSaleIncentivePercent
       : 1.0;
+  const serviceIncentivePercent =
+    typeof incentiveSetting?.value?.defaultServiceIncentivePercent === "number"
+      ? incentiveSetting.value.defaultServiceIncentivePercent
+      : 5.0;
 
   const records = users.map((staff) => {
     const revenueSales = staff.cashierSales.filter((sale) =>
@@ -2985,6 +2989,9 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     );
     const soloIncentivePercent = soloSaleIncentivePercent;
     const soloIncentiveAmount = Math.round(((salesRevenue * soloIncentivePercent) / 100) * 100) / 100;
+    const techServiceIncentivePercent = serviceIncentivePercent;
+    const serviceIncentiveAmount = Math.round(((serviceRevenue * techServiceIncentivePercent) / 100) * 100) / 100;
+    const totalIncentiveAmount = soloIncentiveAmount + serviceIncentiveAmount;
 
     return {
       id: staff.id,
@@ -3001,6 +3008,9 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       productRevenue,
       soloIncentivePercent,
       soloIncentiveAmount,
+      serviceIncentivePercent: techServiceIncentivePercent,
+      serviceIncentiveAmount,
+      totalIncentiveAmount,
       completedServices: releasedServices.filter((job) => job.status === "COMPLETED").length,
       releasedServices: releasedServices.length,
       releasedUnrepairedServices: releasedServices.filter(
@@ -3022,6 +3032,8 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     summary.salesRevenue += staff.salesRevenue;
     summary.productRevenue += staff.productRevenue;
     summary.totalSoloIncentiveAmount += staff.soloIncentiveAmount;
+    summary.totalServiceIncentiveAmount += staff.serviceIncentiveAmount;
+    summary.totalIncentiveAmount += staff.totalIncentiveAmount;
     summary.completedServices += staff.completedServices;
     summary.releasedServices += staff.releasedServices;
     summary.releasedUnrepairedServices += staff.releasedUnrepairedServices;
@@ -3036,6 +3048,8 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     salesRevenue: 0,
     productRevenue: 0,
     totalSoloIncentiveAmount: 0,
+    totalServiceIncentiveAmount: 0,
+    totalIncentiveAmount: 0,
     completedServices: 0,
     releasedServices: 0,
     releasedUnrepairedServices: 0,
