@@ -96,13 +96,13 @@ const resolveEffectiveClassification = (account) => {
   return "NONE";
 };
 
-const getEligibility = (classification) => ({
-  item: INCENTIVE_CLASSIFICATIONS.has(classification),
-  soloSale: INCENTIVE_CLASSIFICATIONS.has(classification),
-  ordinaryRepair: TECHNICAL_CLASSIFICATIONS.has(classification),
-  boardLevelRepair: classification === "SENIOR_TECHNICIAN",
-  pcBuild: TECHNICAL_CLASSIFICATIONS.has(classification),
-  repairFee: TECHNICAL_CLASSIFICATIONS.has(classification),
+const getEligibility = () => ({
+  item: true,
+  soloSale: true,
+  ordinaryRepair: true,
+  boardLevelRepair: true,
+  pcBuild: true,
+  repairFee: true,
 });
 
 const numberOrNull = (value) =>
