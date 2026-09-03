@@ -1414,7 +1414,8 @@ const getSales = async (actor, query) => {
             id: true,
             paymentMethod: true,
             amount: true,
-            status: true,
+            referenceNo: true,
+            paidAt: true,
           },
         },
         _count: {
