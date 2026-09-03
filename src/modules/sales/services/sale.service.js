@@ -1394,6 +1394,29 @@ const getSales = async (actor, query) => {
             role: true,
           },
         },
+        creditAccount: {
+          select: {
+            id: true,
+            creditCode: true,
+            provider: true,
+            term: true,
+            termBasis: true,
+            downpaymentAmount: true,
+            balanceAmount: true,
+            totalCollected: true,
+            regularPriceTotalAmount: true,
+            remainingBalance: true,
+            status: true,
+          },
+        },
+        payments: {
+          select: {
+            id: true,
+            paymentMethod: true,
+            amount: true,
+            status: true,
+          },
+        },
         _count: {
           select: {
             items: true,

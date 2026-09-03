@@ -268,7 +268,9 @@ const createReceivableAccount = async (
     if (!receivable?.term) {
       throwReceivableError("IN_HOUSE_TERM_REQUIRED");
     }
+  }
 
+  if (receivable?.term && receivable.term !== "STRAIGHT") {
     let installmentComputation;
 
     try {
