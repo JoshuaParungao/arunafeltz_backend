@@ -2940,6 +2940,10 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         where: activityDate ? { createdAt: activityDate } : undefined,
         select: { id: true, status: true },
       },
+      incentiveAccountConfigVersions: {
+        orderBy: { versionNumber: "desc" },
+        take: 1,
+      },
     },
   });
 
@@ -2987,9 +2991,21 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         sum + (job.payments?.some((p) => p.status === "POSTED") ? toNumber(job.finalServiceCharge) : 0),
       0
     );
-    const soloIncentivePercent = soloSaleIncentivePercent;
+
+    const userConfig = staff.incentiveAccountConfigVersions?.[0];
+    const soloIncentivePercent = userConfig
+      ? userConfig.itemEnabled && userConfig.itemRatePercent !== null
+        ? toNumber(userConfig.itemRatePercent)
+        : 0
+      : soloSaleIncentivePercent;
+
+    const techServiceIncentivePercent = userConfig
+      ? userConfig.ordinaryRepairEnabled && userConfig.ordinaryRepairRatePercent !== null
+        ? toNumber(userConfig.ordinaryRepairRatePercent)
+        : 0
+      : serviceIncentivePercent;
+
     const soloIncentiveAmount = Math.round(((salesRevenue * soloIncentivePercent) / 100) * 100) / 100;
-    const techServiceIncentivePercent = serviceIncentivePercent;
     const serviceIncentiveAmount = Math.round(((serviceRevenue * techServiceIncentivePercent) / 100) * 100) / 100;
     const totalIncentiveAmount = soloIncentiveAmount + serviceIncentiveAmount;
 
