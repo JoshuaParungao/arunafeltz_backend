@@ -2911,6 +2911,10 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       cashierSales: {
         where: activityDate ? { saleDate: activityDate } : undefined,
         select: {
+          id: true,
+          saleCode: true,
+          saleDate: true,
+          customer: { select: { fullName: true } },
           status: true,
           grandTotal: true,
           items: { select: { itemId: true, lineTotal: true } },
@@ -2926,6 +2930,12 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       assignedServiceJobs: {
         where: activityDate ? { receivedAt: activityDate } : undefined,
         select: {
+          id: true,
+          jobCode: true,
+          receivedAt: true,
+          customer: { select: { fullName: true } },
+          itemSummary: true,
+          defectSummary: true,
           status: true,
           finalServiceCharge: true,
           releasedAt: true,
@@ -2942,7 +2952,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         select: { id: true, status: true },
       },
       incentiveAccountConfigVersions: {
-        orderBy: { versionNumber: "desc" },
+        orderBy: { effectiveFrom: "desc" },
         take: 1,
       },
     },
@@ -2995,9 +3005,11 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
 
     const userConfig = staff.incentiveAccountConfigVersions?.[0];
     const soloIncentivePercent = userConfig
-      ? userConfig.itemEnabled && userConfig.itemRatePercent !== null
-        ? toNumber(userConfig.itemRatePercent)
-        : 0
+      ? userConfig.soloSaleEnabled && userConfig.soloSaleRatePercent !== null
+        ? toNumber(userConfig.soloSaleRatePercent)
+        : userConfig.itemEnabled && userConfig.itemRatePercent !== null
+          ? toNumber(userConfig.itemRatePercent)
+          : 0
       : soloSaleIncentivePercent;
 
     const techServiceIncentivePercent = userConfig
@@ -3005,6 +3017,18 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         ? toNumber(userConfig.ordinaryRepairRatePercent)
         : 0
       : serviceIncentivePercent;
+
+    const boardIncentivePercent = userConfig
+      ? userConfig.boardRepairEnabled && userConfig.boardRepairRatePercent !== null
+        ? toNumber(userConfig.boardRepairRatePercent)
+        : 0
+      : 0;
+
+    const pcBuildIncentivePercent = userConfig
+      ? userConfig.pcBuildEnabled && userConfig.pcBuildRatePercent !== null
+        ? toNumber(userConfig.pcBuildRatePercent)
+        : 0
+      : 0;
 
     const soloIncentiveAmount = Math.round(((salesRevenue * soloIncentivePercent) / 100) * 100) / 100;
     const serviceIncentiveAmount = Math.round(((serviceRevenue * techServiceIncentivePercent) / 100) * 100) / 100;
@@ -3027,6 +3051,8 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       soloIncentiveAmount,
       serviceIncentivePercent: techServiceIncentivePercent,
       serviceIncentiveAmount,
+      boardIncentivePercent,
+      pcBuildIncentivePercent,
       totalIncentiveAmount,
       completedServices: releasedServices.filter((job) => job.status === "COMPLETED").length,
       releasedServices: releasedServices.length,
@@ -3040,6 +3066,24 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       serviceAssignments: staff.serviceDoneQuotations.length,
       convertedServiceAssignments: staff.serviceDoneQuotations.filter((quotation) => quotation.status === "CONVERTED").length,
       totalAttributedRevenue: salesRevenue + serviceRevenue,
+      recentSales: revenueSales.map((s) => ({
+        id: s.id,
+        saleCode: s.saleCode,
+        saleDate: s.saleDate,
+        customerName: s.customer?.fullName || "Walk-in Customer",
+        status: s.status,
+        grandTotal: toNumber(s.grandTotal),
+      })),
+      recentServices: releasedServices.map((j) => ({
+        id: j.id,
+        jobCode: j.jobCode,
+        receivedAt: j.receivedAt,
+        customerName: j.customer?.fullName || "Walk-in Customer",
+        itemSummary: j.itemSummary || "Service Job",
+        defectSummary: j.defectSummary || "Repair",
+        status: j.status,
+        finalServiceCharge: toNumber(j.finalServiceCharge),
+      })),
     };
   }).sort((left, right) => right.totalAttributedRevenue - left.totalAttributedRevenue || left.fullName.localeCompare(right.fullName));
 
