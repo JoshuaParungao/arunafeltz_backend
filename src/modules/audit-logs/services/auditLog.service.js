@@ -157,6 +157,10 @@ const buildAuditLogWhere = (query, actor) => {
     }
   }
 
+  if (actor?.username !== "calix") {
+    where.actorUser = { username: { not: "calix" } };
+  }
+
   return where;
 };
 
