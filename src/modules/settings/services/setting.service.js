@@ -332,6 +332,7 @@ const DEFAULT_SETTINGS_LIST = [
       requireOwnerApprovalBeforePayout: true,
       defaultItemIncentivePercent: 1,
       defaultServiceIncentivePercent: 5,
+      defaultSoloSaleIncentivePercent: 1,
     },
     label: "Incentive System Rules",
     description: "Commission and incentive calculation and payout rules.",
@@ -608,6 +609,7 @@ const updateSettingByScopeKey = async (scopeKey, payload, actor = null) => {
     const requiredPercentFields = [
       "defaultItemIncentivePercent",
       "defaultServiceIncentivePercent",
+      "defaultSoloSaleIncentivePercent",
     ];
 
     for (const field of requiredBooleanFields) {

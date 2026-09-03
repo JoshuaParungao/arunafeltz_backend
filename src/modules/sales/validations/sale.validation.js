@@ -90,6 +90,7 @@ const createSaleSchema = z.object({
   body: z
     .object({
       branchId: z.string().trim().min(1).optional(),
+      cashierId: z.string().trim().min(1).optional(),
       idempotencyKey: z.string().uuid().optional(),
       customerId: z.string().trim().min(1).optional(),
       quotationId: z.string().trim().min(1).optional(),

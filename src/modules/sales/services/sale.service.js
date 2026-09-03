@@ -1161,6 +1161,27 @@ const createSale = async (actor, payload, database = prisma) => {
       });
     }
 
+    let assignedCashierId = actor.id;
+    if (salePayload.cashierId && salePayload.cashierId !== actor.id) {
+      const assignedUser = await tx.user.findFirst({
+        where: {
+          id: salePayload.cashierId,
+          isActive: true,
+          OR: [
+            { branchId: branchId },
+            { branchId: null },
+            { role: "SUPER_OWNER" },
+          ],
+        },
+        select: {
+          id: true,
+        },
+      });
+      if (assignedUser) {
+        assignedCashierId = assignedUser.id;
+      }
+    }
+
     const sale = await tx.sale.create({
       data: {
         receiptCode,
@@ -1178,7 +1199,7 @@ const createSale = async (actor, payload, database = prisma) => {
         branchId,
         customerId: salePayload.customerId || null,
         quotationId: salePayload.quotationId || null,
-        cashierId: actor.id,
+        cashierId: assignedCashierId,
         createdById: actor.id,
         updatedById: actor.id,
         items: {

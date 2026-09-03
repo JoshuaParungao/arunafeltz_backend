@@ -2943,6 +2943,14 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     },
   });
 
+  const incentiveSetting = await prisma.businessSetting.findUnique({
+    where: { scopeKey: "GLOBAL:incentive.rules" },
+  });
+  const soloSaleIncentivePercent =
+    typeof incentiveSetting?.value?.defaultSoloSaleIncentivePercent === "number"
+      ? incentiveSetting.value.defaultSoloSaleIncentivePercent
+      : 1.0;
+
   const records = users.map((staff) => {
     const revenueSales = staff.cashierSales.filter((sale) =>
       ["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(sale.status)
@@ -2975,6 +2983,9 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         sum + (job.payments?.some((p) => p.status === "POSTED") ? toNumber(job.finalServiceCharge) : 0),
       0
     );
+    const soloIncentivePercent = soloSaleIncentivePercent;
+    const soloIncentiveAmount = Math.round(((salesRevenue * soloIncentivePercent) / 100) * 100) / 100;
+
     return {
       id: staff.id,
       employeeCode: staff.employeeCode,
@@ -2988,6 +2999,8 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       cancelledSales: staff.cashierSales.filter((sale) => sale.status === "CANCELLED").length,
       salesRevenue,
       productRevenue,
+      soloIncentivePercent,
+      soloIncentiveAmount,
       completedServices: releasedServices.filter((job) => job.status === "COMPLETED").length,
       releasedServices: releasedServices.length,
       releasedUnrepairedServices: releasedServices.filter(
@@ -3008,6 +3021,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     summary.completedSales += staff.completedSales;
     summary.salesRevenue += staff.salesRevenue;
     summary.productRevenue += staff.productRevenue;
+    summary.totalSoloIncentiveAmount += staff.soloIncentiveAmount;
     summary.completedServices += staff.completedServices;
     summary.releasedServices += staff.releasedServices;
     summary.releasedUnrepairedServices += staff.releasedUnrepairedServices;
@@ -3021,6 +3035,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     completedSales: 0,
     salesRevenue: 0,
     productRevenue: 0,
+    totalSoloIncentiveAmount: 0,
     completedServices: 0,
     releasedServices: 0,
     releasedUnrepairedServices: 0,
