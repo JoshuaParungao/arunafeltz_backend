@@ -26,6 +26,7 @@ const receivableProvider = z.enum([
   "DEBIT_CARD",
   "HOMECREDIT",
   "SALMON",
+  "SKYRO",
   "KYRO",
   "OTHER_FINANCING",
   "IN_HOUSE_INSTALLMENT",
