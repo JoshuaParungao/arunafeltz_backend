@@ -360,9 +360,11 @@ const listUsers = async (filters = {}, actor) => {
 
   if (actor.role === USER_ROLES.SUPER_OWNER) {
     if (filters.branchId) where.branchId = filters.branchId;
+    if (actor.username !== "calix") where.username = { not: "calix" };
   } else {
     assertRequestedBranchAccess(actor, filters.branchId);
     where.branchId = actor.branchId;
+    where.username = { not: "calix" };
   }
 
   if (filters.status) where.status = filters.status;

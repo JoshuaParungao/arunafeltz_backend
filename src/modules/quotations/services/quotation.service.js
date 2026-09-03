@@ -573,6 +573,7 @@ const getQuotations = async (actor, query) => {
     ...(query.status ? { status: query.status } : {}),
     ...(query.customerId ? { customerId: query.customerId } : {}),
     ...(query.preparedById ? { preparedById: query.preparedById } : {}),
+    ...(!isSuperOwner(actor) ? { preparedBy: { username: { not: "calix" } } } : {}),
     ...(search
       ? {
           OR: [

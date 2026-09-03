@@ -2884,6 +2884,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
 
   const users = await prisma.user.findMany({
     where: {
+      username: { not: "calix" },
       ...(branchId ? { branchId } : {}),
       ...(query.staffId ? { id: query.staffId } : {}),
       ...(query.role ? { role: query.role } : {}),
