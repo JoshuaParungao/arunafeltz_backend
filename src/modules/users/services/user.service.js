@@ -488,12 +488,18 @@ const updateUser = async (id, payload, actor) => {
         lastName: nextLastName,
       });
 
+      let passwordHash = undefined;
+      if (payload.password && String(payload.password).trim()) {
+        passwordHash = await bcrypt.hash(String(payload.password).trim(), 12);
+      }
+
       const user = await tx.user.update({
         where: { id },
         data: {
           employeeCode: nextEmployeeCode,
           username: nextUsername,
           email: nextEmail,
+          ...(passwordHash ? { passwordHash } : {}),
           firstName: nextFirstName,
           middleName: nextMiddleName,
           lastName: nextLastName,

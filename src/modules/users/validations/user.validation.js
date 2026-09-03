@@ -104,6 +104,11 @@ const updateUserSchema = z.object({
       role: z.enum(assignableUserRoleValues).optional(),
       incentiveClassification: z.enum(incentiveClassificationValues).optional(),
       branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional().nullable(),
+      password: z
+        .string()
+        .min(8, "Password must be at least 8 characters")
+        .max(100, "Password must not exceed 100 characters")
+        .optional(),
     })
     .strict()
     .refine((body) => Object.keys(body).length > 0, {
