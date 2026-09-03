@@ -82,11 +82,16 @@ const validateSourceCoverage = ({
 const calculateExternalReceivableSnapshot = ({
   sourceTotalAmount,
   initialSettlementAmount = 0,
+  term = null,
+  dueDay = null,
+  firstDueDate = null,
 }) => {
   const coverage = validateSourceCoverage({
     sourceTotalAmount,
     initialSettlementAmount,
   });
+
+  const parsedFirstDueDate = parseOptionalDate(firstDueDate);
 
   return {
     sourceTotalAmountSnapshot: toMoneyString(coverage.sourceTotal),
@@ -94,14 +99,14 @@ const calculateExternalReceivableSnapshot = ({
     balanceAmount: toMoneyString(coverage.financedPrincipal),
     totalCollected: "0.00",
     remainingBalance: toMoneyString(coverage.financedPrincipal),
-    term: null,
-    termBasis: null,
-    cashPromoTotalAmount: null,
-    regularPriceTotalAmount: null,
-    monthlyDueAmount: null,
-    dueDay: null,
-    firstDueDate: null,
-    nextDueDate: null,
+    term: term || null,
+    termBasis: "1.0000",
+    cashPromoTotalAmount: toMoneyString(coverage.sourceTotal),
+    regularPriceTotalAmount: toMoneyString(coverage.sourceTotal),
+    monthlyDueAmount: toMoneyString(coverage.financedPrincipal),
+    dueDay: dueDay ?? null,
+    firstDueDate: parsedFirstDueDate,
+    nextDueDate: parsedFirstDueDate,
   };
 };
 
@@ -295,6 +300,9 @@ const createReceivableAccount = async (
     financialSnapshot = calculateExternalReceivableSnapshot({
       sourceTotalAmount,
       initialSettlementAmount,
+      term: receivable?.term || null,
+      dueDay: receivable?.dueDay || null,
+      firstDueDate: receivable?.firstDueDate || null,
     });
   }
 
