@@ -198,6 +198,12 @@ const accountConfigBody = z
     itemRatePercent:
       nullableAccountRate,
 
+    soloSaleEnabled:
+      z.boolean().optional().default(false),
+
+    soloSaleRatePercent:
+      nullableAccountRate,
+
     ordinaryRepairEnabled:
       z.boolean(),
 
@@ -208,6 +214,12 @@ const accountConfigBody = z
       z.boolean(),
 
     boardRepairRatePercent:
+      nullableAccountRate,
+
+    pcBuildEnabled:
+      z.boolean().optional().default(false),
+
+    pcBuildRatePercent:
       nullableAccountRate,
 
     repairFee:
@@ -233,6 +245,19 @@ const accountConfigBody = z
       },
       {
         enabled:
+          body.soloSaleEnabled,
+
+        rate:
+          body.soloSaleRatePercent,
+
+        field:
+          "soloSaleRatePercent",
+
+        label:
+          "Solo Sales Incentive",
+      },
+      {
+        enabled:
           body.ordinaryRepairEnabled,
 
         rate:
@@ -242,7 +267,7 @@ const accountConfigBody = z
           "ordinaryRepairRatePercent",
 
         label:
-          "Ordinary Repair Incentive",
+          "Service Incentive",
       },
       {
         enabled:
@@ -256,6 +281,19 @@ const accountConfigBody = z
 
         label:
           "Board Level Repair Incentive",
+      },
+      {
+        enabled:
+          body.pcBuildEnabled,
+
+        rate:
+          body.pcBuildRatePercent,
+
+        field:
+          "pcBuildRatePercent",
+
+        label:
+          "PC Build Incentive",
       },
     ];
 

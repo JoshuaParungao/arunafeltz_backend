@@ -98,8 +98,10 @@ const resolveEffectiveClassification = (account) => {
 
 const getEligibility = (classification) => ({
   item: INCENTIVE_CLASSIFICATIONS.has(classification),
+  soloSale: INCENTIVE_CLASSIFICATIONS.has(classification),
   ordinaryRepair: TECHNICAL_CLASSIFICATIONS.has(classification),
   boardLevelRepair: classification === "SENIOR_TECHNICIAN",
+  pcBuild: TECHNICAL_CLASSIFICATIONS.has(classification),
   repairFee: TECHNICAL_CLASSIFICATIONS.has(classification),
 });
 
@@ -117,6 +119,9 @@ const formatSavedConfig = (version) =>
         itemEnabled: version.itemEnabled,
         itemRatePercent: numberOrNull(version.itemRatePercent),
 
+        soloSaleEnabled: Boolean(version.soloSaleEnabled),
+        soloSaleRatePercent: numberOrNull(version.soloSaleRatePercent),
+
         ordinaryRepairEnabled: version.ordinaryRepairEnabled,
         ordinaryRepairRatePercent: numberOrNull(
           version.ordinaryRepairRatePercent
@@ -125,6 +130,11 @@ const formatSavedConfig = (version) =>
         boardRepairEnabled: version.boardRepairEnabled,
         boardRepairRatePercent: numberOrNull(
           version.boardRepairRatePercent
+        ),
+
+        pcBuildEnabled: Boolean(version.pcBuildEnabled),
+        pcBuildRatePercent: numberOrNull(
+          version.pcBuildRatePercent
         ),
 
         repairFee: numberOrNull(version.repairFee),
@@ -142,6 +152,12 @@ const buildDefaultConfiguration = (eligibility) => ({
     ratePercent: null,
   },
 
+  soloSale: {
+    available: eligibility.soloSale,
+    enabled: false,
+    ratePercent: null,
+  },
+
   ordinaryRepair: {
     available: eligibility.ordinaryRepair,
     enabled: false,
@@ -150,6 +166,12 @@ const buildDefaultConfiguration = (eligibility) => ({
 
   boardLevelRepair: {
     available: eligibility.boardLevelRepair,
+    enabled: false,
+    ratePercent: null,
+  },
+
+  pcBuild: {
+    available: eligibility.pcBuild,
     enabled: false,
     ratePercent: null,
   },
@@ -180,6 +202,15 @@ const buildEffectiveConfiguration = ({
           : null,
     },
 
+    soloSale: {
+      available: eligibility.soloSale,
+      enabled: eligibility.soloSale && savedConfig.soloSaleEnabled,
+      ratePercent:
+        eligibility.soloSale && savedConfig.soloSaleEnabled
+          ? savedConfig.soloSaleRatePercent
+          : null,
+    },
+
     ordinaryRepair: {
       available: eligibility.ordinaryRepair,
       enabled:
@@ -201,6 +232,18 @@ const buildEffectiveConfiguration = ({
         eligibility.boardLevelRepair &&
         savedConfig.boardRepairEnabled
           ? savedConfig.boardRepairRatePercent
+          : null,
+    },
+
+    pcBuild: {
+      available: eligibility.pcBuild,
+      enabled:
+        eligibility.pcBuild &&
+        savedConfig.pcBuildEnabled,
+      ratePercent:
+        eligibility.pcBuild &&
+        savedConfig.pcBuildEnabled
+          ? savedConfig.pcBuildRatePercent
           : null,
     },
 
@@ -376,22 +419,36 @@ const normalizeAccountConfigPayload = (
   const item = normalizeCategoryConfig({
     label: "Item Incentive",
     available: eligibility.item,
-    enabled: payload.itemEnabled,
+    enabled: Boolean(payload.itemEnabled),
     ratePercent: payload.itemRatePercent,
   });
 
+  const soloSale = normalizeCategoryConfig({
+    label: "Solo Sales Incentive",
+    available: eligibility.soloSale,
+    enabled: Boolean(payload.soloSaleEnabled),
+    ratePercent: payload.soloSaleRatePercent,
+  });
+
   const ordinaryRepair = normalizeCategoryConfig({
-    label: "Ordinary Repair Incentive",
+    label: "Service Incentive",
     available: eligibility.ordinaryRepair,
-    enabled: payload.ordinaryRepairEnabled,
+    enabled: Boolean(payload.ordinaryRepairEnabled),
     ratePercent: payload.ordinaryRepairRatePercent,
   });
 
   const boardRepair = normalizeCategoryConfig({
     label: "Board Level Repair Incentive",
     available: eligibility.boardLevelRepair,
-    enabled: payload.boardRepairEnabled,
+    enabled: Boolean(payload.boardRepairEnabled),
     ratePercent: payload.boardRepairRatePercent,
+  });
+
+  const pcBuild = normalizeCategoryConfig({
+    label: "PC Build Incentive",
+    available: eligibility.pcBuild,
+    enabled: Boolean(payload.pcBuildEnabled),
+    ratePercent: payload.pcBuildRatePercent,
   });
 
   const repairFee = normalizeRepairFee({
@@ -403,6 +460,9 @@ const normalizeAccountConfigPayload = (
     itemEnabled: item.enabled,
     itemRatePercent: item.ratePercent,
 
+    soloSaleEnabled: soloSale.enabled,
+    soloSaleRatePercent: soloSale.ratePercent,
+
     ordinaryRepairEnabled: ordinaryRepair.enabled,
     ordinaryRepairRatePercent:
       ordinaryRepair.ratePercent,
@@ -410,6 +470,9 @@ const normalizeAccountConfigPayload = (
     boardRepairEnabled: boardRepair.enabled,
     boardRepairRatePercent:
       boardRepair.ratePercent,
+
+    pcBuildEnabled: pcBuild.enabled,
+    pcBuildRatePercent: pcBuild.ratePercent,
 
     repairFee,
 
@@ -493,8 +556,7 @@ const createAccountConfigVersionInTransaction = async (
       eligibility
     );
 
-  const lockKey =
-    `incentive-account-config:${account.id}`;
+  const lockKey = `incentive-account:${account.id}`;
 
   const lockRows = await tx.$queryRaw`
     SELECT 1::int AS "lockAcquired"
@@ -564,6 +626,12 @@ const createAccountConfigVersionInTransaction = async (
         itemRatePercent:
           normalized.itemRatePercent,
 
+        soloSaleEnabled:
+          normalized.soloSaleEnabled,
+
+        soloSaleRatePercent:
+          normalized.soloSaleRatePercent,
+
         ordinaryRepairEnabled:
           normalized.ordinaryRepairEnabled,
 
@@ -575,6 +643,12 @@ const createAccountConfigVersionInTransaction = async (
 
         boardRepairRatePercent:
           normalized.boardRepairRatePercent,
+
+        pcBuildEnabled:
+          normalized.pcBuildEnabled,
+
+        pcBuildRatePercent:
+          normalized.pcBuildRatePercent,
 
         repairFee:
           normalized.repairFee,
