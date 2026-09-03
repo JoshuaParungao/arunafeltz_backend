@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "InstallmentTerm" ADD VALUE IF NOT EXISTS 'CASH_PROMO';

@@ -162,6 +162,7 @@ enum SalePaymentStatus {
 }
 
 enum InstallmentTerm {
+  CASH_PROMO
   STRAIGHT
   MONTH_3
   MONTH_6

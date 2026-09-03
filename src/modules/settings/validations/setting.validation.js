@@ -8,6 +8,7 @@ const settingCategoryValues = [
 ];
 
 const installmentTermValues = [
+  "CASH_PROMO",
   "STRAIGHT",
   "MONTH_3",
   "MONTH_6",

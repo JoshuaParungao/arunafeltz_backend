@@ -979,7 +979,9 @@ const computeInstallmentTest = async ({
   const installmentSettings = await getInstallmentBasisSettings();
 
   const termBasis =
-    term === "STRAIGHT" ? 1.0 : installmentSettings.termBasis[term];
+    term === "CASH_PROMO"
+      ? 1.0
+      : (installmentSettings.termBasis[term] ?? (term === "STRAIGHT" ? 0.96 : undefined));
 
   if (typeof termBasis !== "number" || Number.isNaN(termBasis) || termBasis <= 0) {
     throw new AppError(

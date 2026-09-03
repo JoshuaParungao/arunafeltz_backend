@@ -31,6 +31,7 @@ const receivableProvider = z.enum([
   "IN_HOUSE_INSTALLMENT",
 ]);
 const installmentTerm = z.enum([
+  "CASH_PROMO",
   "STRAIGHT",
   "MONTH_3",
   "MONTH_6",
