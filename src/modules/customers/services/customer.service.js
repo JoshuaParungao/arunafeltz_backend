@@ -492,10 +492,11 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
         payments: {
           select: {
             id: true,
-            paymentCode: true,
             paymentMethod: true,
             amount: true,
-            status: true,
+            referenceNo: true,
+            remarks: true,
+            paidAt: true,
           },
         },
         items: {
@@ -644,7 +645,7 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
           select: {
             id: true,
             itemCode: true,
-            name: true,
+            itemName: true,
           },
         },
         serial: {
