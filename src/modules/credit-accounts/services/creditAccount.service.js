@@ -1115,7 +1115,6 @@ const declareCreditAccountDefaulted = async (actor, creditAccountId, payload = {
       where: { id: creditAccount.id },
       data: {
         status: "DEFAULTED",
-        cancellationReason: `BAD_DEBT_WRITE_OFF: ${reason}`,
         remarks: creditAccount.remarks ? `${creditAccount.remarks} | Defaulted/Write-off: ${reason}` : `Defaulted/Write-off: ${reason}`,
         updatedById: actor.id,
       },

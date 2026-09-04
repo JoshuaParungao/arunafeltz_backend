@@ -20,6 +20,9 @@ const handleCreditAccountError = (error, res, next) => {
     CASH_REVERSAL_NEGATIVE_BALANCE: [400, "Cash reversal would make cash box balance negative."],
     COLLECTION_CASH_LINK_NOT_FOUND: [409, "The collection cash event could not be identified safely."],
     CASH_SOURCE_CONFLICT: [409, "The collection cash source conflicts with an existing cash event."],
+    CREDIT_DEFAULT_FORBIDDEN: [403, "Only owner/admin roles can declare credit accounts as defaulted."],
+    DEFAULT_REASON_REQUIRED: [400, "Reason for declaring bad debt / default is required."],
+    CREDIT_ACCOUNT_NOT_ACTIVE_FOR_DEFAULT: [400, "Only active credit accounts can be declared as defaulted / bad debt."],
   };
 
   if (knownErrors[error.message]) {
