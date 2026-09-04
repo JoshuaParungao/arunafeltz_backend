@@ -395,8 +395,8 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
 
   assertCustomerAccess(customer, actor);
 
-  const requestedLimit = Number.parseInt(filters.limit || "10", 10);
-  const limit = Math.min(requestedLimit, 25);
+  const requestedLimit = Number.parseInt(filters.limit || "50", 10);
+  const limit = Math.min(requestedLimit, 100);
   const historyWhere = {
     customerId: customer.id,
     branchId: customer.branchId,
@@ -410,6 +410,10 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
     creditAccounts,
     creditAccountCount,
     outstandingCredit,
+    serviceJobs,
+    serviceJobCount,
+    warrantyClaims,
+    warrantyClaimCount,
   ] = await prisma.$transaction([
     prisma.quotation.findMany({
       where: historyWhere,
@@ -421,6 +425,7 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
         subtotal: true,
         totalDiscount: true,
         grandTotal: true,
+        isPcBuild: true,
         validUntil: true,
         sentAt: true,
         approvedAt: true,
@@ -482,6 +487,15 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
           select: {
             id: true,
             fullName: true,
+          },
+        },
+        payments: {
+          select: {
+            id: true,
+            paymentCode: true,
+            paymentMethod: true,
+            amount: true,
+            status: true,
           },
         },
         items: {
@@ -568,6 +582,93 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
         remainingBalance: true,
       },
     }),
+    prisma.serviceJob.findMany({
+      where: historyWhere,
+      select: {
+        id: true,
+        jobCode: true,
+        jobTitle: true,
+        deviceDescription: true,
+        problemDescription: true,
+        diagnosis: true,
+        serviceNotes: true,
+        serialNumber: true,
+        isQuickService: true,
+        finalServiceCharge: true,
+        status: true,
+        releaseOutcome: true,
+        receivedAt: true,
+        startedAt: true,
+        completedAt: true,
+        releasedAt: true,
+        assignedTechnician: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+        payments: {
+          select: {
+            id: true,
+            paymentCode: true,
+            amount: true,
+            paymentMethod: true,
+            status: true,
+            paidAt: true,
+          },
+        },
+      },
+      orderBy: {
+        receivedAt: "desc",
+      },
+      take: limit,
+    }),
+    prisma.serviceJob.count({
+      where: historyWhere,
+    }),
+    prisma.warrantyClaim.findMany({
+      where: historyWhere,
+      select: {
+        id: true,
+        claimCode: true,
+        status: true,
+        issueDescription: true,
+        customerComplaint: true,
+        diagnosis: true,
+        actionTaken: true,
+        receivedAt: true,
+        repairedAt: true,
+        replacedAt: true,
+        releasedAt: true,
+        item: {
+          select: {
+            id: true,
+            itemCode: true,
+            name: true,
+          },
+        },
+        serial: {
+          select: {
+            id: true,
+            serialNumber: true,
+          },
+        },
+        sale: {
+          select: {
+            id: true,
+            receiptCode: true,
+            saleDate: true,
+          },
+        },
+      },
+      orderBy: {
+        receivedAt: "desc",
+      },
+      take: limit,
+    }),
+    prisma.warrantyClaim.count({
+      where: historyWhere,
+    }),
   ]);
 
   const recentCollections = await Promise.all(
@@ -590,7 +691,7 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
         orderBy: {
           paidAt: "desc",
         },
-        take: 5,
+        take: 10,
       })
     )
   );
@@ -602,11 +703,26 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
     })
   );
 
+  const completedSalesTotal = sales
+    .filter((s) => ["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(s.status))
+    .reduce((sum, s) => sum + Number(s.grandTotal || 0), 0);
+
+  const completedServicesTotal = serviceJobs
+    .filter((j) => j.status === "COMPLETED" || Boolean(j.releasedAt))
+    .reduce((sum, j) => sum + Number(j.finalServiceCharge || 0), 0);
+
+  const totalLifetimeSpent = completedSalesTotal + completedServicesTotal;
+
   return {
     summary: {
       quotationCount,
       saleCount,
       creditAccountCount,
+      serviceJobCount,
+      warrantyClaimCount,
+      totalLifetimeSpent,
+      completedSalesTotal,
+      completedServicesTotal,
       outstandingCreditBalance: outstandingCredit._sum.remainingBalance || "0",
     },
     quotations: {
@@ -619,9 +735,19 @@ const getCustomerHistory = async (customerId, filters = {}, actor) => {
       totalItems: saleCount,
       limit,
     },
+    serviceJobs: {
+      items: serviceJobs,
+      totalItems: serviceJobCount,
+      limit,
+    },
     creditAccounts: {
       items: creditAccountsWithCollections,
       totalItems: creditAccountCount,
+      limit,
+    },
+    warrantyClaims: {
+      items: warrantyClaims,
+      totalItems: warrantyClaimCount,
       limit,
     },
   };
