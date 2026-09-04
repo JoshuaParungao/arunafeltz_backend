@@ -142,6 +142,22 @@ const buildAuditLogWhere = (query, actor) => {
           mode: "insensitive",
         },
       },
+      {
+        actor: {
+          username: {
+            contains: query.search,
+            mode: "insensitive",
+          },
+        },
+      },
+      {
+        actor: {
+          fullName: {
+            contains: query.search,
+            mode: "insensitive",
+          },
+        },
+      },
     ];
   }
 
@@ -157,8 +173,17 @@ const buildAuditLogWhere = (query, actor) => {
     }
   }
 
-  if (actor?.username !== "calix") {
-    where.actorUser = { username: { not: "calix" } };
+  if (actor?.username?.toLowerCase() !== "calix") {
+    where.NOT = [
+      {
+        actor: {
+          username: {
+            equals: "calix",
+            mode: "insensitive",
+          },
+        },
+      },
+    ];
   }
 
   return where;
@@ -205,6 +230,13 @@ const getAuditLogById = async (id, actor) => {
   });
 
   if (!auditLog) {
+    throw new AppError("Audit log not found", 404, "AUDIT_LOG_NOT_FOUND");
+  }
+
+  if (
+    auditLog.actor?.username?.toLowerCase() === "calix" &&
+    actor?.username?.toLowerCase() !== "calix"
+  ) {
     throw new AppError("Audit log not found", 404, "AUDIT_LOG_NOT_FOUND");
   }
 
