@@ -141,6 +141,9 @@ const updateStockTransferStatusSchema = z.object({
           serialIds: z
             .array(z.string().trim().min(1, "Serial ID cannot be empty"))
             .optional(),
+          newSerialNumbers: z
+            .array(z.string().trim().min(1, "Serial number cannot be empty"))
+            .optional(),
         }).strict()
       )
       .optional(),

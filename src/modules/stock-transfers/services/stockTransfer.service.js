@@ -3020,11 +3020,14 @@ const updateStockTransferStatusById = async (stockTransferId, payload, actor) =>
             const serialIds = Array.isArray(itemPayload.serialIds)
               ? itemPayload.serialIds
               : [];
+            const newSerialNumbers = Array.isArray(itemPayload.newSerialNumbers)
+              ? itemPayload.newSerialNumbers.map((s) => String(s).trim()).filter(Boolean)
+              : [];
             const quantity = Number(transferItem.quantity);
 
-            if (serialIds.length !== quantity) {
+            if (serialIds.length + newSerialNumbers.length !== quantity) {
               throw new AppError(
-                `Item ${transferItem.item.itemName} requires exactly ${quantity} serial(s), got ${serialIds.length}`,
+                `Item ${transferItem.item.itemName} requires exactly ${quantity} serial(s), got ${serialIds.length + newSerialNumbers.length}`,
                 400,
                 "SERIAL_COUNT_MISMATCH"
               );
@@ -3033,6 +3036,15 @@ const updateStockTransferStatusById = async (stockTransferId, payload, actor) =>
             if (new Set(serialIds).size !== serialIds.length) {
               throw new AppError(
                 "Duplicate serial ID found in fulfillment request",
+                400,
+                "DUPLICATE_SERIAL_IN_REQUEST"
+              );
+            }
+
+            const lowerNewSerials = newSerialNumbers.map((s) => s.toLowerCase());
+            if (new Set(lowerNewSerials).size !== newSerialNumbers.length) {
+              throw new AppError(
+                "Duplicate serial number found in new serials list",
                 400,
                 "DUPLICATE_SERIAL_IN_REQUEST"
               );
@@ -3053,6 +3065,86 @@ const updateStockTransferStatusById = async (stockTransferId, payload, actor) =>
                 400,
                 "SERIAL_NOT_AVAILABLE"
               );
+            }
+
+            if (newSerialNumbers.length > 0) {
+              const availableBatches = await tx.inventoryBatch.findMany({
+                where: {
+                  branchId: existingTransfer.fromBranchId,
+                  itemId: transferItem.itemId,
+                  status: "ACTIVE",
+                  quantityAvailable: { gt: 0 },
+                },
+                orderBy: [
+                  { receivedAt: "asc" },
+                  { createdAt: "asc" },
+                ],
+              });
+
+              if (availableBatches.length === 0) {
+                throw new AppError(
+                  `No active inventory batch with available stock found for item ${transferItem.item.itemName} in source branch`,
+                  400,
+                  "INSUFFICIENT_SOURCE_BATCH_QUANTITY"
+                );
+              }
+
+              const targetBatch = availableBatches[0];
+
+              for (const newSerial of newSerialNumbers) {
+                const existingSerial = await tx.itemSerial.findFirst({
+                  where: {
+                    serialNumber: {
+                      equals: newSerial,
+                      mode: "insensitive",
+                    },
+                  },
+                  include: {
+                    branch: { select: { id: true, name: true, code: true } },
+                  },
+                });
+
+                if (existingSerial) {
+                  if (
+                    existingSerial.status === "AVAILABLE" &&
+                    existingSerial.branchId === existingTransfer.fromBranchId &&
+                    existingSerial.itemId === transferItem.itemId
+                  ) {
+                    if (!validSerials.some((s) => s.id === existingSerial.id)) {
+                      validSerials.push(existingSerial);
+                      continue;
+                    }
+                  }
+
+                  if (existingSerial.status !== "AVAILABLE") {
+                    throw new AppError(
+                      `Serial number "${newSerial}" already exists with status "${existingSerial.status}" in branch ${existingSerial.branch.name || existingSerial.branch.code}. Cannot reuse this serial.`,
+                      409,
+                      "DUPLICATE_SERIAL_IN_SYSTEM"
+                    );
+                  }
+
+                  throw new AppError(
+                    `Serial number "${newSerial}" is already assigned to branch ${existingSerial.branch.name || existingSerial.branch.code}. Cannot create duplicate.`,
+                    409,
+                    "DUPLICATE_SERIAL_IN_SYSTEM"
+                  );
+                }
+
+                const createdSerial = await tx.itemSerial.create({
+                  data: {
+                    serialNumber: newSerial.trim(),
+                    branchId: existingTransfer.fromBranchId,
+                    itemId: transferItem.itemId,
+                    batchId: targetBatch.id,
+                    status: "AVAILABLE",
+                    remarks: `Registered during stock transfer fulfillment (${existingTransfer.transferCode})`,
+                    createdById: actor.id,
+                  },
+                });
+
+                validSerials.push(createdSerial);
+              }
             }
 
             await tx.stockTransferSerial.deleteMany({
