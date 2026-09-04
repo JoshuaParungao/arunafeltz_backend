@@ -192,6 +192,21 @@ const assertItemAccess = (item, actor) => {
   }
 };
 
+const PRICE_ADJUSTMENT_ROLES = new Set([
+  "SUPER_OWNER",
+  "ADMIN",
+]);
+
+const assertCanAdjustPrices = (actor) => {
+  if (!actor || !PRICE_ADJUSTMENT_ROLES.has(actor.role)) {
+    throw new AppError(
+      "Only Main Admin and Admin are permitted to adjust item prices.",
+      403,
+      "PRICE_ADJUSTMENT_FORBIDDEN"
+    );
+  }
+};
+
 const getActiveBranchOrThrow = async (branchId) => {
   const branch = await prisma.branch.findUnique({
     where: {
@@ -401,6 +416,15 @@ const createItem = async (payload, actor) => {
 
   assertCategoryBelongsToBranchId(category, branch.id);
 
+  const priceFields = ["costPrice", "price1", "price2", "price3", "price4", "price5"];
+  const hasCustomPrices = priceFields.some(
+    (field) => payload[field] !== undefined && Number(payload[field]) > 0
+  );
+
+  if (hasCustomPrices) {
+    assertCanAdjustPrices(actor);
+  }
+
   const itemCode = payload.itemCode
     ? payload.itemCode.trim().toUpperCase()
     : await generateItemCode(branch);
@@ -566,6 +590,17 @@ const updateItemById = async (itemId, payload, actor) => {
   }
 
   assertItemAccess(existingItem, actor);
+
+  const priceFields = ["costPrice", "price1", "price2", "price3", "price4", "price5"];
+  const isAdjustingPrices = priceFields.some(
+    (field) =>
+      payload[field] !== undefined &&
+      Number(payload[field]) !== Number(existingItem[field] ?? 0)
+  );
+
+  if (isAdjustingPrices) {
+    assertCanAdjustPrices(actor);
+  }
 
   const updateData = {
     updatedById: actor.id,

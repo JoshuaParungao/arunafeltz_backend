@@ -1,15 +1,10 @@
-const SENSITIVE_PRICING_ROLES = new Set([
-  "SUPER_OWNER",
-  "BRANCH_OWNER",
-  "ADMIN",
-]);
-
 const canViewSensitivePricing = (actor) => {
   if (!actor || !actor.role) {
     return false;
   }
 
-  return SENSITIVE_PRICING_ROLES.has(actor.role);
+  // Cost price is viewable by all authenticated users in product & pricing
+  return true;
 };
 
 const sanitizeItemPricingForActor = (item, actor) => {
@@ -39,3 +34,4 @@ module.exports = {
   sanitizeItemPricingForActor,
   sanitizeItemsPricingForActor,
 };
+
