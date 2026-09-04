@@ -10,6 +10,7 @@ const {
   creditAccountIdParamSchema,
   createCreditCollectionSchema,
   cancelCreditCollectionSchema,
+  declareCreditAccountDefaultSchema,
 } = require("../validations/creditAccount.validation");
 
 const router = express.Router();
@@ -35,6 +36,13 @@ router.post(
   requirePermission(PERMISSIONS.MANAGE_SALES),
   validate(createCreditCollectionSchema),
   creditAccountController.createCreditCollection
+);
+
+router.post(
+  "/:id/default",
+  requirePermission(PERMISSIONS.MANAGE_SALES),
+  validate(declareCreditAccountDefaultSchema),
+  creditAccountController.declareCreditAccountDefaulted
 );
 
 router.get(

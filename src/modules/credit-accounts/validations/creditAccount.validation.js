@@ -85,9 +85,22 @@ const cancelCreditCollectionSchema = z.object({
   }),
 });
 
+const declareCreditAccountDefaultSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Credit account ID is required"),
+  }),
+  body: z.object({
+    reason: z
+      .string()
+      .trim()
+      .min(3, "Reason for declaring bad debt / default is required"),
+  }),
+});
+
 module.exports = {
   listCreditAccountsSchema,
   creditAccountIdParamSchema,
   createCreditCollectionSchema,
   cancelCreditCollectionSchema,
+  declareCreditAccountDefaultSchema,
 };

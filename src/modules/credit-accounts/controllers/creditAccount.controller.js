@@ -104,9 +104,28 @@ const getCreditAccountById = async (req, res, next) => {
   }
 };
 
+const declareCreditAccountDefaulted = async (req, res, next) => {
+  try {
+    const creditAccount = await creditAccountService.declareCreditAccountDefaulted(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Credit account declared as Defaulted / Bad Debt Write-off successfully",
+      data: creditAccount,
+    });
+  } catch (error) {
+    return handleCreditAccountError(error, res, next);
+  }
+};
+
 module.exports = {
   getCreditAccounts,
   getCreditAccountById,
   createCreditCollection,
   cancelCreditCollection,
+  declareCreditAccountDefaulted,
 };

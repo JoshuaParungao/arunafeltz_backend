@@ -1071,11 +1071,87 @@ const getCreditAccountById = async (actor, creditAccountId) => {
   return formatCreditAccount(creditAccount);
 };
 
+const declareCreditAccountDefaulted = async (actor, creditAccountId, payload = {}) => {
+  ensureOwnerAdmin(actor);
+
+  if (!["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"].includes(actor.role)) {
+    const error = new Error("CREDIT_DEFAULT_FORBIDDEN");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const reason = String(payload.reason || "").trim();
+  if (!reason) {
+    const error = new Error("DEFAULT_REASON_REQUIRED");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const creditAccount = await tx.creditAccount.findUnique({
+      where: { id: creditAccountId },
+      include: CREDIT_ACCOUNT_DETAIL_INCLUDE,
+    });
+
+    if (!creditAccount) {
+      const error = new Error("CREDIT_ACCOUNT_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!isSuperOwner(actor) && creditAccount.branchId !== actor.branchId) {
+      const error = new Error("CREDIT_ACCOUNT_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (creditAccount.status !== "ACTIVE") {
+      const error = new Error("CREDIT_ACCOUNT_NOT_ACTIVE_FOR_DEFAULT");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const updatedCreditAccount = await tx.creditAccount.update({
+      where: { id: creditAccount.id },
+      data: {
+        status: "DEFAULTED",
+        cancellationReason: `BAD_DEBT_WRITE_OFF: ${reason}`,
+        remarks: creditAccount.remarks ? `${creditAccount.remarks} | Defaulted/Write-off: ${reason}` : `Defaulted/Write-off: ${reason}`,
+        updatedById: actor.id,
+      },
+      include: CREDIT_ACCOUNT_DETAIL_INCLUDE,
+    });
+
+    await createAuditLog(
+      {
+        actor,
+        branchId: creditAccount.branchId,
+        action: "CREDIT_ACCOUNT_DEFAULTED",
+        entityType: "CreditAccount",
+        entityId: creditAccount.id,
+        description: `Credit account ${creditAccount.creditCode} declared as Defaulted / Bad Debt Write-off. Loss: ₱${creditAccount.remainingBalance}`,
+        metadata: {
+          creditAccountId: creditAccount.id,
+          creditCode: creditAccount.creditCode,
+          sourceType: creditAccount.sourceType,
+          provider: creditAccount.provider,
+          remainingBalance: toMoneyString(creditAccount.remainingBalance),
+          reason,
+        },
+      },
+      tx
+    );
+
+    return formatCreditAccount(updatedCreditAccount);
+  });
+};
+
 module.exports = {
   getCreditAccounts,
   getCreditAccountById,
   createCreditCollection,
   cancelCreditCollection,
+  declareCreditAccountDefaulted,
   testInternals: {
     formatCreditAccount,
     formatCreditCollection,
