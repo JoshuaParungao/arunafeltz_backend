@@ -25,6 +25,14 @@ const {
 const router = express.Router();
 
 router.use(protect);
+
+// Action alerts monitoring available to all authenticated accounts for their permitted branch
+router.get(
+  "/alert-summary",
+  validate(alertSummarySchema),
+  reportController.getAlertSummary
+);
+
 router.use(requirePermission(PERMISSIONS.VIEW_REPORTS));
 
 router.get(
@@ -103,12 +111,6 @@ router.get(
   "/shrinkage-summary",
   validate(shrinkageSummarySchema),
   reportController.getShrinkageSummary
-);
-
-router.get(
-  "/alert-summary",
-  validate(alertSummarySchema),
-  reportController.getAlertSummary
 );
 
 module.exports = router;
