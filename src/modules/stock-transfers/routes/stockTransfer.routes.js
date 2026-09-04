@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 
 const validate = require("../../../middlewares/validate.middleware");
 const { protect } = require("../../../middlewares/auth.middleware");
@@ -14,6 +14,8 @@ const {
   updateStockTransferSchema,
   updateStockTransferPricingSchema,
   updateStockTransferStatusSchema,
+  dispatchStockTransferSchema,
+  receiveStockTransferSchema,
 } = require("../validations/stockTransfer.validation");
 
 const router = express.Router();
@@ -56,6 +58,22 @@ router.get(
   requirePermission(PERMISSIONS.VIEW_STOCK_TRANSFERS),
   validate(stockTransferIdParamSchema),
   stockTransferController.getStockTransferById
+);
+
+router.post(
+  "/:id/dispatch",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_STOCK_TRANSFERS),
+  validate(dispatchStockTransferSchema),
+  stockTransferController.dispatchStockTransfer
+);
+
+router.post(
+  "/:id/receive",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_STOCK_TRANSFERS),
+  validate(receiveStockTransferSchema),
+  stockTransferController.receiveStockTransfer
 );
 
 router.patch(

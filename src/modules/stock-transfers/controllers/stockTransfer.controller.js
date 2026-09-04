@@ -1,4 +1,4 @@
-﻿const asyncHandler = require("../../../utils/asyncHandler");
+const asyncHandler = require("../../../utils/asyncHandler");
 const { sendSuccess } = require("../../../utils/apiResponse");
 const stockTransferService = require("../services/stockTransfer.service");
 
@@ -91,6 +91,32 @@ const updateStockTransferPricingById = asyncHandler(async (req, res) => {
   });
 });
 
+const dispatchStockTransfer = asyncHandler(async (req, res) => {
+  const stockTransfer = await stockTransferService.dispatchStockTransfer(
+    req.params.id,
+    req.body,
+    req.user
+  );
+
+  return sendSuccess(res, {
+    message: "Stock transfer dispatched successfully",
+    data: stockTransfer,
+  });
+});
+
+const receiveStockTransfer = asyncHandler(async (req, res) => {
+  const stockTransfer = await stockTransferService.receiveStockTransfer(
+    req.params.id,
+    req.body,
+    req.user
+  );
+
+  return sendSuccess(res, {
+    message: "Stock transfer received and confirmed successfully",
+    data: stockTransfer,
+  });
+});
+
 module.exports = {
   createStockTransferRequest,
   listRequestableStock,
@@ -100,6 +126,6 @@ module.exports = {
   updateStockTransferById,
   updateStockTransferPricingById,
   updateStockTransferStatusById,
+  dispatchStockTransfer,
+  receiveStockTransfer,
 };
-
-

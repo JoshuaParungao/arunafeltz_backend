@@ -150,6 +150,39 @@ const updateStockTransferStatusSchema = z.object({
   }).strict(),
 });
 
+const dispatchStockTransferSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Stock Transfer ID is required"),
+  }),
+  body: z.object({
+    items: z
+      .array(
+        z.object({
+          stockTransferItemId: z
+            .string()
+            .trim()
+            .min(1, "Stock transfer item ID is required"),
+          serialIds: z
+            .array(z.string().trim().min(1, "Serial ID cannot be empty"))
+            .optional(),
+          newSerialNumbers: z
+            .array(z.string().trim().min(1, "Serial number cannot be empty"))
+            .optional(),
+        }).strict()
+      )
+      .optional(),
+  }).strict(),
+});
+
+const receiveStockTransferSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Stock Transfer ID is required"),
+  }),
+  body: z.object({
+    notes: optionalString,
+  }).optional().default({}),
+});
+
 module.exports = {
   createStockTransferRequestSchema,
   listRequestableStockSchema,
@@ -159,5 +192,7 @@ module.exports = {
   updateStockTransferSchema,
   updateStockTransferPricingSchema,
   updateStockTransferStatusSchema,
+  dispatchStockTransferSchema,
+  receiveStockTransferSchema,
 };
 

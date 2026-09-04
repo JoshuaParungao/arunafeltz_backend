@@ -149,9 +149,44 @@ const STOCK_TRANSFER_INCLUDE = {
               destinationBatchId: true,
             },
           },
+          dispatchAllocation: {
+            select: {
+              id: true,
+              sourceBatchId: true,
+              dispatchedAt: true,
+              receivedAt: true,
+            },
+          },
         },
         orderBy: {
           serialNumberSnapshot: "asc",
+        },
+      },
+      dispatchAllocations: {
+        include: {
+          sourceBatch: {
+            select: {
+              id: true,
+              batchCode: true,
+              branchId: true,
+              itemId: true,
+              unitCost: true,
+              operationalUnitCost: true,
+            },
+          },
+          serials: {
+            select: {
+              id: true,
+              itemSerialId: true,
+              serialNumberSnapshot: true,
+            },
+            orderBy: {
+              serialNumberSnapshot: "asc",
+            },
+          },
+        },
+        orderBy: {
+          dispatchedAt: "asc",
         },
       },
       allocations: {
@@ -2060,6 +2095,54 @@ const assertStockTransferStatusAccess = (stockTransfer, nextStatus, actor) => {
   }
 };
 
+const assertStockTransferDispatchAccess = (stockTransfer, actor) => {
+  assertManageStockTransferRole(actor);
+
+  if (actor.role === "SUPER_OWNER") {
+    return;
+  }
+
+  if (!actor.branchId) {
+    throw new AppError(
+      "User is not assigned to a branch",
+      400,
+      "USER_BRANCH_REQUIRED"
+    );
+  }
+
+  if (stockTransfer.fromBranchId !== actor.branchId) {
+    throw new AppError(
+      "Only the source branch can dispatch this stock transfer",
+      403,
+      "BRANCH_ACCESS_DENIED"
+    );
+  }
+};
+
+const assertStockTransferReceiveAccess = (stockTransfer, actor) => {
+  assertManageStockTransferRole(actor);
+
+  if (actor.role === "SUPER_OWNER") {
+    return;
+  }
+
+  if (!actor.branchId) {
+    throw new AppError(
+      "User is not assigned to a branch",
+      400,
+      "USER_BRANCH_REQUIRED"
+    );
+  }
+
+  if (stockTransfer.toBranchId !== actor.branchId) {
+    throw new AppError(
+      "Only the receiving branch can confirm receipt of this stock transfer",
+      403,
+      "BRANCH_ACCESS_DENIED"
+    );
+  }
+};
+
 const applyTransferAllocation = async (
   tx,
   {
@@ -2963,6 +3046,10 @@ const updateStockTransferStatusById = async (stockTransferId, payload, actor) =>
   }
 
   if (payload.status === "POSTED") {
+    if (existingTransfer.fulfillmentStatus === "IN_TRANSIT") {
+      return receiveStockTransfer(stockTransferId, payload, actor);
+    }
+
     if (existingTransfer.status !== "APPROVED") {
       throw new AppError(
         "Only approved stock transfers can be posted",
@@ -3322,6 +3409,744 @@ const updateStockTransferStatusById = async (stockTransferId, payload, actor) =>
   });
 };
 
+const dispatchStockTransfer = async (stockTransferId, payload = {}, actor) => {
+  const existingTransfer = await prisma.stockTransfer.findUnique({
+    where: { id: stockTransferId },
+    include: STOCK_TRANSFER_INCLUDE,
+  });
+
+  if (!existingTransfer) {
+    throw new AppError("Stock transfer not found", 404, "STOCK_TRANSFER_NOT_FOUND");
+  }
+
+  assertStockTransferDispatchAccess(existingTransfer, actor);
+
+  if (existingTransfer.status !== "APPROVED") {
+    throw new AppError(
+      "Only approved stock transfers can be dispatched",
+      400,
+      "INVALID_STATUS_TRANSITION"
+    );
+  }
+
+  if (existingTransfer.fulfillmentStatus === "IN_TRANSIT") {
+    return existingTransfer;
+  }
+
+  if (existingTransfer.fulfillmentStatus === "RECEIVED" || existingTransfer.status === "POSTED") {
+    throw new AppError(
+      "Stock transfer has already been completed",
+      400,
+      "INVALID_STATUS_TRANSITION"
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (Array.isArray(payload.items) && payload.items.length > 0) {
+      for (const itemPayload of payload.items) {
+        const transferItem = existingTransfer.items.find(
+          (item) => item.id === itemPayload.stockTransferItemId
+        );
+
+        if (!transferItem) {
+          throw new AppError(
+            "Stock transfer item not found in transfer",
+            400,
+            "STOCK_TRANSFER_ITEM_MISMATCH"
+          );
+        }
+
+        if (transferItem.item?.isSerialized) {
+          const serialIds = Array.isArray(itemPayload.serialIds)
+            ? itemPayload.serialIds
+            : [];
+          const newSerialNumbers = Array.isArray(itemPayload.newSerialNumbers)
+            ? itemPayload.newSerialNumbers.map((s) => String(s).trim()).filter(Boolean)
+            : [];
+          const quantity = Number(transferItem.quantity);
+
+          if (serialIds.length + newSerialNumbers.length !== quantity) {
+            throw new AppError(
+              `Item ${transferItem.item.itemName} requires exactly ${quantity} serial(s), got ${serialIds.length + newSerialNumbers.length}`,
+              400,
+              "SERIAL_COUNT_MISMATCH"
+            );
+          }
+
+          if (new Set(serialIds).size !== serialIds.length) {
+            throw new AppError(
+              "Duplicate serial ID found in dispatch request",
+              400,
+              "DUPLICATE_SERIAL_IN_REQUEST"
+            );
+          }
+
+          const lowerNewSerials = newSerialNumbers.map((s) => s.toLowerCase());
+          if (new Set(lowerNewSerials).size !== newSerialNumbers.length) {
+            throw new AppError(
+              "Duplicate serial number found in new serials list",
+              400,
+              "DUPLICATE_SERIAL_IN_REQUEST"
+            );
+          }
+
+          const validSerials = await tx.itemSerial.findMany({
+            where: {
+              id: { in: serialIds },
+              branchId: existingTransfer.fromBranchId,
+              itemId: transferItem.itemId,
+              status: "AVAILABLE",
+            },
+          });
+
+          if (validSerials.length !== serialIds.length) {
+            throw new AppError(
+              "One or more selected serials are no longer available in source branch",
+              400,
+              "SERIAL_NOT_AVAILABLE"
+            );
+          }
+
+          if (newSerialNumbers.length > 0) {
+            const availableBatches = await tx.inventoryBatch.findMany({
+              where: {
+                branchId: existingTransfer.fromBranchId,
+                itemId: transferItem.itemId,
+                status: "ACTIVE",
+                quantityAvailable: { gt: 0 },
+              },
+              orderBy: [
+                { receivedAt: "asc" },
+                { createdAt: "asc" },
+              ],
+            });
+
+            if (availableBatches.length === 0) {
+              throw new AppError(
+                `No active inventory batch with available stock found for item ${transferItem.item.itemName} in source branch`,
+                400,
+                "INSUFFICIENT_SOURCE_BATCH_QUANTITY"
+              );
+            }
+
+            const targetBatch = availableBatches[0];
+
+            for (const newSerial of newSerialNumbers) {
+              const existingSerial = await tx.itemSerial.findFirst({
+                where: {
+                  serialNumber: {
+                    equals: newSerial,
+                    mode: "insensitive",
+                  },
+                },
+                include: {
+                  branch: { select: { id: true, name: true, code: true } },
+                },
+              });
+
+              if (existingSerial) {
+                if (
+                  existingSerial.status === "AVAILABLE" &&
+                  existingSerial.branchId === existingTransfer.fromBranchId &&
+                  existingSerial.itemId === transferItem.itemId
+                ) {
+                  if (!validSerials.some((s) => s.id === existingSerial.id)) {
+                    validSerials.push(existingSerial);
+                    continue;
+                  }
+                }
+
+                if (existingSerial.status !== "AVAILABLE") {
+                  throw new AppError(
+                    `Serial number "${newSerial}" already exists with status "${existingSerial.status}" in branch ${existingSerial.branch.name || existingSerial.branch.code}. Cannot reuse this serial.`,
+                    409,
+                    "DUPLICATE_SERIAL_IN_SYSTEM"
+                  );
+                }
+
+                throw new AppError(
+                  `Serial number "${newSerial}" is already assigned to branch ${existingSerial.branch.name || existingSerial.branch.code}. Cannot create duplicate.`,
+                  409,
+                  "DUPLICATE_SERIAL_IN_SYSTEM"
+                );
+              }
+
+              const createdSerial = await tx.itemSerial.create({
+                data: {
+                  serialNumber: newSerial.trim(),
+                  branchId: existingTransfer.fromBranchId,
+                  itemId: transferItem.itemId,
+                  batchId: targetBatch.id,
+                  status: "AVAILABLE",
+                  remarks: `Registered during stock transfer dispatch (${existingTransfer.transferCode})`,
+                  createdById: actor.id,
+                },
+              });
+
+              validSerials.push(createdSerial);
+            }
+          }
+
+          await tx.stockTransferSerial.deleteMany({
+            where: {
+              stockTransferItemId: transferItem.id,
+              allocationId: null,
+              dispatchAllocationId: null,
+            },
+          });
+
+          await tx.stockTransferSerial.createMany({
+            data: validSerials.map((s) => ({
+              stockTransferItemId: transferItem.id,
+              itemSerialId: s.id,
+              serialNumberSnapshot: s.serialNumber,
+            })),
+          });
+        }
+      }
+    }
+
+    const fromBranch = await tx.branch.findUnique({
+      where: { id: existingTransfer.fromBranchId },
+      select: { id: true, code: true, name: true, status: true },
+    });
+    const toBranch = await tx.branch.findUnique({
+      where: { id: existingTransfer.toBranchId },
+      select: { id: true, code: true, name: true, status: true },
+    });
+
+    if (!fromBranch || fromBranch.status !== "ACTIVE") {
+      throw new AppError("From branch is not active", 400, "FROM_BRANCH_NOT_ACTIVE");
+    }
+    if (!toBranch || toBranch.status !== "ACTIVE") {
+      throw new AppError("To branch is not active", 400, "TO_BRANCH_NOT_ACTIVE");
+    }
+
+    for (const transferItem of existingTransfer.items) {
+      if (
+        transferItem.agreedTransferUnitPrice === null ||
+        transferItem.transferAmount === null ||
+        !transferItem.priceLockedAt ||
+        !transferItem.destinationItemId
+      ) {
+        throw new AppError(
+          "Approved transfer pricing or destination item lock is incomplete",
+          409,
+          "STOCK_TRANSFER_PRICING_NOT_LOCKED"
+        );
+      }
+
+      const agreedTransferUnitPrice = normalizeTransferUnitPrice(
+        transferItem.agreedTransferUnitPrice,
+        "Locked agreed transfer unit price"
+      );
+      const lockedTransferAmount = toMoneyDecimal(transferItem.transferAmount);
+
+      const sourceItem = await tx.item.findUnique({
+        where: { id: transferItem.itemId },
+        select: {
+          id: true,
+          itemCode: true,
+          itemName: true,
+          status: true,
+          branchId: true,
+          isSerialized: true,
+        },
+      });
+
+      if (!sourceItem || sourceItem.branchId !== fromBranch.id || sourceItem.status !== "ACTIVE") {
+        throw new AppError("Source item is invalid or not active in source branch", 400, "SOURCE_ITEM_NOT_ACTIVE");
+      }
+
+      const allocations = await getTransferSourceItems(
+        tx,
+        transferItem,
+        sourceItem,
+        fromBranch,
+        toBranch.id
+      );
+
+      let allocatedQuantity = new Prisma.Decimal(0);
+      let allocatedTransferAmount = new Prisma.Decimal(0);
+
+      for (let index = 0; index < allocations.length; index += 1) {
+        const allocation = allocations[index];
+        const isFinalAllocation = index === allocations.length - 1;
+        allocatedQuantity = allocatedQuantity.plus(allocation.quantity);
+        const allocationTransferAmount = isFinalAllocation
+          ? lockedTransferAmount.minus(allocatedTransferAmount)
+          : toMoneyDecimal(allocatedQuantity.mul(agreedTransferUnitPrice)).minus(
+              allocatedTransferAmount
+            );
+
+        if (allocationTransferAmount.isNegative()) {
+          throw new AppError(
+            "Transfer allocation amount could not be reconciled",
+            409,
+            "STOCK_TRANSFER_ALLOCATION_AMOUNT_MISMATCH"
+          );
+        }
+
+        const sourceUpdate = await tx.inventoryBatch.updateMany({
+          where: {
+            id: allocation.batch.id,
+            branchId: fromBranch.id,
+            itemId: sourceItem.id,
+            status: "ACTIVE",
+            quantityAvailable: {
+              gte: allocation.quantity.toString(),
+            },
+          },
+          data: {
+            quantityAvailable: {
+              decrement: allocation.quantity.toString(),
+            },
+            updatedById: actor.id,
+          },
+        });
+
+        if (sourceUpdate.count !== 1) {
+          throw new AppError(
+            "Insufficient source batch quantity",
+            400,
+            "INSUFFICIENT_SOURCE_BATCH_QUANTITY"
+          );
+        }
+
+        const updatedSourceBatch = await tx.inventoryBatch.findUnique({
+          where: { id: allocation.batch.id },
+        });
+        const sourceNewQuantity = Number(updatedSourceBatch.quantityAvailable);
+        const sourcePreviousQuantity = sourceNewQuantity + allocation.quantity;
+
+        if (sourceNewQuantity === 0) {
+          await tx.inventoryBatch.update({
+            where: { id: allocation.batch.id },
+            data: {
+              status: "DEPLETED",
+              updatedById: actor.id,
+            },
+          });
+        }
+
+        const transferOutMovementCode = await createTransferMovementCode(
+          tx,
+          fromBranch.id,
+          fromBranch.code,
+          sourceItem.itemCode,
+          "TRANSFEROUT"
+        );
+
+        const acquisitionUnitCost = toMoneyDecimal(allocation.batch.unitCost);
+        const sourceOperationalUnitCost = toMoneyDecimal(
+          allocation.batch.operationalUnitCost ?? allocation.batch.unitCost
+        );
+        const destinationOperationalUnitCost = normalizeTransferUnitPrice(
+          transferItem.agreedTransferUnitPrice,
+          "Locked agreed transfer unit price"
+        );
+
+        await tx.inventoryMovement.create({
+          data: {
+            branchId: fromBranch.id,
+            itemId: sourceItem.id,
+            batchId: allocation.batch.id,
+            movementCode: transferOutMovementCode,
+            type: "TRANSFER_OUT",
+            source: "TRANSFER",
+            quantity: allocation.quantity.toString(),
+            previousQuantity: sourcePreviousQuantity.toString(),
+            newQuantity: sourceNewQuantity.toString(),
+            unitCost: acquisitionUnitCost.toFixed(2),
+            referenceNo: existingTransfer.transferCode,
+            remarks: `Dispatched to ${toBranch.code} via ${existingTransfer.transferCode}`,
+            createdById: actor.id,
+            updatedById: actor.id,
+          },
+        });
+
+        const dispatchAllocation = await tx.stockTransferDispatchAllocation.create({
+          data: {
+            stockTransferItemId: transferItem.id,
+            sourceBatchId: allocation.batch.id,
+            quantity: allocation.quantity.toString(),
+            acquisitionUnitCostSnapshot: acquisitionUnitCost.toFixed(2),
+            sourceOperationalUnitCostSnapshot: sourceOperationalUnitCost.toFixed(2),
+            destinationOperationalUnitCostSnapshot: destinationOperationalUnitCost.toFixed(2),
+            transferAmount: allocationTransferAmount.toFixed(2),
+            dispatchedAt: new Date(),
+          },
+        });
+
+        for (const serial of allocation.serials) {
+          await tx.stockTransferSerial.updateMany({
+            where: {
+              stockTransferItemId: transferItem.id,
+              itemSerialId: serial.id,
+            },
+            data: {
+              dispatchAllocationId: dispatchAllocation.id,
+            },
+          });
+
+          await tx.itemSerial.update({
+            where: { id: serial.id },
+            data: {
+              status: "IN_TRANSIT",
+              remarks: `In transit to ${toBranch.code} via ${existingTransfer.transferCode}`,
+              updatedById: actor.id,
+            },
+          });
+        }
+
+        allocatedTransferAmount = allocatedTransferAmount.plus(allocationTransferAmount);
+      }
+    }
+
+    const dispatchedAt = new Date();
+    await tx.stockTransfer.update({
+      where: { id: existingTransfer.id },
+      data: {
+        fulfillmentStatus: "IN_TRANSIT",
+        dispatchedAt,
+        dispatchedById: actor.id,
+        updatedById: actor.id,
+      },
+    });
+
+    const updatedTransfer = await tx.stockTransfer.findUnique({
+      where: { id: existingTransfer.id },
+      include: STOCK_TRANSFER_INCLUDE,
+    });
+
+    await createAuditLog(
+      {
+        actor,
+        branchId: existingTransfer.fromBranchId,
+        action: "STOCK_TRANSFER_DISPATCHED",
+        entityType: "StockTransfer",
+        entityId: existingTransfer.id,
+        description: `Stock transfer ${existingTransfer.transferCode} dispatched to ${toBranch.code}`,
+        metadata: {
+          transferCode: existingTransfer.transferCode,
+          fromBranchId: existingTransfer.fromBranchId,
+          toBranchId: existingTransfer.toBranchId,
+          dispatchedAt,
+          itemCount: existingTransfer.items.length,
+        },
+      },
+      tx
+    );
+
+    return updatedTransfer;
+  });
+};
+
+const receiveStockTransfer = async (stockTransferId, payload = {}, actor) => {
+  const existingTransfer = await prisma.stockTransfer.findUnique({
+    where: { id: stockTransferId },
+    include: STOCK_TRANSFER_INCLUDE,
+  });
+
+  if (!existingTransfer) {
+    throw new AppError("Stock transfer not found", 404, "STOCK_TRANSFER_NOT_FOUND");
+  }
+
+  assertStockTransferReceiveAccess(existingTransfer, actor);
+
+  if (existingTransfer.status === "POSTED" && existingTransfer.fulfillmentStatus === "RECEIVED") {
+    return existingTransfer;
+  }
+
+  if (existingTransfer.fulfillmentStatus !== "IN_TRANSIT") {
+    throw new AppError(
+      "Only dispatched stock transfers in transit can be received",
+      400,
+      "INVALID_STATUS_TRANSITION"
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const fromBranch = await tx.branch.findUnique({
+      where: { id: existingTransfer.fromBranchId },
+      select: { id: true, code: true, name: true, status: true },
+    });
+    const toBranch = await tx.branch.findUnique({
+      where: { id: existingTransfer.toBranchId },
+      select: { id: true, code: true, name: true, status: true },
+    });
+
+    if (!fromBranch || fromBranch.status !== "ACTIVE") {
+      throw new AppError("From branch is not active", 400, "FROM_BRANCH_NOT_ACTIVE");
+    }
+    if (!toBranch || toBranch.status !== "ACTIVE") {
+      throw new AppError("To branch is not active", 400, "TO_BRANCH_NOT_ACTIVE");
+    }
+
+    const referenceNo = existingTransfer.transferCode;
+
+    for (const transferItem of existingTransfer.items) {
+      const destinationItem = await tx.item.findFirst({
+        where: {
+          id: transferItem.destinationItemId,
+          branchId: toBranch.id,
+          status: "ACTIVE",
+        },
+        select: {
+          id: true,
+          itemCode: true,
+          itemName: true,
+          status: true,
+          branchId: true,
+          isSerialized: true,
+          price1: true,
+          price2: true,
+          price3: true,
+          price4: true,
+          price5: true,
+        },
+      });
+
+      if (!destinationItem) {
+        throw new AppError(
+          "Matching destination item not found in destination branch",
+          404,
+          "DESTINATION_ITEM_NOT_FOUND"
+        );
+      }
+
+      const dispatchAllocations = await tx.stockTransferDispatchAllocation.findMany({
+        where: { stockTransferItemId: transferItem.id },
+        include: {
+          sourceBatch: true,
+          serials: true,
+        },
+      });
+
+      if (dispatchAllocations.length === 0) {
+        throw new AppError(
+          `No dispatch records found for transfer item ${transferItem.item?.itemName || transferItem.id}`,
+          400,
+          "DISPATCH_ALLOCATIONS_NOT_FOUND"
+        );
+      }
+
+      for (const dispatchAlloc of dispatchAllocations) {
+        if (dispatchAlloc.finalAllocationId) {
+          continue;
+        }
+
+        const destinationBatchCode = [
+          "TRN",
+          String(fromBranch.code).replace(/[^A-Za-z0-9]/g, "").toUpperCase(),
+          String(existingTransfer.transferCode).replace(/[^A-Za-z0-9]/g, "").toUpperCase(),
+          `L${transferItem.lineNo}`,
+          dispatchAlloc.sourceBatchId.toUpperCase(),
+        ].join("-");
+
+        const acquisitionUnitCost = toMoneyDecimal(dispatchAlloc.acquisitionUnitCostSnapshot);
+        const destinationOperationalUnitCost = toMoneyDecimal(dispatchAlloc.destinationOperationalUnitCostSnapshot);
+
+        let destinationBatch = await tx.inventoryBatch.findUnique({
+          where: {
+            branchId_batchCode: {
+              branchId: toBranch.id,
+              batchCode: destinationBatchCode,
+            },
+          },
+        });
+
+        const quantityStr = dispatchAlloc.quantity.toString();
+
+        if (!destinationBatch) {
+          try {
+            destinationBatch = await tx.inventoryBatch.create({
+              data: {
+                branchId: toBranch.id,
+                itemId: destinationItem.id,
+                batchCode: destinationBatchCode,
+                quantityIn: quantityStr,
+                quantityAvailable: quantityStr,
+                unitCost: acquisitionUnitCost.toFixed(2),
+                operationalUnitCost: destinationOperationalUnitCost.toFixed(2),
+                sellingPrice1: destinationItem.price1.toString(),
+                sellingPrice2: destinationItem.price2.toString(),
+                sellingPrice3: destinationItem.price3.toString(),
+                sellingPrice4: destinationItem.price4.toString(),
+                sellingPrice5: destinationItem.price5.toString(),
+                supplierName: dispatchAlloc.sourceBatch?.supplierName,
+                referenceNo,
+                remarks: `Transfer in from ${fromBranch.code} via ${existingTransfer.transferCode}`,
+                expiryDate: dispatchAlloc.sourceBatch?.expiryDate || null,
+                originBatchId: dispatchAlloc.sourceBatchId,
+                status: "ACTIVE",
+                createdById: actor.id,
+                updatedById: actor.id,
+              },
+            });
+          } catch (error) {
+            if (error?.code === "P2002") {
+              throw new AppError(
+                "Transfer destination batch code already exists and cannot be reused",
+                409,
+                "DESTINATION_BATCH_CODE_ALREADY_EXISTS"
+              );
+            }
+            throw error;
+          }
+        } else {
+          destinationBatch = await tx.inventoryBatch.update({
+            where: { id: destinationBatch.id },
+            data: {
+              quantityIn: { increment: quantityStr },
+              quantityAvailable: { increment: quantityStr },
+              status: "ACTIVE",
+              updatedById: actor.id,
+            },
+          });
+        }
+
+        const transferInMovementCode = await createTransferMovementCode(
+          tx,
+          toBranch.id,
+          toBranch.code,
+          destinationItem.itemCode,
+          "TRANSFERIN"
+        );
+
+        await tx.inventoryMovement.create({
+          data: {
+            branchId: toBranch.id,
+            itemId: destinationItem.id,
+            batchId: destinationBatch.id,
+            movementCode: transferInMovementCode,
+            type: "TRANSFER_IN",
+            source: "TRANSFER",
+            quantity: quantityStr,
+            previousQuantity: (Number(destinationBatch.quantityAvailable) - Number(quantityStr)).toString(),
+            newQuantity: destinationBatch.quantityAvailable.toString(),
+            unitCost: acquisitionUnitCost.toFixed(2),
+            referenceNo,
+            remarks: `Transfer in from ${fromBranch.code} via ${existingTransfer.transferCode}`,
+            createdById: actor.id,
+            updatedById: actor.id,
+          },
+        });
+
+        const finalAllocation = await tx.stockTransferAllocation.create({
+          data: {
+            stockTransferItemId: transferItem.id,
+            sourceBatchId: dispatchAlloc.sourceBatchId,
+            destinationBatchId: destinationBatch.id,
+            quantity: dispatchAlloc.quantity,
+            acquisitionUnitCostSnapshot: dispatchAlloc.acquisitionUnitCostSnapshot,
+            sourceOperationalUnitCostSnapshot: dispatchAlloc.sourceOperationalUnitCostSnapshot,
+            destinationOperationalUnitCostSnapshot: dispatchAlloc.destinationOperationalUnitCostSnapshot,
+            transferAmount: dispatchAlloc.transferAmount,
+          },
+        });
+
+        await tx.stockTransferDispatchAllocation.update({
+          where: { id: dispatchAlloc.id },
+          data: {
+            finalAllocationId: finalAllocation.id,
+            receivedAt: new Date(),
+          },
+        });
+
+        const serialsToUpdate = await tx.stockTransferSerial.findMany({
+          where: {
+            stockTransferItemId: transferItem.id,
+            dispatchAllocationId: dispatchAlloc.id,
+          },
+        });
+
+        for (const serialRec of serialsToUpdate) {
+          await tx.stockTransferSerial.update({
+            where: { id: serialRec.id },
+            data: {
+              allocationId: finalAllocation.id,
+            },
+          });
+
+          await tx.itemSerial.update({
+            where: { id: serialRec.itemSerialId },
+            data: {
+              branchId: toBranch.id,
+              itemId: destinationItem.id,
+              batchId: destinationBatch.id,
+              status: "AVAILABLE",
+              remarks: `Transferred from ${fromBranch.code} via ${existingTransfer.transferCode}`,
+              updatedById: actor.id,
+            },
+          });
+        }
+      }
+    }
+
+    const receivedAt = new Date();
+    await tx.stockTransfer.update({
+      where: { id: existingTransfer.id },
+      data: {
+        status: "POSTED",
+        fulfillmentStatus: "RECEIVED",
+        receivedAt,
+        receivedById: actor.id,
+        postedAt: receivedAt,
+        postedById: actor.id,
+        updatedById: actor.id,
+      },
+    });
+
+    const receivedTransfer = await tx.stockTransfer.findUnique({
+      where: { id: existingTransfer.id },
+      include: STOCK_TRANSFER_INCLUDE,
+    });
+
+    await createAuditLog(
+      {
+        actor,
+        branchId: existingTransfer.toBranchId,
+        action: "STOCK_TRANSFER_RECEIVED",
+        entityType: "StockTransfer",
+        entityId: existingTransfer.id,
+        description: `Stock transfer ${existingTransfer.transferCode} received and confirmed by destination branch`,
+        metadata: {
+          transferCode: existingTransfer.transferCode,
+          fromBranchId: existingTransfer.fromBranchId,
+          toBranchId: existingTransfer.toBranchId,
+          receivedAt,
+          itemCount: existingTransfer.items.length,
+        },
+      },
+      tx
+    );
+
+    await createAuditLog(
+      {
+        actor,
+        branchId: existingTransfer.fromBranchId,
+        action: "STOCK_TRANSFER_POSTED",
+        entityType: "StockTransfer",
+        entityId: existingTransfer.id,
+        description: `Stock transfer ${existingTransfer.transferCode} posted`,
+        metadata: {
+          transferCode: existingTransfer.transferCode,
+          previousStatus: "APPROVED",
+          currentStatus: "POSTED",
+          fromBranchId: existingTransfer.fromBranchId,
+          toBranchId: existingTransfer.toBranchId,
+          postedAt: receivedAt,
+          itemCount: existingTransfer.items.length,
+        },
+      },
+      tx
+    );
+
+    return receivedTransfer;
+  });
+};
+
 module.exports = {
   STOCK_TRANSFER_INCLUDE,
   createStockTransferRequest,
@@ -3332,6 +4157,8 @@ module.exports = {
   updateStockTransferById,
   updateStockTransferPricingById,
   updateStockTransferStatusById,
+  dispatchStockTransfer,
+  receiveStockTransfer,
 };
 
 
