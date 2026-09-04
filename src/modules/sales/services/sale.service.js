@@ -1439,6 +1439,35 @@ const getSales = async (actor, query) => {
             paidAt: true,
           },
         },
+        items: {
+          orderBy: {
+            lineNo: "asc",
+          },
+          include: {
+            item: {
+              select: {
+                id: true,
+                itemCode: true,
+                itemName: true,
+                isSerialized: true,
+                hasWarranty: true,
+              },
+            },
+            batch: {
+              select: {
+                id: true,
+                batchCode: true,
+              },
+            },
+            serial: {
+              select: {
+                id: true,
+                serialNumber: true,
+                status: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             items: true,
