@@ -8,6 +8,7 @@ const reportController = require("../controllers/report.controller");
 const {
   financialSummarySchema,
   inventorySummarySchema,
+  shrinkageSummarySchema,
   salesSummarySchema,
   serviceSummarySchema,
   warrantySummarySchema,
@@ -100,7 +101,7 @@ router.get(
 
 router.get(
   "/shrinkage-summary",
-  validate(inventorySummarySchema),
+  validate(shrinkageSummarySchema),
   reportController.getShrinkageSummary
 );
 

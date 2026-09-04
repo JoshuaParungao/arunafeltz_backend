@@ -206,9 +206,21 @@ const staffPerformanceSummarySchema = z.object({
   }),
 });
 
+const shrinkageSummarySchema = z.object({
+  query: z.object({
+    branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
+    search: z.string().trim().optional(),
+    dateFrom: z.string().trim().optional(),
+    dateTo: z.string().trim().optional(),
+    page: optionalPositiveIntegerString,
+    limit: optionalPositiveIntegerString,
+  }),
+});
+
 module.exports = {
   financialSummarySchema,
   inventorySummarySchema,
+  shrinkageSummarySchema,
   salesSummarySchema,
   serviceSummarySchema,
   warrantySummarySchema,
@@ -221,3 +233,4 @@ module.exports = {
   staffPerformanceSummarySchema,
   alertSummarySchema,
 };
+

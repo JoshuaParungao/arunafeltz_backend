@@ -3680,7 +3680,7 @@ const getShrinkageSummary = async (actor, query = {}) => {
             itemName: true,
             brand: true,
             modelName: true,
-            unit: true,
+            unit: { select: { id: true, unitCode: true, name: true } },
             category: { select: { id: true, name: true } },
           },
         },
@@ -3712,6 +3712,7 @@ const getShrinkageSummary = async (actor, query = {}) => {
     const qty = Number(m.quantity || 0);
     const cost = Number(m.unitCost || 0);
     const totalLoss = qty * cost;
+    const unitLabel = m.item?.unit?.name || m.item?.unit?.unitCode || (typeof m.item?.unit === "string" ? m.item.unit : "PCS");
     return {
       id: m.id,
       movementCode: m.movementCode,
@@ -3722,7 +3723,7 @@ const getShrinkageSummary = async (actor, query = {}) => {
       category: m.item?.category?.name || "General",
       serialNumber: m.serial?.serialNumber || "—",
       quantity: qty,
-      unit: m.item?.unit || "PCS",
+      unit: unitLabel,
       unitCost: cost,
       totalLossMoney: totalLoss,
       reason: m.remarks || m.referenceNo || "Inventory write-off / shrinkage",
@@ -3731,11 +3732,18 @@ const getShrinkageSummary = async (actor, query = {}) => {
     };
   });
 
+  const totals = {
+    totalLossValue,
+    totalUnitsLost,
+    totalEvents: totalItems,
+  };
+
   return {
     report: {
-      totalLossValue,
-      totalUnitsLost,
-      totalEvents: totalItems,
+      name: "Inventory Shrinkage & Loss Value Summary",
+      generatedAt: new Date().toISOString(),
+      totals,
+      ...totals,
     },
     records,
     meta: {
