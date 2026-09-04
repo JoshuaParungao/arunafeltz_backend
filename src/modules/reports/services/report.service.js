@@ -2931,7 +2931,8 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
           customer: { select: { fullName: true } },
           status: true,
           grandTotal: true,
-          items: { select: { itemId: true, lineTotal: true } },
+          payments: { select: { paymentMethod: true } },
+          items: { select: { itemId: true, description: true, quantity: true, lineTotal: true } },
           returnRequests: {
             where: { status: "COMPLETED" },
             select: {
@@ -2959,11 +2960,25 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       },
       preparedQuotations: {
         where: activityDate ? { createdAt: activityDate } : undefined,
-        select: { id: true, status: true },
+        select: {
+          id: true,
+          quotationCode: true,
+          createdAt: true,
+          customer: { select: { fullName: true } },
+          grandTotal: true,
+          status: true,
+        },
       },
       serviceDoneQuotations: {
         where: activityDate ? { createdAt: activityDate } : undefined,
-        select: { id: true, status: true },
+        select: {
+          id: true,
+          quotationCode: true,
+          createdAt: true,
+          customer: { select: { fullName: true } },
+          grandTotal: true,
+          status: true,
+        },
       },
       incentiveAccountConfigVersions: {
         orderBy: { effectiveFrom: "desc" },
@@ -3083,20 +3098,35 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       recentSales: revenueSales.map((s) => ({
         id: s.id,
         saleCode: s.receiptCode,
+        receiptCode: s.receiptCode,
         saleDate: s.saleDate,
         customerName: s.customer?.fullName || "Walk-in Customer",
         status: s.status,
+        itemCount: s.items?.length || 0,
+        paymentMethod: s.payments?.[0]?.paymentMethod ? String(s.payments[0].paymentMethod).replaceAll("_", " ") : "CASH",
         grandTotal: toNumber(s.grandTotal),
+        commission: Math.round(((toNumber(s.grandTotal) * soloIncentivePercent) / 100) * 100) / 100,
       })),
       recentServices: releasedServices.map((j) => ({
         id: j.id,
         jobCode: j.jobCode,
         receivedAt: j.receivedAt,
+        releasedAt: j.releasedAt,
         customerName: j.customer?.fullName || "Walk-in Customer",
-        itemSummary: j.deviceDescription || "Service Job",
-        defectSummary: j.problemDescription || "Repair",
+        deviceDescription: j.deviceDescription || "Service Job",
+        problemDescription: j.problemDescription || "Repair",
         status: j.status,
+        releaseOutcome: j.releaseOutcome || "COMPLETED",
         finalServiceCharge: toNumber(j.finalServiceCharge),
+        commission: Math.round(((toNumber(j.finalServiceCharge) * techServiceIncentivePercent) / 100) * 100) / 100,
+      })),
+      recentQuotations: staff.preparedQuotations.map((q) => ({
+        id: q.id,
+        quotationCode: q.quotationCode,
+        createdAt: q.createdAt,
+        customerName: q.customer?.fullName || "Walk-in Customer",
+        status: q.status,
+        grandTotal: toNumber(q.grandTotal),
       })),
     };
   }).sort((left, right) => right.totalAttributedRevenue - left.totalAttributedRevenue || left.fullName.localeCompare(right.fullName));
