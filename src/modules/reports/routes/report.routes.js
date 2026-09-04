@@ -99,6 +99,12 @@ router.get(
 );
 
 router.get(
+  "/shrinkage-summary",
+  validate(inventorySummarySchema),
+  reportController.getShrinkageSummary
+);
+
+router.get(
   "/alert-summary",
   validate(alertSummarySchema),
   reportController.getAlertSummary

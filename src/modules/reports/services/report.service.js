@@ -3569,6 +3569,128 @@ const getAlertSummary = async (actor, query = {}) => {
   };
 };
 
+const getShrinkageSummary = async (actor, query = {}) => {
+  const branchId = resolveBranchFilter(actor, query.branchId);
+  const search = query.search ? String(query.search).trim() : "";
+  const dateRange = parseDateRange(query);
+  const { page, limit, skip } = parsePagination(query);
+
+  const where = {
+    type: "ADJUSTMENT_OUT",
+    ...(branchId ? { branchId } : {}),
+    ...(dateRange ? { movementDate: dateRange } : {}),
+    ...(search
+      ? {
+          OR: [
+            { movementCode: { contains: search, mode: "insensitive" } },
+            { referenceNo: { contains: search, mode: "insensitive" } },
+            { remarks: { contains: search, mode: "insensitive" } },
+            {
+              item: {
+                OR: [
+                  { itemCode: { contains: search, mode: "insensitive" } },
+                  { itemName: { contains: search, mode: "insensitive" } },
+                  { brand: { contains: search, mode: "insensitive" } },
+                  { modelName: { contains: search, mode: "insensitive" } },
+                ],
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+
+  const [totalItems, movements, allLossMovements] = await Promise.all([
+    prisma.inventoryMovement.count({ where }),
+    prisma.inventoryMovement.findMany({
+      where,
+      select: {
+        id: true,
+        movementCode: true,
+        type: true,
+        source: true,
+        quantity: true,
+        unitCost: true,
+        referenceNo: true,
+        remarks: true,
+        movementDate: true,
+        branch: { select: { id: true, code: true, name: true } },
+        item: {
+          select: {
+            id: true,
+            itemCode: true,
+            itemName: true,
+            brand: true,
+            modelName: true,
+            unit: true,
+            category: { select: { id: true, name: true } },
+          },
+        },
+        serial: { select: { id: true, serialNumber: true } },
+        createdBy: { select: { id: true, fullName: true } },
+      },
+      orderBy: { movementDate: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.inventoryMovement.findMany({
+      where,
+      select: {
+        quantity: true,
+        unitCost: true,
+      },
+    }),
+  ]);
+
+  const totalLossValue = allLossMovements.reduce((sum, m) => {
+    return sum + (Number(m.quantity || 0) * Number(m.unitCost || 0));
+  }, 0);
+
+  const totalUnitsLost = allLossMovements.reduce((sum, m) => {
+    return sum + Number(m.quantity || 0);
+  }, 0);
+
+  const records = movements.map((m) => {
+    const qty = Number(m.quantity || 0);
+    const cost = Number(m.unitCost || 0);
+    const totalLoss = qty * cost;
+    return {
+      id: m.id,
+      movementCode: m.movementCode,
+      date: m.movementDate,
+      itemCode: m.item?.itemCode,
+      itemName: m.item?.itemName,
+      product: `${m.item?.brand || ""} ${m.item?.itemName || ""} ${m.item?.modelName || ""}`.trim(),
+      category: m.item?.category?.name || "General",
+      serialNumber: m.serial?.serialNumber || "—",
+      quantity: qty,
+      unit: m.item?.unit || "PCS",
+      unitCost: cost,
+      totalLossMoney: totalLoss,
+      reason: m.remarks || m.referenceNo || "Inventory write-off / shrinkage",
+      adjustedBy: m.createdBy?.fullName || "System Admin",
+      branch: m.branch,
+    };
+  });
+
+  return {
+    report: {
+      totalLossValue,
+      totalUnitsLost,
+      totalEvents: totalItems,
+    },
+    records,
+    meta: {
+      page,
+      limit,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit) || 1,
+      hasPreviousPage: page > 1,
+      hasNextPage: page < (Math.ceil(totalItems / limit) || 1),
+    },
+  };
+};
+
 module.exports = {
   getInventorySummary,
   getSalesSummary,
@@ -3582,4 +3704,5 @@ module.exports = {
   getCreditSummary,
   getStaffPerformanceSummary,
   getAlertSummary,
+  getShrinkageSummary,
 };

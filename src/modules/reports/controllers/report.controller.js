@@ -166,6 +166,15 @@ const getStaffPerformanceSummary = asyncHandler(async (req, res) => {
   });
 });
 
+const getShrinkageSummary = asyncHandler(async (req, res) => {
+  const result = await reportService.getShrinkageSummary(req.user, req.query);
+  return sendSuccess(res, {
+    message: "Shrinkage and inventory loss report retrieved successfully",
+    data: { report: result.report, records: result.records },
+    meta: result.meta,
+  });
+});
+
 module.exports = {
   getFinancialSummary,
   getInventorySummary,
@@ -180,4 +189,5 @@ module.exports = {
   getCreditSummary,
   getStaffPerformanceSummary,
   getAlertSummary,
+  getShrinkageSummary,
 };
