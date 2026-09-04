@@ -2808,11 +2808,15 @@ const getCreditSummary = async (actor, query = {}) => {
   const records = accounts.map((account) => {
     const dueAt = account.nextDueDate ? new Date(account.nextDueDate).getTime() : null;
     const isOverdue = account.status === "ACTIVE" && dueAt !== null && dueAt < now;
+    const arInterestAmount = Math.max(0, toNumber(account.regularPriceTotalAmount) - (toNumber(account.cashPromoTotalAmount) || 0));
+    const badDebtLoss = account.status === "DEFAULTED" ? toNumber(account.remainingBalance) : 0;
     return {
       ...account,
       termBasis: toNumber(account.termBasis),
       cashPromoTotalAmount: toNumber(account.cashPromoTotalAmount),
       regularPriceTotalAmount: toNumber(account.regularPriceTotalAmount),
+      arInterestAmount,
+      badDebtLoss,
       downpaymentAmount: toNumber(account.downpaymentAmount),
       balanceAmount: toNumber(account.balanceAmount),
       monthlyDueAmount: toNumber(account.monthlyDueAmount),
@@ -2826,11 +2830,17 @@ const getCreditSummary = async (actor, query = {}) => {
 
   const totals = records.reduce((summary, account) => {
     summary.totalAccounts += 1;
+    summary.totalCashPrincipal += account.cashPromoTotalAmount;
+    summary.totalArInterest += account.arInterestAmount;
     summary.totalRegularPrice += account.regularPriceTotalAmount;
     summary.totalBalance += account.balanceAmount;
     summary.totalCollected += account.totalCollected;
     summary.totalRemaining += account.remainingBalance;
+    summary.totalBadDebtLoss += account.badDebtLoss;
     summary.statusCounts[account.status] = (summary.statusCounts[account.status] || 0) + 1;
+    if (account.status === "DEFAULTED") {
+      summary.defaultedAccounts += 1;
+    }
     if (account.isOverdue) {
       summary.overdueAccounts += 1;
       summary.overdueBalance += account.remainingBalance;
@@ -2838,10 +2848,14 @@ const getCreditSummary = async (actor, query = {}) => {
     return summary;
   }, {
     totalAccounts: 0,
+    totalCashPrincipal: 0,
+    totalArInterest: 0,
     totalRegularPrice: 0,
     totalBalance: 0,
     totalCollected: 0,
     totalRemaining: 0,
+    totalBadDebtLoss: 0,
+    defaultedAccounts: 0,
     overdueAccounts: 0,
     overdueBalance: 0,
     statusCounts: {},
@@ -2912,7 +2926,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         where: activityDate ? { saleDate: activityDate } : undefined,
         select: {
           id: true,
-          saleCode: true,
+          receiptCode: true,
           saleDate: true,
           customer: { select: { fullName: true } },
           status: true,
@@ -2934,8 +2948,8 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
           jobCode: true,
           receivedAt: true,
           customer: { select: { fullName: true } },
-          itemSummary: true,
-          defectSummary: true,
+          deviceDescription: true,
+          problemDescription: true,
           status: true,
           finalServiceCharge: true,
           releasedAt: true,
@@ -3068,7 +3082,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       totalAttributedRevenue: salesRevenue + serviceRevenue,
       recentSales: revenueSales.map((s) => ({
         id: s.id,
-        saleCode: s.saleCode,
+        saleCode: s.receiptCode,
         saleDate: s.saleDate,
         customerName: s.customer?.fullName || "Walk-in Customer",
         status: s.status,
@@ -3079,8 +3093,8 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         jobCode: j.jobCode,
         receivedAt: j.receivedAt,
         customerName: j.customer?.fullName || "Walk-in Customer",
-        itemSummary: j.itemSummary || "Service Job",
-        defectSummary: j.defectSummary || "Repair",
+        itemSummary: j.deviceDescription || "Service Job",
+        defectSummary: j.problemDescription || "Repair",
         status: j.status,
         finalServiceCharge: toNumber(j.finalServiceCharge),
       })),
