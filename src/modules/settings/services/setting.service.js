@@ -1007,8 +1007,9 @@ const computeInstallmentTest = async ({
     cashPromoTotalAmount / termBasis
   );
 
-  const balance = roundMoney(
-    (cashPromoTotalAmount - cashDownpayment) / termBasis
+  const balance = Math.max(
+    roundMoney(regularPriceTotalAmount - cashDownpayment),
+    0
   );
 
   return {
