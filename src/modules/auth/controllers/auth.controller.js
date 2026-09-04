@@ -44,9 +44,21 @@ const branchAccessTest = asyncHandler(async (req, res) => {
   });
 });
 
+const updateProfile = asyncHandler(async (req, res) => {
+  const updatedUser = await authService.updateProfile(req.user, req.body);
+
+  return sendSuccess(res, {
+    message: "Profile and password updated successfully",
+    data: {
+      user: updatedUser,
+    },
+  });
+});
+
 module.exports = {
   login,
   getMe,
+  updateProfile,
   permissionTest,
   branchAccessTest,
 };
