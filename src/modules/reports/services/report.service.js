@@ -2932,7 +2932,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
           status: true,
           grandTotal: true,
           payments: { select: { paymentMethod: true } },
-          items: { select: { itemId: true, description: true, quantity: true, lineTotal: true } },
+          items: { select: { itemId: true, description: true, quantity: true, lineTotal: true, priceTier: true } },
           returnRequests: {
             where: { status: "COMPLETED" },
             select: {
@@ -2952,7 +2952,13 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
           deviceDescription: true,
           problemDescription: true,
           status: true,
+          repairType: true,
           finalServiceCharge: true,
+          repairCostPercentSnapshot: true,
+          companySharePercentSnapshot: true,
+          repairCostPoolAmountSnapshot: true,
+          companyShareAmountSnapshot: true,
+          repairIncentiveAmountSnapshot: true,
           releasedAt: true,
           releaseOutcome: true,
           payments: { select: { status: true } },
@@ -2987,9 +2993,24 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     },
   });
 
-  const incentiveSetting = await prisma.businessSetting.findUnique({
-    where: { scopeKey: "GLOBAL:incentive.rules" },
-  });
+  const [incentiveSetting, itemProgramRules] = await Promise.all([
+    prisma.businessSetting.findUnique({
+      where: { scopeKey: "GLOBAL:incentive.rules" },
+    }),
+    prisma.incentiveProgramRuleVersion.findMany({
+      where: { programType: "ITEM_SALE" },
+      orderBy: { effectiveFrom: "desc" },
+    }),
+  ]);
+
+  const eligibleTiersByBranch = new Map();
+  for (const rule of itemProgramRules) {
+    const key = rule.branchId || "GLOBAL";
+    if (!eligibleTiersByBranch.has(key) && Array.isArray(rule.eligiblePriceTiers) && rule.eligiblePriceTiers.length > 0) {
+      eligibleTiersByBranch.set(key, new Set(rule.eligiblePriceTiers.map(Number)));
+    }
+  }
+
   const soloSaleIncentivePercent =
     typeof incentiveSetting?.value?.defaultSoloSaleIncentivePercent === "number"
       ? incentiveSetting.value.defaultSoloSaleIncentivePercent
@@ -3006,6 +3027,9 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     const releasedServices = staff.assignedServiceJobs.filter(
       (job) => Boolean(job.releasedAt) || job.status === "COMPLETED"
     );
+
+    const branchTierSet = eligibleTiersByBranch.get(staff.branch?.id) || eligibleTiersByBranch.get("GLOBAL") || null;
+
     const productRevenue = revenueSales.reduce((sum, sale) => {
       const grossProduct = sale.items
         .filter((item) => Boolean(item.itemId))
@@ -3019,6 +3043,21 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       );
       return sum + Math.max(grossProduct - productRefunds, 0);
     }, 0);
+
+    const eligibleSoloRevenue = revenueSales.reduce((sum, sale) => {
+      const grossEligible = sale.items
+        .filter((item) => Boolean(item.itemId) && (!branchTierSet || branchTierSet.has(item.priceTier || 1)))
+        .reduce((itemSum, item) => itemSum + toNumber(item.lineTotal), 0);
+      const productRefunds = sale.returnRequests.reduce(
+        (requestSum, request) => requestSum + request.items.reduce(
+          (itemSum, item) => itemSum + toNumber(item.lineRefundAmount),
+          0
+        ),
+        0
+      );
+      return sum + Math.max(grossEligible - productRefunds, 0);
+    }, 0);
+
     const salesRevenue = revenueSales.reduce((sum, sale) => {
       const refunds = sale.returnRequests.reduce(
         (requestSum, request) => requestSum + toNumber(request.totalRefundAmount),
@@ -3026,20 +3065,19 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       );
       return sum + Math.max(toNumber(sale.grandTotal) - refunds, 0);
     }, 0);
-    const serviceRevenue = releasedServices.reduce(
-      (sum, job) =>
-        sum + (job.payments?.some((p) => p.status === "POSTED") ? toNumber(job.finalServiceCharge) : 0),
-      0
-    );
 
     const userConfig = staff.incentiveAccountConfigVersions?.[0];
     const soloIncentivePercent = userConfig
       ? userConfig.soloSaleEnabled && userConfig.soloSaleRatePercent !== null
         ? toNumber(userConfig.soloSaleRatePercent)
-        : userConfig.itemEnabled && userConfig.itemRatePercent !== null
-          ? toNumber(userConfig.itemRatePercent)
-          : 0
+        : 0
       : soloSaleIncentivePercent;
+
+    const itemIncentivePercent = userConfig
+      ? userConfig.itemEnabled && userConfig.itemRatePercent !== null
+        ? toNumber(userConfig.itemRatePercent)
+        : 0
+      : 0;
 
     const techServiceIncentivePercent = userConfig
       ? userConfig.ordinaryRepairEnabled && userConfig.ordinaryRepairRatePercent !== null
@@ -3059,9 +3097,43 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         : 0
       : 0;
 
-    const soloIncentiveAmount = Math.round(((salesRevenue * soloIncentivePercent) / 100) * 100) / 100;
-    const serviceIncentiveAmount = Math.round(((serviceRevenue * techServiceIncentivePercent) / 100) * 100) / 100;
-    const totalIncentiveAmount = soloIncentiveAmount + serviceIncentiveAmount;
+    const soloIncentiveAmount = Math.round(((eligibleSoloRevenue * soloIncentivePercent) / 100) * 100) / 100;
+
+    let ordinaryServiceIncentiveTotal = 0;
+    let boardServiceIncentiveTotal = 0;
+    let serviceRevenue = 0;
+
+    for (const job of releasedServices) {
+      const isPaid = job.payments?.some((p) => p.status === "POSTED");
+      const charge = isPaid ? toNumber(job.finalServiceCharge) : 0;
+      serviceRevenue += charge;
+
+      if (charge > 0) {
+        if (job.repairIncentiveAmountSnapshot !== null && job.repairIncentiveAmountSnapshot !== undefined) {
+          const snapAmount = toNumber(job.repairIncentiveAmountSnapshot);
+          if (job.repairType === "BOARD_LEVEL_REPAIR") {
+            boardServiceIncentiveTotal += snapAmount;
+          } else {
+            ordinaryServiceIncentiveTotal += snapAmount;
+          }
+        } else {
+          // If cost pool percent snapshot exists, base pool is derived from it; default is charge
+          const poolRate = job.repairCostPercentSnapshot !== null && job.repairCostPercentSnapshot !== undefined
+            ? toNumber(job.repairCostPercentSnapshot) / 100
+            : 1.0;
+          const costPoolAmount = charge * poolRate;
+
+          if (job.repairType === "BOARD_LEVEL_REPAIR") {
+            boardServiceIncentiveTotal += (costPoolAmount * boardIncentivePercent) / 100;
+          } else {
+            ordinaryServiceIncentiveTotal += (costPoolAmount * techServiceIncentivePercent) / 100;
+          }
+        }
+      }
+    }
+
+    const serviceIncentiveAmount = Math.round((ordinaryServiceIncentiveTotal + boardServiceIncentiveTotal) * 100) / 100;
+    const totalIncentiveAmount = Math.round((soloIncentiveAmount + serviceIncentiveAmount) * 100) / 100;
 
     return {
       id: staff.id,
@@ -3076,6 +3148,8 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       cancelledSales: staff.cashierSales.filter((sale) => sale.status === "CANCELLED").length,
       salesRevenue,
       productRevenue,
+      eligibleSoloRevenue,
+      itemIncentivePercent,
       soloIncentivePercent,
       soloIncentiveAmount,
       serviceIncentivePercent: techServiceIncentivePercent,
