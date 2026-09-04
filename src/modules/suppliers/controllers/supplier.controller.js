@@ -56,10 +56,24 @@ const updateSupplierStatusById = asyncHandler(async (req, res) => {
   });
 });
 
+const getSupplierHistory = asyncHandler(async (req, res) => {
+  const result = await supplierService.getSupplierHistory(
+    req.params.id,
+    req.query,
+    req.user
+  );
+
+  return sendSuccess(res, {
+    message: "Supplier history retrieved successfully",
+    data: result,
+  });
+});
+
 module.exports = {
   createSupplier,
   listSuppliers,
   getSupplierById,
+  getSupplierHistory,
   updateSupplierById,
   updateSupplierStatusById,
 };

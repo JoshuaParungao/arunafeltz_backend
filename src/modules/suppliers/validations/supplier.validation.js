@@ -72,10 +72,24 @@ const updateSupplierStatusSchema = z.object({
   }),
 });
 
+const getSupplierHistorySchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Supplier ID is required"),
+  }),
+  query: z.object({
+    limit: z
+      .string()
+      .trim()
+      .regex(/^[1-9][0-9]*$/, "Limit must be a positive number")
+      .optional(),
+  }),
+});
+
 module.exports = {
   createSupplierSchema,
   listSuppliersSchema,
   supplierIdParamSchema,
   updateSupplierSchema,
   updateSupplierStatusSchema,
+  getSupplierHistorySchema,
 };

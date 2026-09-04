@@ -651,11 +651,260 @@ const updateSupplierStatusById = async (supplierId, status, actor) => {
   });
 };
 
+const getSupplierHistory = async (supplierId, query = {}, actor) => {
+  const supplier = await prisma.supplier.findUnique({
+    where: { id: supplierId },
+    select: SUPPLIER_SELECT,
+  });
+
+  if (!supplier) {
+    throw new AppError("Supplier not found", 404, "SUPPLIER_NOT_FOUND");
+  }
+
+  assertSupplierViewAccess(supplier, actor);
+
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 100);
+
+  const branchFilter =
+    actor.role === "SUPER_OWNER" ? {} : { branchId: actor.branchId };
+
+  const [
+    purchaseOrders,
+    purchaseOrderCount,
+    purchaseReceivings,
+    purchaseReceivingCount,
+    warrantyClaims,
+    warrantyClaimCount,
+  ] = await Promise.all([
+    prisma.purchaseOrder.findMany({
+      where: {
+        supplierId: supplier.id,
+        ...branchFilter,
+      },
+      select: {
+        id: true,
+        poCode: true,
+        status: true,
+        orderDate: true,
+        expectedDate: true,
+        subtotal: true,
+        totalDiscount: true,
+        grandTotal: true,
+        notes: true,
+        orderedAt: true,
+        receivedAt: true,
+        cancelledAt: true,
+        branch: {
+          select: { id: true, code: true, name: true },
+        },
+        orderedBy: {
+          select: { id: true, username: true, fullName: true, role: true },
+        },
+        createdBy: {
+          select: { id: true, username: true, fullName: true, role: true },
+        },
+        items: {
+          select: {
+            id: true,
+            lineNo: true,
+            description: true,
+            quantity: true,
+            receivedQuantity: true,
+            unitCost: true,
+            discountAmount: true,
+            lineTotal: true,
+            item: {
+              select: { id: true, itemCode: true, itemName: true },
+            },
+          },
+          orderBy: { lineNo: "asc" },
+        },
+      },
+      orderBy: { orderDate: "desc" },
+      take: limit,
+    }),
+    prisma.purchaseOrder.count({
+      where: {
+        supplierId: supplier.id,
+        ...branchFilter,
+      },
+    }),
+    prisma.purchaseReceiving.findMany({
+      where: {
+        supplierId: supplier.id,
+        ...branchFilter,
+      },
+      select: {
+        id: true,
+        receivingCode: true,
+        status: true,
+        receivingDate: true,
+        supplierDeliveryNo: true,
+        supplierInvoiceNo: true,
+        referenceNo: true,
+        notes: true,
+        subtotal: true,
+        totalDiscount: true,
+        grandTotal: true,
+        postedAt: true,
+        cancelledAt: true,
+        branch: {
+          select: { id: true, code: true, name: true },
+        },
+        purchaseOrder: {
+          select: { id: true, poCode: true, status: true },
+        },
+        createdBy: {
+          select: { id: true, username: true, fullName: true, role: true },
+        },
+        postedBy: {
+          select: { id: true, username: true, fullName: true, role: true },
+        },
+        items: {
+          select: {
+            id: true,
+            lineNo: true,
+            description: true,
+            quantityReceived: true,
+            unitCost: true,
+            discountAmount: true,
+            lineTotal: true,
+            batchCode: true,
+            expiryDate: true,
+            item: {
+              select: { id: true, itemCode: true, itemName: true },
+            },
+            serials: {
+              select: { id: true, serialNumber: true },
+            },
+          },
+          orderBy: { lineNo: "asc" },
+        },
+      },
+      orderBy: { receivingDate: "desc" },
+      take: limit,
+    }),
+    prisma.purchaseReceiving.count({
+      where: {
+        supplierId: supplier.id,
+        ...branchFilter,
+      },
+    }),
+    prisma.warrantyClaim.findMany({
+      where: {
+        ...branchFilter,
+        OR: [
+          { supplierName: { equals: supplier.name, mode: "insensitive" } },
+          { supplierName: { equals: supplier.supplierCode, mode: "insensitive" } },
+          { remarks: { contains: supplier.name, mode: "insensitive" } },
+          { remarks: { contains: supplier.supplierCode, mode: "insensitive" } },
+        ],
+      },
+      select: {
+        id: true,
+        claimCode: true,
+        status: true,
+        issueDescription: true,
+        customerComplaint: true,
+        diagnosis: true,
+        actionTaken: true,
+        supplierName: true,
+        supplierReferenceNo: true,
+        remarks: true,
+        receivedAt: true,
+        sentToSupplierAt: true,
+        approvedAt: true,
+        rejectedAt: true,
+        repairedAt: true,
+        replacedAt: true,
+        releasedAt: true,
+        item: {
+          select: { id: true, itemCode: true, itemName: true },
+        },
+        serial: {
+          select: { id: true, serialNumber: true },
+        },
+        branch: {
+          select: { id: true, code: true, name: true },
+        },
+        customer: {
+          select: { id: true, fullName: true, mobileNumber: true },
+        },
+        createdBy: {
+          select: { id: true, username: true, fullName: true, role: true },
+        },
+      },
+      orderBy: { receivedAt: "desc" },
+      take: limit,
+    }),
+    prisma.warrantyClaim.count({
+      where: {
+        ...branchFilter,
+        OR: [
+          { supplierName: { equals: supplier.name, mode: "insensitive" } },
+          { supplierName: { equals: supplier.supplierCode, mode: "insensitive" } },
+          { remarks: { contains: supplier.name, mode: "insensitive" } },
+          { remarks: { contains: supplier.supplierCode, mode: "insensitive" } },
+        ],
+      },
+    }),
+  ]);
+
+  const totalPurchaseOrderAmount = purchaseOrders.reduce(
+    (sum, po) => sum + Number(po.grandTotal || 0),
+    0
+  );
+  const totalReceivingAmount = purchaseReceivings
+    .filter((pr) => pr.status === "POSTED" || pr.status === "COMPLETED" || pr.status === "RECEIVED")
+    .reduce((sum, pr) => sum + Number(pr.grandTotal || 0), 0);
+  const totalAllReceivingAmount = purchaseReceivings.reduce(
+    (sum, pr) => sum + Number(pr.grandTotal || 0),
+    0
+  );
+
+  const activeRmaCount = warrantyClaims.filter(
+    (c) => c.status === "SENT_TO_SUPPLIER" || c.status === "CHECKING" || c.status === "IN"
+  ).length;
+
+  const resolvedRmaCount = warrantyClaims.filter(
+    (c) => ["APPROVED", "REPAIRED", "REPLACED", "OUT", "REJECTED"].includes(c.status)
+  ).length;
+
+  return {
+    supplier,
+    summary: {
+      totalPurchaseOrderCount: purchaseOrderCount,
+      totalPurchaseOrderAmount,
+      totalReceivingCount: purchaseReceivingCount,
+      totalReceivingAmount: totalReceivingAmount || totalAllReceivingAmount,
+      totalReturnCount: warrantyClaimCount,
+      activeRmaCount,
+      resolvedRmaCount,
+    },
+    purchaseOrders: {
+      items: purchaseOrders,
+      totalItems: purchaseOrderCount,
+      limit,
+    },
+    purchaseReceivings: {
+      items: purchaseReceivings,
+      totalItems: purchaseReceivingCount,
+      limit,
+    },
+    returns: {
+      items: warrantyClaims,
+      totalItems: warrantyClaimCount,
+      limit,
+    },
+  };
+};
+
 module.exports = {
   SUPPLIER_SELECT,
   createSupplier,
   listSuppliers,
   getSupplierById,
+  getSupplierHistory,
   updateSupplierById,
   updateSupplierStatusById,
 };

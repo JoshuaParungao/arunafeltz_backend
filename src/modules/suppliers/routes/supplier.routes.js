@@ -11,6 +11,7 @@ const {
   supplierIdParamSchema,
   updateSupplierSchema,
   updateSupplierStatusSchema,
+  getSupplierHistorySchema,
 } = require("../validations/supplier.validation");
 
 const router = express.Router();
@@ -29,6 +30,14 @@ router.post(
   requirePermission(PERMISSIONS.MANAGE_SUPPLIERS),
   validate(createSupplierSchema),
   supplierController.createSupplier
+);
+
+router.get(
+  "/:id/history",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_SUPPLIERS),
+  validate(getSupplierHistorySchema),
+  supplierController.getSupplierHistory
 );
 
 router.get(
