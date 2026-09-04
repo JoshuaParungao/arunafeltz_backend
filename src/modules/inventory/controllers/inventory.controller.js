@@ -82,6 +82,8 @@ const handleInventoryMutationError = (error, res, next) => {
     SERIAL_ALREADY_EXISTS: [409, "One or more serial numbers already exist."],
     INSUFFICIENT_BATCH_QUANTITY: [400, "Insufficient batch quantity."],
     SERIAL_NOT_FOUND: [404, "Serial not found."],
+    SELECTED_SERIALS_NOT_AVAILABLE: [400, "One or more selected serial numbers are not available for deduction."],
+    SERIALS_REQUIRED_FOR_SERIALIZED_ITEM: [400, "Serial numbers are required when adjusting a serialized item."],
   };
 
   if (knownErrors[error.message]) {

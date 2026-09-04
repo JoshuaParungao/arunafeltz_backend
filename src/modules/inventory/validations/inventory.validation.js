@@ -93,39 +93,36 @@ const inventoryMovementsSchema = z.object({
 });
 
 const stockInSchema = z.object({
-  body: z
-    .object({
-      branchId: z.string().trim().min(1, "Branch is required").optional(),
-      itemId: z.string().trim().min(1, "Item is required"),
-      batchId: z.string().trim().min(1).optional(),
-      batchCode: z.string().trim().min(1).optional(),
-      quantity: positiveNumber,
-      unitCost: nonNegativeNumber.optional(),
-      sellingPrice1: nonNegativeNumber.optional(),
-      sellingPrice2: nonNegativeNumber.optional(),
-      sellingPrice3: nonNegativeNumber.optional(),
-      sellingPrice4: nonNegativeNumber.optional(),
-      sellingPrice5: nonNegativeNumber.optional(),
-      supplierName: optionalString,
-      referenceNo: optionalString,
-      remarks: optionalString,
-      expiryDate: z.string().datetime().optional(),
-      serialNumbers: z.array(z.string().trim().min(1)).optional(),
-    })
-    .refine((data) => Boolean(data.batchId || data.batchCode), {
-      message: "Either batchId or batchCode is required",
-      path: ["batchCode"],
-    }),
+  body: z.object({
+    branchId: z.string().trim().min(1, "Branch is required").optional(),
+    itemId: z.string().trim().min(1, "Item is required"),
+    batchId: z.string().trim().min(1).optional(),
+    batchCode: z.string().trim().min(1).optional(),
+    quantity: positiveNumber,
+    unitCost: nonNegativeNumber.optional(),
+    sellingPrice1: nonNegativeNumber.optional(),
+    sellingPrice2: nonNegativeNumber.optional(),
+    sellingPrice3: nonNegativeNumber.optional(),
+    sellingPrice4: nonNegativeNumber.optional(),
+    sellingPrice5: nonNegativeNumber.optional(),
+    supplierName: optionalString,
+    referenceNo: optionalString,
+    remarks: optionalString,
+    expiryDate: z.string().datetime().optional(),
+    serialNumbers: z.array(z.string().trim().min(1)).optional(),
+  }),
 });
 
 const adjustmentSchema = z.object({
   body: z.object({
     branchId: z.string().trim().min(1, "Branch is required").optional(),
-    batchId: z.string().trim().min(1, "Batch is required"),
+    batchId: z.string().trim().min(1).optional(),
+    itemId: z.string().trim().min(1).optional(),
     type: z.enum(["INCREASE", "DECREASE"]),
     quantity: positiveNumber,
     referenceNo: optionalString,
     remarks: optionalString,
+    serialNumbers: z.array(z.string().trim().min(1)).optional(),
   }),
 });
 

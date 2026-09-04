@@ -708,10 +708,28 @@ const createStockIn = async (actor, payload) => {
       let resolvedBatchCode = payload.batchCode ? String(payload.batchCode).trim().toUpperCase() : "";
       if (!resolvedBatchCode) {
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-        const count = await tx.inventoryBatch.count({
-          where: { branchId, itemId: item.id },
+        let seq = (await tx.inventoryBatch.count({ where: { branchId } })) + 1;
+        resolvedBatchCode = `BAT-${dateStr}-${String(seq).padStart(4, "0")}`;
+        let existing = await tx.inventoryBatch.findUnique({
+          where: {
+            branchId_batchCode: {
+              branchId,
+              batchCode: resolvedBatchCode,
+            },
+          },
         });
-        resolvedBatchCode = `BAT-${dateStr}-${String(count + 1).padStart(4, "0")}`;
+        while (existing) {
+          seq++;
+          resolvedBatchCode = `BAT-${dateStr}-${String(seq).padStart(4, "0")}`;
+          existing = await tx.inventoryBatch.findUnique({
+            where: {
+              branchId_batchCode: {
+                branchId,
+                batchCode: resolvedBatchCode,
+              },
+            },
+          });
+        }
       }
 
       const existingBatch = await tx.inventoryBatch.findUnique({
@@ -843,22 +861,96 @@ const createStockAdjustment = async (actor, payload) => {
   const movementType = payload.type === "INCREASE" ? "ADJUSTMENT_IN" : "ADJUSTMENT_OUT";
 
   return prisma.$transaction(async (tx) => {
-    const batch = await tx.inventoryBatch.findFirst({
-      where: {
-        id: payload.batchId,
-        branchId: allowedBranchId,
-      },
-      include: {
-        item: true,
-        branch: {
-          select: {
-            id: true,
-            code: true,
-            name: true,
+    let batch = null;
+
+    if (payload.batchId) {
+      batch = await tx.inventoryBatch.findFirst({
+        where: {
+          id: payload.batchId,
+          branchId: allowedBranchId,
+        },
+        include: {
+          item: true,
+          branch: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+            },
           },
         },
-      },
-    });
+      });
+    } else if (payload.itemId) {
+      batch = await tx.inventoryBatch.findFirst({
+        where: {
+          itemId: payload.itemId,
+          branchId: allowedBranchId,
+          ...(payload.type === "DECREASE" ? { quantityAvailable: { gte: quantity.toString() } } : { status: "ACTIVE" }),
+        },
+        orderBy: { createdAt: "desc" },
+        include: {
+          item: true,
+          branch: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      if (!batch && payload.type === "INCREASE") {
+        const item = await tx.item.findFirst({
+          where: { id: payload.itemId, branchId: allowedBranchId },
+          include: { branch: { select: { id: true, code: true, name: true } } },
+        });
+        if (!item) {
+          const error = new Error("ITEM_NOT_FOUND");
+          error.statusCode = 404;
+          throw error;
+        }
+
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        let seq = (await tx.inventoryBatch.count({ where: { branchId: allowedBranchId } })) + 1;
+        let resolvedBatchCode = `BAT-${dateStr}-${String(seq).padStart(4, "0")}`;
+        let exists = await tx.inventoryBatch.findUnique({
+          where: { branchId_batchCode: { branchId: allowedBranchId, batchCode: resolvedBatchCode } },
+        });
+        while (exists) {
+          seq++;
+          resolvedBatchCode = `BAT-${dateStr}-${String(seq).padStart(4, "0")}`;
+          exists = await tx.inventoryBatch.findUnique({
+            where: { branchId_batchCode: { branchId: allowedBranchId, batchCode: resolvedBatchCode } },
+          });
+        }
+
+        batch = await tx.inventoryBatch.create({
+          data: {
+            branchId: allowedBranchId,
+            itemId: item.id,
+            batchCode: resolvedBatchCode,
+            quantityIn: "0",
+            quantityAvailable: "0",
+            unitCost: item.costPrice ? item.costPrice.toString() : "0",
+            operationalUnitCost: item.costPrice ? item.costPrice.toString() : "0",
+            sellingPrice1: item.price1 ? item.price1.toString() : "0",
+            sellingPrice2: item.price2 ? item.price2.toString() : "0",
+            sellingPrice3: item.price3 ? item.price3.toString() : "0",
+            sellingPrice4: item.price4 ? item.price4.toString() : "0",
+            sellingPrice5: item.price5 ? item.price5.toString() : "0",
+            remarks: payload.remarks || "Initial batch for adjustment.",
+            status: "ACTIVE",
+            createdById: actor.id,
+            updatedById: actor.id,
+          },
+          include: {
+            item: true,
+            branch: { select: { id: true, code: true, name: true } },
+          },
+        });
+      }
+    }
 
     if (!batch) {
       const error = new Error("BATCH_NOT_FOUND");
@@ -872,10 +964,78 @@ const createStockAdjustment = async (actor, payload) => {
       throw error;
     }
 
+    const serialNumbers = assertUniqueSerialNumbers(payload.serialNumbers);
+
     if (batch.item.isSerialized) {
-      const error = new Error("SERIALIZED_BATCH_ADJUSTMENT_NOT_SUPPORTED");
-      error.statusCode = 400;
-      throw error;
+      if (serialNumbers.length !== quantity) {
+        const error = new Error("SERIAL_COUNT_MISMATCH");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (payload.type === "INCREASE") {
+        const existingSerials = await tx.itemSerial.findMany({
+          where: {
+            branchId: allowedBranchId,
+            serialNumber: { in: serialNumbers },
+          },
+          select: { serialNumber: true },
+        });
+
+        if (existingSerials.length > 0) {
+          const error = new Error("SERIAL_ALREADY_EXISTS");
+          error.statusCode = 409;
+          error.details = existingSerials.map((s) => s.serialNumber);
+          throw error;
+        }
+
+        for (const sn of serialNumbers) {
+          await tx.itemSerial.create({
+            data: {
+              branchId: allowedBranchId,
+              itemId: batch.item.id,
+              batchId: batch.id,
+              serialNumber: sn,
+              status: "AVAILABLE",
+              remarks: payload.remarks || "Stock adjustment in.",
+              createdById: actor.id,
+              updatedById: actor.id,
+            },
+          });
+        }
+      } else {
+        const availableSerials = await tx.itemSerial.findMany({
+          where: {
+            branchId: allowedBranchId,
+            itemId: batch.item.id,
+            serialNumber: { in: serialNumbers },
+            status: "AVAILABLE",
+          },
+        });
+
+        if (availableSerials.length !== quantity) {
+          const error = new Error("SELECTED_SERIALS_NOT_AVAILABLE");
+          error.statusCode = 400;
+          throw error;
+        }
+
+        for (const s of availableSerials) {
+          await tx.itemSerial.update({
+            where: { id: s.id },
+            data: {
+              status: "DAMAGED",
+              remarks: payload.remarks || "Deducted via stock adjustment.",
+              updatedById: actor.id,
+            },
+          });
+        }
+      }
+    } else {
+      if (serialNumbers.length > 0) {
+        const error = new Error("SERIALS_NOT_ALLOWED_FOR_NON_SERIALIZED_ITEM");
+        error.statusCode = 400;
+        throw error;
+      }
     }
 
     const quantityUpdate = payload.type === "INCREASE"
@@ -894,6 +1054,7 @@ const createStockAdjustment = async (actor, payload) => {
       },
       data: {
         quantityAvailable: quantityUpdate,
+        ...(payload.type === "INCREASE" ? { quantityIn: { increment: quantity.toString() } } : {}),
         updatedById: actor.id,
       },
     });
@@ -941,7 +1102,7 @@ const createStockAdjustment = async (actor, payload) => {
         quantity: quantity.toString(),
         previousQuantity: previousQuantity.toString(),
         newQuantity: newQuantity.toString(),
-        unitCost: batch.unitCost.toString(),
+        unitCost: batch.unitCost ? batch.unitCost.toString() : null,
         referenceNo: payload.referenceNo || null,
         remarks: payload.remarks || "Manual stock adjustment.",
         createdById: actor.id,
@@ -964,12 +1125,14 @@ const createStockAdjustment = async (actor, payload) => {
         previousQuantity: previousQuantity.toString(),
         newQuantity: newQuantity.toString(),
         referenceNo: movement.referenceNo,
+        serialNumbers: serialNumbers.length > 0 ? serialNumbers : undefined,
       },
     }, tx);
 
     return {
       batch: updatedBatch,
       movement,
+      serials: serialNumbers,
     };
   });
 };
