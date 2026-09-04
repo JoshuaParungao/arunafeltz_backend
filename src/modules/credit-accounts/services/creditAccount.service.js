@@ -382,7 +382,7 @@ const getCreditAccounts = async (actor, query = {}) => {
     ];
   }
 
-  const [data, total] = await Promise.all([
+  const [data, total, summaryAggregates] = await Promise.all([
     prisma.creditAccount.findMany({
       where,
       include: CREDIT_ACCOUNT_LIST_INCLUDE,
@@ -395,7 +395,42 @@ const getCreditAccounts = async (actor, query = {}) => {
     prisma.creditAccount.count({
       where,
     }),
+    prisma.creditAccount.groupBy({
+      by: ["status"],
+      where: {
+        ...(where.branchId ? { branchId: where.branchId } : {}),
+        ...(where.customerId ? { customerId: where.customerId } : {}),
+        ...(where.sourceType ? { sourceType: where.sourceType } : {}),
+        ...(where.provider ? { provider: where.provider } : {}),
+        ...(where.term ? { term: where.term } : {}),
+      },
+      _sum: {
+        remainingBalance: true,
+        totalCollected: true,
+      },
+      _count: true,
+    }),
   ]);
+
+  let totalActiveBalance = 0;
+  let totalCollections = 0;
+  let totalDefaultedBalance = 0;
+  let totalDefaultedCount = 0;
+
+  for (const group of summaryAggregates) {
+    const rem = Number(group._sum?.remainingBalance || 0);
+    const coll = Number(group._sum?.totalCollected || 0);
+    const cnt = group._count || 0;
+
+    totalCollections += coll;
+
+    if (group.status === "ACTIVE") {
+      totalActiveBalance += rem;
+    } else if (group.status === "DEFAULTED") {
+      totalDefaultedBalance += rem;
+      totalDefaultedCount += cnt;
+    }
+  }
 
   return {
     data: data.map(formatCreditAccount),
@@ -404,6 +439,12 @@ const getCreditAccounts = async (actor, query = {}) => {
       limit,
       total,
       totalPages: Math.ceil(total / limit),
+      summary: {
+        totalActiveBalance,
+        totalCollections,
+        totalDefaultedBalance,
+        totalDefaultedCount,
+      },
     },
   };
 };
