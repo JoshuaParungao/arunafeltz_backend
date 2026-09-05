@@ -285,6 +285,7 @@ const createReceivableAccount = async (
         cashPromoTotalAmount: toMoney(sourceTotalAmount),
         cashDownpayment: toMoney(initialSettlementAmount),
         term: receivable.term,
+        provider,
       });
     } catch (error) {
       normalizeSettingsError(error);

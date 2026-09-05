@@ -108,12 +108,15 @@ const createServiceJobSchema = z.object({
 const updateServiceJobStatusSchema = z.object({
   params: serviceJobIdParamSchema.shape.params,
   body: z.object({
-    status: z.enum([
-      "IN_PROGRESS",
-      "READY_FOR_RELEASE",
-      "COMPLETED",
-      "CANCELLED",
-    ]),
+    status: z
+      .enum([
+        "PENDING",
+        "IN_PROGRESS",
+        "READY_FOR_RELEASE",
+        "COMPLETED",
+        "CANCELLED",
+      ])
+      .optional(),
     diagnosis: optionalString(2000),
     serviceNotes: optionalString(3000),
     repairType: repairType.optional(),

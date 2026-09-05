@@ -2352,6 +2352,9 @@ const updateServiceJobStatus = async (
 
     ensureCanAccessServiceJobBranch(actor, serviceJob);
 
+    const targetStatus = payload.status || serviceJob.status;
+    const isSameStatusUpdate = targetStatus === serviceJob.status;
+
     const allowedNextStatuses = new Set(
       STATUS_TRANSITIONS[serviceJob.status] || []
     );
@@ -2360,18 +2363,18 @@ const updateServiceJobStatus = async (
       allowedNextStatuses.add("READY_FOR_RELEASE");
     }
 
-    if (payload.status === "COMPLETED") {
+    if (targetStatus === "COMPLETED") {
       throwServiceJobError("SERVICE_JOB_COMPLETION_REQUIRES_RELEASE");
     }
 
-    if (!allowedNextStatuses.has(payload.status)) {
+    if (!isSameStatusUpdate && !allowedNextStatuses.has(targetStatus)) {
       const error = new Error("INVALID_SERVICE_JOB_STATUS_TRANSITION");
       error.statusCode = 400;
       throw error;
     }
 
     const repairType =
-      payload.status === "CANCELLED" &&
+      targetStatus === "CANCELLED" &&
       !serviceJob.repairType &&
       !payload.repairType
         ? null
@@ -2383,14 +2386,14 @@ const updateServiceJobStatus = async (
 
     if (
       actor.role === "TECHNICIAN" &&
-      ["IN_PROGRESS", "READY_FOR_RELEASE"].includes(payload.status) &&
+      ["IN_PROGRESS", "READY_FOR_RELEASE"].includes(targetStatus) &&
       serviceJob.assignedTechnicianId !== actor.id
     ) {
       throwServiceJobError("TECHNICIAN_ASSIGNED_JOB_ONLY", 403);
     }
 
     const updateData = {
-      status: payload.status,
+      status: targetStatus,
       updatedById: actor.id,
     };
 
@@ -2412,16 +2415,16 @@ const updateServiceJobStatus = async (
       payload.finalServiceCharge,
     ].some((value) => value !== undefined);
 
-    if (hasPricingPayload && payload.status !== "CANCELLED") {
+    if (hasPricingPayload && targetStatus !== "CANCELLED") {
       Object.assign(updateData, resolveServicePricing(serviceJob, payload));
     }
 
     let serviceDoneBy = null;
-    const mustResolveServiceDoneBy = payload.status === "READY_FOR_RELEASE";
+    const mustResolveServiceDoneBy = targetStatus === "READY_FOR_RELEASE";
 
     if (
       repairType &&
-      payload.status !== "CANCELLED" &&
+      targetStatus !== "CANCELLED" &&
       (mustResolveServiceDoneBy || payload.serviceDoneById)
     ) {
       serviceDoneBy = await validateServiceDoneBy(
@@ -2434,15 +2437,15 @@ const updateServiceJobStatus = async (
       updateData.serviceDoneById = serviceDoneBy.id;
     }
 
-    if (payload.status === "IN_PROGRESS") {
+    if (!isSameStatusUpdate && targetStatus === "IN_PROGRESS") {
       updateData.startedAt = new Date();
     }
 
-    if (payload.status === "READY_FOR_RELEASE") {
+    if (!isSameStatusUpdate && targetStatus === "READY_FOR_RELEASE") {
       updateData.readyAt = new Date();
     }
 
-    if (payload.status === "CANCELLED") {
+    if (targetStatus === "CANCELLED") {
       if (!payload.cancellationReason) {
         const error = new Error("CANCELLATION_REASON_REQUIRED");
         error.statusCode = 400;
@@ -2482,7 +2485,9 @@ const updateServiceJobStatus = async (
         action: "SERVICE_JOB_STATUS_UPDATED",
         entityType: "ServiceJob",
         entityId: updatedServiceJob.id,
-        description: `Service job ${updatedServiceJob.jobCode} moved from ${serviceJob.status} to ${updatedServiceJob.status}`,
+        description: isSameStatusUpdate
+          ? `Service job ${updatedServiceJob.jobCode} details updated`
+          : `Service job ${updatedServiceJob.jobCode} moved from ${serviceJob.status} to ${updatedServiceJob.status}`,
         metadata: {
           jobCode: updatedServiceJob.jobCode,
           previousStatus: serviceJob.status,

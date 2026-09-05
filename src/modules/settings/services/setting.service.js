@@ -979,6 +979,7 @@ const computeInstallmentTest = async ({
   cashPromoTotalAmount,
   cashDownpayment = 0,
   term,
+  provider = null,
 }) => {
   const installmentSettings = await getInstallmentBasisSettings();
 
@@ -1003,14 +1004,27 @@ const computeInstallmentTest = async ({
     );
   }
 
-  const regularPriceTotalAmount = roundMoney(
-    cashPromoTotalAmount / termBasis
-  );
+  let regularPriceTotalAmount;
+  let balance;
+  let swipeAmount = null;
 
-  const balance = Math.max(
-    roundMoney(regularPriceTotalAmount - cashDownpayment),
-    0
-  );
+  if (provider === "CREDIT_CARD" && cashDownpayment > 0) {
+    const remainingCash = Math.max(cashPromoTotalAmount - cashDownpayment, 0);
+    swipeAmount = roundMoney(remainingCash / termBasis);
+    regularPriceTotalAmount = roundMoney(cashDownpayment + swipeAmount);
+    balance = swipeAmount;
+  } else {
+    regularPriceTotalAmount = roundMoney(
+      cashPromoTotalAmount / termBasis
+    );
+    balance = Math.max(
+      roundMoney(regularPriceTotalAmount - cashDownpayment),
+      0
+    );
+    if (provider === "CREDIT_CARD") {
+      swipeAmount = balance;
+    }
+  }
 
   return {
     formulasUsed: installmentSettings.formulas,
@@ -1018,6 +1032,7 @@ const computeInstallmentTest = async ({
       cashPromoTotalAmount,
       cashDownpayment,
       term,
+      ...(provider ? { provider } : {}),
     },
     basisUsed: {
       term,
@@ -1026,6 +1041,7 @@ const computeInstallmentTest = async ({
     result: {
       regularPriceTotalAmount,
       balance,
+      ...(swipeAmount != null ? { swipeAmount } : {}),
     },
   };
 };
