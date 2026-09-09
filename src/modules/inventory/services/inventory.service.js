@@ -639,6 +639,7 @@ const createStockIn = async (actor, payload) => {
     const existingSerials = await prisma.itemSerial.findMany({
       where: {
         branchId,
+        itemId: item.id,
         serialNumber: {
           in: serialNumbers,
         },
@@ -977,6 +978,7 @@ const createStockAdjustment = async (actor, payload) => {
         const existingSerials = await tx.itemSerial.findMany({
           where: {
             branchId: allowedBranchId,
+            itemId: batch.item.id,
             serialNumber: { in: serialNumbers },
           },
           select: { serialNumber: true },

@@ -1832,11 +1832,12 @@ model ItemSerial {
   returnItems          ReturnItem[]
   stockTransferSerials StockTransferSerial[]
 
-  @@unique([branchId, serialNumber])
+  @@unique([branchId, itemId, serialNumber])
   @@index([branchId])
   @@index([itemId])
   @@index([batchId])
   @@index([status])
+  @@index([serialNumber])
 }
 
 model Quotation {

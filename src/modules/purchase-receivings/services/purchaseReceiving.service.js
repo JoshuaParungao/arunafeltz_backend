@@ -598,6 +598,7 @@ const validateAndBuildItems = async (
       const existingItemSerials = await db.itemSerial.findMany({
         where: {
           branchId,
+          itemId: item.id,
           serialNumber: {
             in: serialNumbers,
           },
@@ -624,6 +625,7 @@ const validateAndBuildItems = async (
             in: serialNumbers,
           },
           purchaseReceivingItem: {
+            itemId: item.id,
             purchaseReceiving: {
               branchId,
               status: "DRAFT",
@@ -1417,6 +1419,7 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
       const existingSerials = await tx.itemSerial.findMany({
         where: {
           branchId: receiving.branchId,
+          itemId: item.id,
           serialNumber: {
             in: serialNumbers,
           },

@@ -1914,6 +1914,9 @@ const getTransferSourceItems = async (
     const destinationCollision = await tx.itemSerial.findFirst({
       where: {
         branchId: toBranchId,
+        item: {
+          itemCode: sourceItem.itemCode,
+        },
         serialNumber: {
           in: serials.map((serial) => serial.serialNumber),
         },
@@ -3181,6 +3184,7 @@ const updateStockTransferStatusById = async (stockTransferId, payload, actor) =>
               for (const newSerial of newSerialNumbers) {
                 const existingSerial = await tx.itemSerial.findFirst({
                   where: {
+                    itemId: transferItem.itemId,
                     serialNumber: {
                       equals: newSerial,
                       mode: "insensitive",
@@ -3534,6 +3538,7 @@ const dispatchStockTransfer = async (stockTransferId, payload = {}, actor) => {
             for (const newSerial of newSerialNumbers) {
               const existingSerial = await tx.itemSerial.findFirst({
                 where: {
+                  itemId: transferItem.itemId,
                   serialNumber: {
                     equals: newSerial,
                     mode: "insensitive",
