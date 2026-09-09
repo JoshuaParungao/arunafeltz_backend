@@ -1465,6 +1465,17 @@ const getSales = async (actor, query) => {
     where.cashierId = query.cashierId;
   }
 
+  if (query.priceTier) {
+    const tier = Number(query.priceTier);
+    if (!Number.isNaN(tier)) {
+      where.items = {
+        some: {
+          priceTier: tier,
+        },
+      };
+    }
+  }
+
   if (query.search) {
     const search = String(query.search).trim();
 

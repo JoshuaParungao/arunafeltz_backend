@@ -113,4 +113,98 @@ router.get(
   reportController.getShrinkageSummary
 );
 
+// ==========================================
+// FINANCIAL REPORTING & AR INTELLIGENCE SUITE
+// ==========================================
+const intelligenceController = require("../controllers/intelligence.controller");
+const {
+  intelligenceQuerySchema,
+  customerArStatementSchema,
+} = require("../validations/intelligence.validation");
+
+router.get(
+  "/intelligence/sales-settlement",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getSalesSettlement
+);
+
+router.get(
+  "/intelligence/ar-aging",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getArAging
+);
+
+router.get(
+  "/intelligence/provider-performance",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getProviderPerformance
+);
+
+router.get(
+  "/intelligence/term-analysis",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getTermAnalysis
+);
+
+router.get(
+  "/intelligence/downpayment-analysis",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getDownpaymentAnalysis
+);
+
+router.get(
+  "/intelligence/collection-performance",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getCollectionPerformance
+);
+
+router.get(
+  "/intelligence/financing-interest",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getFinancingInterest
+);
+
+router.get(
+  "/intelligence/customer-statement/:customerId",
+  validate(customerArStatementSchema),
+  intelligenceController.getCustomerArStatement
+);
+
+router.get(
+  "/intelligence/product-profitability",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getProductProfitability
+);
+
+router.get(
+  "/intelligence/service-profitability",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getServiceProfitability
+);
+
+router.get(
+  "/intelligence/six-layer-profitability",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getSixLayerProfitability
+);
+
+router.get(
+  "/intelligence/ar-profitability",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getArProfitability
+);
+
+router.get(
+  "/intelligence/payment-method",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getPaymentMethodReport
+);
+
+router.get(
+  "/intelligence/branch-comparison",
+  validate(intelligenceQuerySchema),
+  intelligenceController.getBranchFinancialComparison
+);
+
 module.exports = router;
+

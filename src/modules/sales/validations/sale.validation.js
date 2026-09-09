@@ -188,6 +188,7 @@ const listSalesSchema = z.object({
       paymentStatus: z.enum(["PAID", "PARTIALLY_PAID", "UNPAID", "REFUNDED"]).optional(),
       customerId: z.string().trim().min(1).max(191).optional(),
       cashierId: z.string().trim().min(1).max(191).optional(),
+      priceTier: z.coerce.number().int().min(1).max(5).optional(),
       search: z.string().trim().max(100).optional(),
       page: z.coerce.number().int().min(1).optional(),
       limit: z.coerce.number().int().min(1).max(100).optional(),
