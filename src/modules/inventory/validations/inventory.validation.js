@@ -142,6 +142,13 @@ const serialStatusUpdateSchema = z.object({
   }),
 });
 
+const serialBatchUpdateSchema = z.object({
+  body: z.object({
+    batchId: z.string().trim().min(1, "Batch is required"),
+    remarks: optionalString,
+  }),
+});
+
 module.exports = {
   inventoryOverviewSchema,
   inventoryBatchesSchema,
@@ -150,4 +157,5 @@ module.exports = {
   stockInSchema,
   adjustmentSchema,
   serialStatusUpdateSchema,
+  serialBatchUpdateSchema,
 };

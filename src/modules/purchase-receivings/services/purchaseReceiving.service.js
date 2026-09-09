@@ -605,17 +605,24 @@ const validateAndBuildItems = async (
         },
         select: {
           serialNumber: true,
+          status: true,
         },
       });
 
-      if (existingItemSerials.length > 0) {
+      // Serials already in active inventory cannot be received again.
+      // Serials with status 'SOLD' (e.g. checked out at POS before PO receiving) are allowed to be adopted.
+      const collidingSerials = existingItemSerials.filter(
+        (serial) => serial.status !== "SOLD"
+      );
+
+      if (collidingSerials.length > 0) {
         const error = new AppError(
-          "One or more serial numbers already exist",
+          "One or more serial numbers already exist in active inventory",
           409,
           "SERIAL_ALREADY_EXISTS"
         );
 
-        error.details = existingItemSerials.map((serial) => serial.serialNumber);
+        error.details = collidingSerials.map((serial) => serial.serialNumber);
         throw error;
       }
 
@@ -1426,17 +1433,22 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
         },
         select: {
           serialNumber: true,
+          status: true,
         },
       });
 
-      if (existingSerials.length > 0) {
+      const collidingSerials = existingSerials.filter(
+        (serial) => serial.status !== "SOLD"
+      );
+
+      if (collidingSerials.length > 0) {
         const error = new AppError(
-          "One or more serial numbers already exist",
+          "One or more serial numbers already exist in active inventory",
           409,
           "SERIAL_ALREADY_EXISTS"
         );
 
-        error.details = existingSerials.map((serial) => serial.serialNumber);
+        error.details = collidingSerials.map((serial) => serial.serialNumber);
         throw error;
       }
     }
@@ -1549,15 +1561,83 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
       },
     });
 
+    const existingSerialsMap = new Map();
+    if (serialNumbers.length > 0) {
+      const foundSerials = await tx.itemSerial.findMany({
+        where: {
+          branchId: receiving.branchId,
+          itemId: item.id,
+          serialNumber: {
+            in: serialNumbers,
+          },
+        },
+      });
+      foundSerials.forEach((s) => existingSerialsMap.set(s.serialNumber, s));
+    }
+
+    let adoptedCount = 0;
     for (const serialNumber of serialNumbers) {
-      await tx.itemSerial.create({
+      const existingSerial = existingSerialsMap.get(serialNumber);
+      if (existingSerial) {
+        await tx.itemSerial.update({
+          where: {
+            id: existingSerial.id,
+          },
+          data: {
+            batchId: batch.id,
+            updatedById: actor.id,
+            remarks: `${existingSerial.remarks || ""}; Linked to PO receiving ${receiving.receivingCode}`.trim(),
+          },
+        });
+        adoptedCount += 1;
+      } else {
+        await tx.itemSerial.create({
+          data: {
+            branchId: receiving.branchId,
+            itemId: item.id,
+            batchId: batch.id,
+            serialNumber,
+            status: "AVAILABLE",
+            remarks: `Posted purchase receiving ${receiving.receivingCode}`,
+            createdById: actor.id,
+            updatedById: actor.id,
+          },
+        });
+      }
+    }
+
+    if (adoptedCount > 0) {
+      const currentAvailable = Number(batch.quantityAvailable || 0);
+      const remainingAvailable = Math.max(0, currentAvailable - adoptedCount);
+      await tx.inventoryBatch.update({
+        where: { id: batch.id },
+        data: {
+          quantityAvailable: remainingAvailable.toString(),
+          updatedById: actor.id,
+        },
+      });
+
+      const posAdoptMovementCode = await createPurchaseStockInMovementCode(
+        tx,
+        receiving.branchId,
+        item.branch.code,
+        item.itemCode
+      );
+
+      await tx.inventoryMovement.create({
         data: {
           branchId: receiving.branchId,
           itemId: item.id,
           batchId: batch.id,
-          serialNumber,
-          status: "AVAILABLE",
-          remarks: `Posted purchase receiving ${receiving.receivingCode}`,
+          movementCode: posAdoptMovementCode,
+          type: "STOCK_OUT",
+          source: "SALE",
+          quantity: adoptedCount.toString(),
+          previousQuantity: currentAvailable.toString(),
+          newQuantity: remainingAvailable.toString(),
+          unitCost: netAcquisitionUnitCost.toFixed(2),
+          referenceNo,
+          remarks: `Auto-deducted ${adoptedCount} unit(s) already sold in POS prior to PO receiving ${receiving.receivingCode}`,
           createdById: actor.id,
           updatedById: actor.id,
         },

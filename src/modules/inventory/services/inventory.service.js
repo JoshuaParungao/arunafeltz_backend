@@ -1259,6 +1259,167 @@ const updateSerialStatus = async (actor, serialId, payload) => {
   };
 };
 
+const updateSerialBatch = async (actor, serialId, payload) => {
+  const serial = await prisma.itemSerial.findUnique({
+    where: {
+      id: serialId,
+    },
+    include: {
+      branch: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+      },
+      item: {
+        select: {
+          id: true,
+          itemCode: true,
+          itemName: true,
+        },
+      },
+      batch: {
+        select: {
+          id: true,
+          batchCode: true,
+          quantityAvailable: true,
+          referenceNo: true,
+          supplierName: true,
+        },
+      },
+    },
+  });
+
+  if (!serial) {
+    const error = new Error("SERIAL_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!isSuperOwner(actor) && serial.branchId !== actor.branchId) {
+    const error = new Error("BRANCH_ACCESS_DENIED");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const targetBatch = await prisma.inventoryBatch.findUnique({
+    where: {
+      id: payload.batchId,
+    },
+    include: {
+      branch: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!targetBatch) {
+    const error = new Error("BATCH_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (targetBatch.branchId !== serial.branchId) {
+    const error = new Error("Target batch does not belong to the same branch");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (targetBatch.itemId !== serial.itemId) {
+    const error = new Error("Target batch does not match serial product item");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const previousBatch = serial.batch;
+
+  const updatedSerial = await prisma.$transaction(async (tx) => {
+    const updated = await tx.itemSerial.update({
+      where: {
+        id: serial.id,
+      },
+      data: {
+        batchId: targetBatch.id,
+        remarks: payload.remarks ? payload.remarks.trim() : serial.remarks,
+        updatedById: actor.id,
+      },
+      select: {
+        id: true,
+        serialNumber: true,
+        status: true,
+        remarks: true,
+        createdAt: true,
+        updatedAt: true,
+        branch: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+        item: {
+          select: {
+            id: true,
+            itemCode: true,
+            itemName: true,
+            brand: true,
+            modelName: true,
+          },
+        },
+        batch: {
+          select: {
+            id: true,
+            batchCode: true,
+            quantityAvailable: true,
+            referenceNo: true,
+            supplierName: true,
+          },
+        },
+        updatedBy: {
+          select: {
+            id: true,
+            username: true,
+            fullName: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    await createAuditLog(
+      {
+        actor,
+        branchId: serial.branchId,
+        action: "ITEM_SERIAL_BATCH_UPDATED",
+        entityType: "ItemSerial",
+        entityId: serial.id,
+        description: `Serial ${serial.serialNumber} batch updated to ${targetBatch.batchCode}`,
+        metadata: {
+          itemId: serial.itemId,
+          serialNumber: serial.serialNumber,
+          previousBatchId: previousBatch?.id || null,
+          previousBatchCode: previousBatch?.batchCode || null,
+          newBatchId: targetBatch.id,
+          newBatchCode: targetBatch.batchCode,
+          remarks: payload.remarks || null,
+        },
+      },
+      tx
+    );
+
+    return updated;
+  });
+
+  return {
+    previousBatch,
+    serial: updatedSerial,
+  };
+};
 
 const getInventoryMovements = async (actor, query) => {
   const branchId = resolveBranchFilter(actor, query.branchId);
@@ -1419,7 +1580,5 @@ module.exports = {
   createStockIn,
   createStockAdjustment,
   updateSerialStatus,
+  updateSerialBatch,
 };
-
-
-

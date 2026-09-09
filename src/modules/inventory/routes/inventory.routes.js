@@ -14,6 +14,7 @@ const {
   stockInSchema,
   adjustmentSchema,
   serialStatusUpdateSchema,
+  serialBatchUpdateSchema,
 } = require("../validations/inventory.validation");
 
 const router = express.Router();
@@ -31,6 +32,13 @@ router.patch(
   requirePermission(PERMISSIONS.MANAGE_INVENTORY),
   validate(serialStatusUpdateSchema),
   inventoryController.updateSerialStatus
+);
+
+router.patch(
+  "/serials/:id/batch",
+  requirePermission(PERMISSIONS.MANAGE_INVENTORY),
+  validate(serialBatchUpdateSchema),
+  inventoryController.updateSerialBatch
 );
 
 router.post(

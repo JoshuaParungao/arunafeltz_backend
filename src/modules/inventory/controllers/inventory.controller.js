@@ -147,6 +147,24 @@ const updateSerialStatus = async (req, res, next) => {
   }
 };
 
+const updateSerialBatch = async (req, res, next) => {
+  try {
+    const result = await inventoryService.updateSerialBatch(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Serial batch updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    return handleInventoryMutationError(error, res, next);
+  }
+};
+
 
 const getMovements = async (req, res, next) => {
   try {
@@ -168,4 +186,5 @@ module.exports = {
   createStockIn,
   createAdjustment,
   updateSerialStatus,
+  updateSerialBatch,
 };
