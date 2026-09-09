@@ -12,6 +12,7 @@ const {
   createSaleReturnSchema,
   listSalesSchema,
   saleIdParamSchema,
+  appendSaleItemsSchema,
 } = require("../validations/sale.validation");
 
 const router = express.Router();
@@ -33,6 +34,13 @@ router.get(
   saleController.getSaleById
 );
 
+
+router.post(
+  "/:id/items",
+  requirePermission(PERMISSIONS.MANAGE_SALES),
+  validate(appendSaleItemsSchema),
+  saleController.appendSaleItems
+);
 
 router.post(
   "/:id/returns",

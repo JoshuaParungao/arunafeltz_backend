@@ -2836,8 +2836,206 @@ const cancelSale = async (actor, saleId, payload, database = prisma) => {
   });
 };
 
+const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
+  return database.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Sale" WHERE "id" = ${saleId} FOR UPDATE`;
+
+    const sale = await tx.sale.findUnique({
+      where: {
+        id: saleId,
+      },
+      include: {
+        ...SALE_CREATE_INCLUDE,
+        items: {
+          orderBy: {
+            lineNo: "asc",
+          },
+        },
+      },
+    });
+
+    if (!sale) {
+      const error = new Error("SALE_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!isSuperOwner(actor) && sale.branchId !== actor.branchId) {
+      const error = new Error("BRANCH_ACCESS_DENIED");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (sale.status !== "COMPLETED" && sale.status !== "PARTIALLY_REFUNDED") {
+      const error = new Error("CANNOT_APPEND_TO_SALE_IN_CURRENT_STATUS");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (sale.creditAccount) {
+      const error = new Error("CANNOT_APPEND_TO_CREDIT_SALE");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const branch = sale.branch;
+
+    const {
+      saleItems: newSaleItems,
+      stockDeductions,
+      subtotal: addedSubtotal,
+      totalDiscount: addedDiscount,
+    } = await buildSaleItems(tx, actor, sale.branchId, payload.items, {
+      trustedQuotation: false,
+    });
+
+    const addedGrandTotal = toMoney(addedSubtotal - addedDiscount);
+
+    const { salePayments: newSalePayments, amountPaid: addedAmountPaid } =
+      buildSalePayments(actor, payload.payments);
+
+    if (addedAmountPaid < addedGrandTotal) {
+      const error = new Error("INSUFFICIENT_PAYMENT_FOR_ADDED_ITEMS");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const addedChangeAmount = toMoney(
+      Math.max(addedAmountPaid - addedGrandTotal, 0)
+    );
+    const addedCashPaymentTotal = toMoney(
+      newSalePayments
+        .filter((payment) => payment.paymentMethod === "CASH")
+        .reduce((sum, payment) => sum + Number(payment.amount), 0)
+    );
+
+    const netCashReceived = calculateNetCashReceived(
+      addedCashPaymentTotal,
+      addedChangeAmount
+    );
+
+    for (const deduction of stockDeductions) {
+      const movementCode = await generateSaleInventoryMovementCode(
+        tx,
+        branch.code,
+        deduction.itemCode,
+        sale.branchId
+      );
+
+      await tx.inventoryMovement.create({
+        data: {
+          branchId: sale.branchId,
+          itemId: deduction.itemId,
+          batchId: deduction.batchId,
+          serialId: deduction.serialId,
+          movementCode,
+          type: "SALE_OUT",
+          source: "SALE",
+          quantity: toMoneyString(deduction.quantity),
+          previousQuantity: toMoneyString(deduction.previousQuantity),
+          newQuantity: toMoneyString(deduction.newQuantity),
+          unitCost: deduction.acquisitionUnitCost.toString(),
+          referenceNo: sale.receiptCode,
+          remarks: `Additional sale items for ${sale.receiptCode}.`,
+          createdById: actor.id,
+          updatedById: actor.id,
+        },
+      });
+    }
+
+    const maxLineNo = sale.items.reduce(
+      (max, item) => Math.max(max, item.lineNo || 0),
+      0
+    );
+
+    for (let i = 0; i < newSaleItems.length; i++) {
+      const itemData = newSaleItems[i];
+      await tx.saleItem.create({
+        data: {
+          ...itemData,
+          saleId: sale.id,
+          lineNo: maxLineNo + i + 1,
+        },
+      });
+    }
+
+    for (const paymentData of newSalePayments) {
+      await tx.salePayment.create({
+        data: {
+          ...paymentData,
+          saleId: sale.id,
+        },
+      });
+    }
+
+    if (netCashReceived > 0) {
+      await cashLinkService.postSystemCashIn(tx, actor, branch, {
+        type: "SALE_PAYMENT",
+        source: "SALE",
+        amount: netCashReceived,
+        description: `Additional cash received from sale ${sale.receiptCode} after change.`,
+        referenceNo: null,
+        sourceId: sale.id,
+        sourceCode: sale.receiptCode,
+        transactionDate: new Date(),
+      });
+    }
+
+    const updatedSubtotal = toMoney(Number(sale.subtotal) + addedSubtotal);
+    const updatedTotalDiscount = toMoney(
+      Number(sale.totalDiscount) + addedDiscount
+    );
+    const updatedGrandTotal = toMoney(Number(sale.grandTotal) + addedGrandTotal);
+    const updatedTotalPaid = toMoney(Number(sale.totalPaid) + addedAmountPaid);
+    const updatedChangeAmount = toMoney(
+      Number(sale.changeAmount || 0) + addedChangeAmount
+    );
+
+    const updatedSale = await tx.sale.update({
+      where: { id: sale.id },
+      data: {
+        subtotal: toMoneyString(updatedSubtotal),
+        totalDiscount: toMoneyString(updatedTotalDiscount),
+        grandTotal: toMoneyString(updatedGrandTotal),
+        totalPaid: toMoneyString(updatedTotalPaid),
+        changeAmount: toMoneyString(updatedChangeAmount),
+        remarks: payload.remarks
+          ? `${sale.remarks || ""}; Added items: ${payload.remarks.trim()}`.trim()
+          : sale.remarks,
+        updatedById: actor.id,
+      },
+      include: SALE_CREATE_INCLUDE,
+    });
+
+    await incentiveService.postSaleIncentives(tx, actor, sale.id);
+
+    await createAuditLog(
+      {
+        actor,
+        branchId: sale.branchId,
+        action: "SALE_ITEMS_APPENDED",
+        entityType: "Sale",
+        entityId: sale.id,
+        description: `Added ${newSaleItems.length} item(s) to sale ${sale.receiptCode}`,
+        metadata: {
+          receiptCode: sale.receiptCode,
+          previousGrandTotal: Number(sale.grandTotal),
+          addedGrandTotal,
+          newGrandTotal: updatedGrandTotal,
+          addedItemCount: newSaleItems.length,
+          addedPaymentCount: newSalePayments.length,
+        },
+      },
+      tx
+    );
+
+    return sanitizeSaleCostSnapshotsForActor(updatedSale, actor);
+  });
+};
+
 module.exports = {
   createSale,
+  appendSaleItems,
   createSaleReturn,
   getSales,
   getSaleById,

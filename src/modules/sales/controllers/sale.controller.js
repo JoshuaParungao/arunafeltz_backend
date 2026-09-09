@@ -76,13 +76,27 @@ const handleSaleError = (error, res, next) => {
     SERIAL_RETURN_STATUS_INVALID: [400, "Only a serial currently marked SOLD can be returned."],
     RETURN_REFUND_AMOUNT_MISMATCH: [400, "Refund amount must equal the backend-calculated returned line total."],
     ZERO_REFUND_REQUIRES_NONE_METHOD: [400, "A zero-value return must use no-refund method."],
+    CASH_REVERSAL_NEGATIVE_BALANCE: [400, "Cash reversal would make cash box balance negative."],
+    SALE_RETURN_FORBIDDEN: [403, "Only owner/admin roles can return sale items."],
+    SALE_NOT_RETURNABLE: [400, "Only completed or partially refunded sales can accept item returns."],
+    SALE_RETURN_CREDIT_UNSUPPORTED: [400, "Credit-linked sales cannot be partially returned. Resolve the credit account through its audited workflow."],
+    DUPLICATE_RETURN_SALE_ITEM: [400, "A sale line can only appear once in a return."],
+    SALE_ITEM_NOT_FOUND: [404, "Sale item not found."],
+    RETURN_CUSTOM_LINE_UNSUPPORTED: [400, "This return workflow supports inventory product lines only."],
+    RETURN_QUANTITY_EXCEEDS_REMAINING: [400, "Return quantity exceeds the remaining quantity for this sale line."],
+    SERIAL_RETURN_SELECTION_INVALID: [400, "Serialized returns require the exact sold serial and full remaining unit."],
+    SERIAL_RETURN_STATUS_INVALID: [400, "Only a serial currently marked SOLD can be returned."],
+    RETURN_REFUND_AMOUNT_MISMATCH: [400, "Refund amount must equal the backend-calculated returned line total."],
+    ZERO_REFUND_REQUIRES_NONE_METHOD: [400, "A zero-value return must use no-refund method."],
     REFUND_METHOD_REQUIRED: [400, "Select a refund method for a positive refund."],
     RETURN_REFUND_EXCEEDS_PAID_AMOUNT: [400, "Refund exceeds the remaining amount originally paid."],
     RETURN_REFUND_METHOD_EXCEEDS_PAYMENT: [400, "Refund exceeds the remaining amount paid through the selected method."],
     STORE_CREDIT_CUSTOMER_REQUIRED: [400, "Store credit requires a named customer."],
     INSUFFICIENT_CASH_FOR_REFUND: [400, "The active branch cash box has insufficient cash for this refund."],
-    DEFAULT_CASH_BOX_NOT_FOUND: [400, "The branch does not have an active default cash box."],
     INCENTIVE_CLAIM_SETTLEMENT_REQUIRED: [409, "This sale is already included in an incentive claim. Resolve the claim through an audited settlement before returning its items."],
+    CANNOT_APPEND_TO_SALE_IN_CURRENT_STATUS: [400, "Items can only be added to completed or partially refunded sales."],
+    CANNOT_APPEND_TO_CREDIT_SALE: [400, "Cannot append items to a credit installment sale."],
+    INSUFFICIENT_PAYMENT_FOR_ADDED_ITEMS: [400, "Payment amount is insufficient for the added items."],
   };
 
   if (knownErrors[error.message]) {
@@ -102,11 +116,9 @@ const createSale = async (req, res, next) => {
   try {
     const sale = await saleService.createSale(req.user, req.body);
 
-    return res.status(sale.replayed ? 200 : 201).json({
+    return res.status(201).json({
       success: true,
-      message: sale.replayed
-        ? "Sale replayed successfully"
-        : "Sale created successfully",
+      message: "Sale created successfully",
       data: sale,
     });
   } catch (error) {
@@ -114,15 +126,33 @@ const createSale = async (req, res, next) => {
   }
 };
 
+const appendSaleItems = async (req, res, next) => {
+  try {
+    const sale = await saleService.appendSaleItems(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Items added to sale successfully",
+      data: sale,
+    });
+  } catch (error) {
+    return handleSaleError(error, res, next);
+  }
+};
 
 const getSales = async (req, res, next) => {
   try {
-    const result = await saleService.getSales(req.user, req.query);
+    const sales = await saleService.getSales(req.user, req.query);
 
     return res.status(200).json({
       success: true,
       message: "Sales retrieved successfully",
-      data: result,
+      data: sales.data,
+      pagination: sales.pagination,
     });
   } catch (error) {
     return handleSaleError(error, res, next);
@@ -142,7 +172,6 @@ const getSaleById = async (req, res, next) => {
     return handleSaleError(error, res, next);
   }
 };
-
 
 const createCreditAccountFromSale = async (req, res, next) => {
   try {
@@ -200,6 +229,7 @@ const createSaleReturn = async (req, res, next) => {
 
 module.exports = {
   createSale,
+  appendSaleItems,
   createSaleReturn,
   getSales,
   getSaleById,

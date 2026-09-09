@@ -201,6 +201,17 @@ const saleIdParamSchema = z.object({
   }),
 });
 
+const appendSaleItemsSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Sale ID is required").max(191),
+  }),
+  body: z.object({
+    items: z.array(saleItemSchema).min(1, "At least one sale item is required"),
+    payments: z.array(salePaymentSchema).min(1, "At least one payment is required for added items"),
+    remarks: optionalString,
+  }),
+});
+
 module.exports = {
   createSaleSchema,
   cancelSaleSchema,
@@ -208,4 +219,5 @@ module.exports = {
   createSaleReturnSchema,
   listSalesSchema,
   saleIdParamSchema,
+  appendSaleItemsSchema,
 };
