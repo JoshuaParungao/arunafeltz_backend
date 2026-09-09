@@ -369,6 +369,7 @@ const recalculateReceivableForSale = async (
     creditAccountId,
     addedCashPromoAmount,
     addedDownpaymentAmount = 0,
+    term = null,
   }
 ) => {
   await tx.$queryRaw`SELECT "id" FROM "CreditAccount" WHERE "id" = ${creditAccountId} FOR UPDATE`;
@@ -394,6 +395,8 @@ const recalculateReceivableForSale = async (
     throw error;
   }
 
+  const effectiveTerm = term || creditAccount.term;
+
   const previousCashPromo = Number(
     creditAccount.cashPromoTotalAmount || creditAccount.sourceTotalAmountSnapshot
   );
@@ -411,14 +414,14 @@ const recalculateReceivableForSale = async (
   let termBasis = creditAccount.termBasis;
   let monthlyDueAmount;
 
-  if (creditAccount.term && creditAccount.term !== "STRAIGHT") {
-    const months = INSTALLMENT_TERM_MONTHS[creditAccount.term] || 1;
+  if (effectiveTerm && effectiveTerm !== "STRAIGHT") {
+    const months = INSTALLMENT_TERM_MONTHS[effectiveTerm] || 1;
     let installmentComputation;
     try {
       installmentComputation = await settingService.computeInstallmentTest({
         cashPromoTotalAmount: newCashPromoTotal,
         cashDownpayment: newDownpaymentAmount,
-        term: creditAccount.term,
+        term: effectiveTerm,
         provider: creditAccount.provider,
       });
     } catch (error) {
@@ -456,6 +459,7 @@ const recalculateReceivableForSale = async (
       balanceAmount: toMoneyString(balanceAmount),
       totalCollected: toMoneyString(totalCollected),
       remainingBalance: toMoneyString(remainingBalance),
+      term: effectiveTerm,
       termBasis,
       monthlyDueAmount: toMoneyString(monthlyDueAmount),
       status: newStatus,
@@ -474,6 +478,7 @@ const recalculateReceivableForSale = async (
       description: `Credit account ${creditAccount.creditCode} recalculated with appended sale items`,
       metadata: {
         creditCode: creditAccount.creditCode,
+        term: effectiveTerm,
         previousBalanceAmount: creditAccount.balanceAmount.toString(),
         newBalanceAmount: toMoneyString(balanceAmount),
         addedCashPromoAmount: toMoneyString(addedCashPromoAmount),

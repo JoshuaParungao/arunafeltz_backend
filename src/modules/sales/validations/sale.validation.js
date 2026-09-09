@@ -208,6 +208,7 @@ const appendSaleItemsSchema = z.object({
   body: z.object({
     items: z.array(saleItemSchema).min(1, "At least one sale item is required"),
     payments: z.array(salePaymentSchema).optional().default([]),
+    term: z.enum(installmentTermValues).optional(),
     remarks: optionalString,
   }),
 });

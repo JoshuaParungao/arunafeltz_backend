@@ -3114,6 +3114,7 @@ const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
         creditAccountId: sale.creditAccount.id,
         addedCashPromoAmount: addedGrandTotal,
         addedDownpaymentAmount: effectiveDownpaymentAdded,
+        term: payload.term || undefined,
       });
     }
 
