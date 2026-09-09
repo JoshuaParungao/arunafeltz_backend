@@ -409,52 +409,34 @@ const recalculateReceivableForSale = async (
     throwReceivableError("RECEIVABLE_INITIAL_SETTLEMENT_EXCEEDS_TOTAL");
   }
 
-  let termBasis = Number(creditAccount.termBasis || 1);
-  const months = INSTALLMENT_TERM_MONTHS[effectiveTerm] || 1;
+  let regularPriceTotalAmount;
+  let balanceAmount;
+  let termBasis = creditAccount.termBasis;
+  let monthlyDueAmount;
 
-  if (effectiveTerm && effectiveTerm !== "STRAIGHT" && effectiveTerm !== "CASH_PROMO") {
+  if (effectiveTerm && effectiveTerm !== "STRAIGHT") {
+    const months = INSTALLMENT_TERM_MONTHS[effectiveTerm] || 1;
+    let installmentComputation;
     try {
-      const installmentComputation = await settingService.computeInstallmentTest({
-        cashPromoTotalAmount: toMoney(addedCashPromoAmount),
-        cashDownpayment: toMoney(addedDownpaymentAmount),
+      installmentComputation = await settingService.computeInstallmentTest({
+        cashPromoTotalAmount: newCashPromoTotal,
+        cashDownpayment: newDownpaymentAmount,
         term: effectiveTerm,
         provider: creditAccount.provider,
       });
-      termBasis = Number(installmentComputation?.basisUsed?.termBasis || 1);
     } catch (error) {
       normalizeSettingsError(error);
     }
-  } else if (effectiveTerm === "STRAIGHT") {
-    termBasis = 0.96;
+
+    termBasis = Number(installmentComputation?.basisUsed?.termBasis || 1).toFixed(4);
+    regularPriceTotalAmount = toMoney(installmentComputation?.result?.regularPriceTotalAmount);
+    balanceAmount = toMoney(installmentComputation?.result?.balance);
+    monthlyDueAmount = toMoney(balanceAmount / months);
   } else {
-    termBasis = 1.0;
+    regularPriceTotalAmount = newCashPromoTotal;
+    balanceAmount = toMoney(Math.max(newCashPromoTotal - newDownpaymentAmount, 0));
+    monthlyDueAmount = balanceAmount;
   }
-
-  const isCreditCard = creditAccount.provider === "CREDIT_CARD";
-  let addedFinancedAmount;
-
-  if (isCreditCard && Number(addedDownpaymentAmount) > 0) {
-    const remainingCash = Math.max(Number(addedCashPromoAmount) - Number(addedDownpaymentAmount), 0);
-    const swipeAmount = toMoney(remainingCash / termBasis);
-    addedFinancedAmount = toMoney(Number(addedDownpaymentAmount) + swipeAmount);
-  } else if (termBasis > 0 && termBasis !== 1) {
-    addedFinancedAmount = toMoney(Number(addedCashPromoAmount) / termBasis);
-  } else {
-    addedFinancedAmount = toMoney(addedCashPromoAmount);
-  }
-
-  const netAddedToBalance = toMoney(Math.max(addedFinancedAmount - Number(addedDownpaymentAmount), 0));
-
-  const prevRegularPrice = Number(creditAccount.regularPriceTotalAmount || creditAccount.balanceAmount || 0);
-  const newRegularPriceTotalAmount = toMoney(prevRegularPrice + addedFinancedAmount);
-
-  const prevBalance = Number(creditAccount.balanceAmount || 0);
-  const newBalanceAmount = toMoney(prevBalance + netAddedToBalance);
-
-  const prevRemaining = Number(creditAccount.remainingBalance || 0);
-  const newRemainingBalance = toMoney(Math.max(prevRemaining + netAddedToBalance, 0));
-
-  const newMonthlyDueAmount = toMoney(newRemainingBalance / months);
 
   const totalCollected = toMoney(
     (creditAccount.collections || []).reduce(
@@ -463,22 +445,23 @@ const recalculateReceivableForSale = async (
     )
   );
 
-  const newStatus = newRemainingBalance <= 0 ? "PAID" : "ACTIVE";
-  const paidAt = newRemainingBalance <= 0 ? (creditAccount.paidAt || new Date()) : null;
+  const remainingBalance = toMoney(Math.max(balanceAmount - totalCollected, 0));
+  const newStatus = remainingBalance <= 0 ? "PAID" : "ACTIVE";
+  const paidAt = remainingBalance <= 0 ? (creditAccount.paidAt || new Date()) : null;
 
   const updatedCreditAccount = await tx.creditAccount.update({
     where: { id: creditAccountId },
     data: {
       sourceTotalAmountSnapshot: toMoneyString(newCashPromoTotal),
       cashPromoTotalAmount: toMoneyString(newCashPromoTotal),
-      regularPriceTotalAmount: toMoneyString(newRegularPriceTotalAmount),
+      regularPriceTotalAmount: toMoneyString(regularPriceTotalAmount),
       downpaymentAmount: toMoneyString(newDownpaymentAmount),
-      balanceAmount: toMoneyString(newBalanceAmount),
+      balanceAmount: toMoneyString(balanceAmount),
       totalCollected: toMoneyString(totalCollected),
-      remainingBalance: toMoneyString(newRemainingBalance),
+      remainingBalance: toMoneyString(remainingBalance),
       term: effectiveTerm,
-      termBasis: termBasis.toFixed(4),
-      monthlyDueAmount: toMoneyString(newMonthlyDueAmount),
+      termBasis,
+      monthlyDueAmount: toMoneyString(monthlyDueAmount),
       status: newStatus,
       paidAt,
       updatedById: actor.id,
