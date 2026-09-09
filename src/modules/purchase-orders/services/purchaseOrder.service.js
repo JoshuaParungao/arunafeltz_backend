@@ -697,6 +697,21 @@ const updatePurchaseOrderById = async (purchaseOrderId, payload, actor) => {
       updateData.poCode = poCode;
     }
 
+    if (
+      payload.supplierId !== undefined &&
+      payload.supplierId !== existingPurchaseOrder.supplierId
+    ) {
+      await tx.$queryRaw`SELECT "id" FROM "Supplier" WHERE "id" = ${payload.supplierId} FOR UPDATE`;
+      const supplier = await getActiveSupplierForBranchOrThrow(
+        payload.supplierId,
+        existingPurchaseOrder.branchId,
+        tx
+      );
+      updateData.supplierId = supplier.id;
+      updateData.supplierNameSnapshot = supplier.name;
+      updateData.supplierContactSnapshot = supplier.contactNo;
+    }
+
     if (payload.expectedDate !== undefined) {
       updateData.expectedDate = normalizeOptionalDate(payload.expectedDate);
     }

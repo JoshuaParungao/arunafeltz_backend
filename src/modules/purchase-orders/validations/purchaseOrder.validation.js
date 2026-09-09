@@ -90,6 +90,7 @@ const updatePurchaseOrderSchema = z.object({
   }),
   body: z.object({
     poCode: z.string().trim().min(1, "PO code cannot be empty").optional(),
+    supplierId: z.string().trim().min(1, "Supplier ID cannot be empty").optional(),
     expectedDate: z.string().trim().min(1, "Expected date cannot be empty").optional().nullable(),
     notes: optionalString,
     internalNotes: optionalString,
