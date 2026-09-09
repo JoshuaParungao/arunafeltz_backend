@@ -1307,6 +1307,38 @@ const createPurchaseStockInMovementCode = async (tx, branchId, branchCode, itemC
   return `${prefix}${String(highestNumber + 1).padStart(5, "0")}`;
 };
 
+const generateNextReceivingBatchCode = async (tx, branchId) => {
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  let seq = (await tx.inventoryBatch.count({ where: { branchId } })) + 1;
+  let batchCode = `BAT-${dateStr}-${String(seq).padStart(4, "0")}`;
+
+  let existing = await tx.inventoryBatch.findUnique({
+    where: {
+      branchId_batchCode: {
+        branchId,
+        batchCode,
+      },
+    },
+    select: { id: true },
+  });
+
+  while (existing) {
+    seq += 1;
+    batchCode = `BAT-${dateStr}-${String(seq).padStart(4, "0")}`;
+    existing = await tx.inventoryBatch.findUnique({
+      where: {
+        branchId_batchCode: {
+          branchId,
+          batchCode,
+        },
+      },
+      select: { id: true },
+    });
+  }
+
+  return batchCode;
+};
+
 const postReceivingStockIn = async (tx, receiving, actor) => {
   for (const receivingItem of receiving.items) {
     const quantityReceived = Number(receivingItem.quantityReceived);
@@ -1340,14 +1372,7 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
     }
 
     if (!batchCode) {
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const count = await tx.inventoryBatch.count({
-        where: {
-          branchId: receiving.branchId,
-          itemId: item.id,
-        },
-      });
-      batchCode = `BAT-${dateStr}-${String(count + 1).padStart(4, "0")}`;
+      batchCode = await generateNextReceivingBatchCode(tx, receiving.branchId);
     }
 
     if (item.branchId !== receiving.branchId) {
@@ -1532,6 +1557,17 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
           remarks: `Posted purchase receiving ${receiving.receivingCode}`,
           createdById: actor.id,
           updatedById: actor.id,
+        },
+      });
+    }
+
+    if (!receivingItem.batchCode) {
+      await tx.purchaseReceivingItem.update({
+        where: {
+          id: receivingItem.id,
+        },
+        data: {
+          batchCode,
         },
       });
     }
