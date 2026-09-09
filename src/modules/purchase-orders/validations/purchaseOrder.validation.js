@@ -46,15 +46,23 @@ const purchaseOrderItemSchema = z.object({
 });
 
 const createPurchaseOrderSchema = z.object({
-  body: z.object({
-    branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
-    poCode: z.string().trim().min(1, "PO code cannot be empty").optional(),
-    supplierId: z.string().trim().min(1, "Supplier ID is required"),
-    expectedDate: z.string().trim().min(1, "Expected date cannot be empty").optional().nullable(),
-    notes: optionalString,
-    internalNotes: optionalString,
-    items: z.array(purchaseOrderItemSchema).min(1, "At least one item is required"),
-  }),
+  body: z
+    .object({
+      branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
+      poCode: z.string().trim().min(1, "PO code cannot be empty").optional(),
+      supplierId: z.string().trim().min(1, "Supplier ID cannot be empty").optional(),
+      supplierName: z.string().trim().min(1, "Supplier name cannot be empty").optional(),
+      supplierContact: optionalString,
+      supplierAddress: optionalString,
+      expectedDate: z.string().trim().min(1, "Expected date cannot be empty").optional().nullable(),
+      notes: optionalString,
+      internalNotes: optionalString,
+      items: z.array(purchaseOrderItemSchema).min(1, "At least one item is required"),
+    })
+    .refine((data) => Boolean(data.supplierId || data.supplierName), {
+      message: "Either supplier ID or supplier name is required",
+      path: ["supplierId"],
+    }),
 });
 
 const listPurchaseOrdersSchema = z.object({
@@ -91,6 +99,9 @@ const updatePurchaseOrderSchema = z.object({
   body: z.object({
     poCode: z.string().trim().min(1, "PO code cannot be empty").optional(),
     supplierId: z.string().trim().min(1, "Supplier ID cannot be empty").optional(),
+    supplierName: z.string().trim().min(1, "Supplier name cannot be empty").optional(),
+    supplierContact: optionalString,
+    supplierAddress: optionalString,
     expectedDate: z.string().trim().min(1, "Expected date cannot be empty").optional().nullable(),
     notes: optionalString,
     internalNotes: optionalString,

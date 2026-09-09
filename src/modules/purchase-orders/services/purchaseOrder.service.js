@@ -19,6 +19,7 @@ const PURCHASE_ORDER_INCLUDE = {
       contactPerson: true,
       contactNo: true,
       email: true,
+      address: true,
       status: true,
       branchId: true,
     },
@@ -265,6 +266,7 @@ const getActiveSupplierForBranchOrThrow = async (
       contactPerson: true,
       contactNo: true,
       email: true,
+      address: true,
       status: true,
       branchId: true,
     },
@@ -287,6 +289,167 @@ const getActiveSupplierForBranchOrThrow = async (
   }
 
   return supplier;
+};
+
+const generateSupplierCode = async (branch, db = prisma) => {
+  const prefix = branch ? `SUP-${branch.code}-` : "SUP-GLOBAL-";
+
+  const existingSuppliers = await db.supplier.findMany({
+    where: {
+      branchId: branch ? branch.id : null,
+      supplierCode: {
+        startsWith: prefix,
+      },
+    },
+    select: {
+      supplierCode: true,
+    },
+  });
+
+  let highestNumber = 0;
+
+  for (const supplier of existingSuppliers) {
+    const suffix = supplier.supplierCode.replace(prefix, "");
+    const parsedNumber = Number.parseInt(suffix, 10);
+
+    if (!Number.isNaN(parsedNumber) && parsedNumber > highestNumber) {
+      highestNumber = parsedNumber;
+    }
+  }
+
+  return `${prefix}${String(highestNumber + 1).padStart(3, "0")}`;
+};
+
+const resolveOrCreateSupplier = async ({
+  supplierId,
+  supplierName,
+  supplierContact,
+  supplierAddress,
+  branch,
+  actor,
+  tx,
+}) => {
+  if (supplierId) {
+    await tx.$queryRaw`SELECT "id" FROM "Supplier" WHERE "id" = ${supplierId} FOR UPDATE`;
+    const supplier = await getActiveSupplierForBranchOrThrow(
+      supplierId,
+      branch.id,
+      tx
+    );
+
+    const needsContactUpdate = supplierContact && !supplier.contactNo;
+    const needsAddressUpdate = supplierAddress && !supplier.address;
+
+    if (needsContactUpdate || needsAddressUpdate) {
+      await tx.supplier.update({
+        where: { id: supplier.id },
+        data: {
+          ...(needsContactUpdate ? { contactNo: normalizeOptionalString(supplierContact) } : {}),
+          ...(needsAddressUpdate ? { address: normalizeOptionalString(supplierAddress) } : {}),
+          updatedById: actor.id,
+        },
+      });
+      if (needsContactUpdate) supplier.contactNo = normalizeOptionalString(supplierContact);
+      if (needsAddressUpdate) supplier.address = normalizeOptionalString(supplierAddress);
+    }
+
+    return supplier;
+  }
+
+  const trimmedName = normalizeOptionalString(supplierName);
+  if (!trimmedName) {
+    throw new AppError("Supplier name is required", 400, "SUPPLIER_NAME_REQUIRED");
+  }
+
+  const existingSupplier = await tx.supplier.findFirst({
+    where: {
+      name: { equals: trimmedName, mode: "insensitive" },
+      status: "ACTIVE",
+      OR: [
+        { branchId: branch.id },
+        { branchId: null },
+      ],
+    },
+    select: {
+      id: true,
+      supplierCode: true,
+      name: true,
+      contactPerson: true,
+      contactNo: true,
+      email: true,
+      address: true,
+      status: true,
+      branchId: true,
+    },
+  });
+
+  if (existingSupplier) {
+    await tx.$queryRaw`SELECT "id" FROM "Supplier" WHERE "id" = ${existingSupplier.id} FOR UPDATE`;
+
+    const needsContactUpdate = supplierContact && !existingSupplier.contactNo;
+    const needsAddressUpdate = supplierAddress && !existingSupplier.address;
+
+    if (needsContactUpdate || needsAddressUpdate) {
+      await tx.supplier.update({
+        where: { id: existingSupplier.id },
+        data: {
+          ...(needsContactUpdate ? { contactNo: normalizeOptionalString(supplierContact) } : {}),
+          ...(needsAddressUpdate ? { address: normalizeOptionalString(supplierAddress) } : {}),
+          updatedById: actor.id,
+        },
+      });
+      if (needsContactUpdate) existingSupplier.contactNo = normalizeOptionalString(supplierContact);
+      if (needsAddressUpdate) existingSupplier.address = normalizeOptionalString(supplierAddress);
+    }
+
+    return existingSupplier;
+  }
+
+  const supplierCode = await generateSupplierCode(branch, tx);
+  const newSupplier = await tx.supplier.create({
+    data: {
+      supplierCode,
+      name: trimmedName,
+      contactNo: normalizeOptionalString(supplierContact),
+      address: normalizeOptionalString(supplierAddress),
+      status: "ACTIVE",
+      branchId: branch.id,
+      createdById: actor.id,
+      updatedById: actor.id,
+    },
+    select: {
+      id: true,
+      supplierCode: true,
+      name: true,
+      contactPerson: true,
+      contactNo: true,
+      email: true,
+      address: true,
+      status: true,
+      branchId: true,
+    },
+  });
+
+  await createAuditLog(
+    {
+      actor,
+      branchId: newSupplier.branchId,
+      action: "SUPPLIER_CREATED",
+      entityType: "Supplier",
+      entityId: newSupplier.id,
+      description: `Supplier ${newSupplier.supplierCode} (${newSupplier.name}) auto-created from Purchase Order`,
+      metadata: {
+        supplierCode: newSupplier.supplierCode,
+        name: newSupplier.name,
+        branchId: newSupplier.branchId,
+        status: newSupplier.status,
+        source: "PURCHASE_ORDER",
+      },
+    },
+    tx
+  );
+
+  return newSupplier;
 };
 
 const generatePurchaseOrderCode = async (branch, db = prisma) => {
@@ -468,12 +631,15 @@ const createPurchaseOrder = async (payload, actor) => {
     await lockBranch(tx, requestedBranch.id);
 
     const branch = await getActiveBranchOrThrow(requestedBranch.id, tx);
-    await tx.$queryRaw`SELECT "id" FROM "Supplier" WHERE "id" = ${payload.supplierId} FOR UPDATE`;
-    const supplier = await getActiveSupplierForBranchOrThrow(
-      payload.supplierId,
-      branch.id,
-      tx
-    );
+    const supplier = await resolveOrCreateSupplier({
+      supplierId: payload.supplierId,
+      supplierName: payload.supplierName,
+      supplierContact: payload.supplierContact,
+      supplierAddress: payload.supplierAddress,
+      branch,
+      actor,
+      tx,
+    });
     const poCode = payload.poCode
       ? payload.poCode.trim().toUpperCase()
       : await generatePurchaseOrderCode(branch, tx);
@@ -488,7 +654,8 @@ const createPurchaseOrder = async (payload, actor) => {
         status: "DRAFT",
         expectedDate: normalizeOptionalDate(payload.expectedDate),
         supplierNameSnapshot: supplier.name,
-        supplierContactSnapshot: supplier.contactNo,
+        supplierContactSnapshot:
+          normalizeOptionalString(payload.supplierContact) || supplier.contactNo,
         notes: normalizeOptionalString(payload.notes),
         internalNotes: normalizeOptionalString(payload.internalNotes),
         subtotal: totals.subtotal,
@@ -698,18 +865,30 @@ const updatePurchaseOrderById = async (purchaseOrderId, payload, actor) => {
     }
 
     if (
-      payload.supplierId !== undefined &&
-      payload.supplierId !== existingPurchaseOrder.supplierId
+      payload.supplierId !== undefined ||
+      payload.supplierName !== undefined
     ) {
-      await tx.$queryRaw`SELECT "id" FROM "Supplier" WHERE "id" = ${payload.supplierId} FOR UPDATE`;
-      const supplier = await getActiveSupplierForBranchOrThrow(
-        payload.supplierId,
+      const branch = await getActiveBranchOrThrow(
         existingPurchaseOrder.branchId,
         tx
       );
+      const supplier = await resolveOrCreateSupplier({
+        supplierId: payload.supplierId,
+        supplierName: payload.supplierName,
+        supplierContact: payload.supplierContact,
+        supplierAddress: payload.supplierAddress,
+        branch,
+        actor,
+        tx,
+      });
       updateData.supplierId = supplier.id;
       updateData.supplierNameSnapshot = supplier.name;
-      updateData.supplierContactSnapshot = supplier.contactNo;
+      updateData.supplierContactSnapshot =
+        normalizeOptionalString(payload.supplierContact) || supplier.contactNo;
+    } else if (payload.supplierContact !== undefined) {
+      updateData.supplierContactSnapshot = normalizeOptionalString(
+        payload.supplierContact
+      );
     }
 
     if (payload.expectedDate !== undefined) {
