@@ -362,10 +362,136 @@ const createReceivableAccount = async (
   return account;
 };
 
+const recalculateReceivableForSale = async (
+  tx,
+  actor,
+  {
+    creditAccountId,
+    addedCashPromoAmount,
+    addedDownpaymentAmount = 0,
+  }
+) => {
+  await tx.$queryRaw`SELECT "id" FROM "CreditAccount" WHERE "id" = ${creditAccountId} FOR UPDATE`;
+
+  const creditAccount = await tx.creditAccount.findUnique({
+    where: { id: creditAccountId },
+    include: {
+      collections: {
+        where: { status: "POSTED" },
+      },
+    },
+  });
+
+  if (!creditAccount) {
+    const error = new Error("CREDIT_ACCOUNT_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (["CANCELLED", "DEFAULTED"].includes(creditAccount.status)) {
+    const error = new Error("CANNOT_APPEND_TO_INACTIVE_CREDIT_ACCOUNT");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const previousCashPromo = Number(
+    creditAccount.cashPromoTotalAmount || creditAccount.sourceTotalAmountSnapshot
+  );
+  const newCashPromoTotal = toMoney(previousCashPromo + Number(addedCashPromoAmount));
+  const newDownpaymentAmount = toMoney(
+    Number(creditAccount.downpaymentAmount || 0) + Number(addedDownpaymentAmount)
+  );
+
+  if (newDownpaymentAmount > newCashPromoTotal) {
+    throwReceivableError("RECEIVABLE_INITIAL_SETTLEMENT_EXCEEDS_TOTAL");
+  }
+
+  let regularPriceTotalAmount;
+  let balanceAmount;
+  let termBasis = creditAccount.termBasis;
+  let monthlyDueAmount;
+
+  if (creditAccount.term && creditAccount.term !== "STRAIGHT") {
+    const months = INSTALLMENT_TERM_MONTHS[creditAccount.term] || 1;
+    let installmentComputation;
+    try {
+      installmentComputation = await settingService.computeInstallmentTest({
+        cashPromoTotalAmount: newCashPromoTotal,
+        cashDownpayment: newDownpaymentAmount,
+        term: creditAccount.term,
+        provider: creditAccount.provider,
+      });
+    } catch (error) {
+      normalizeSettingsError(error);
+    }
+
+    termBasis = Number(installmentComputation?.basisUsed?.termBasis || 1).toFixed(4);
+    regularPriceTotalAmount = toMoney(installmentComputation?.result?.regularPriceTotalAmount);
+    balanceAmount = toMoney(installmentComputation?.result?.balance);
+    monthlyDueAmount = toMoney(balanceAmount / months);
+  } else {
+    regularPriceTotalAmount = newCashPromoTotal;
+    balanceAmount = toMoney(Math.max(newCashPromoTotal - newDownpaymentAmount, 0));
+    monthlyDueAmount = balanceAmount;
+  }
+
+  const totalCollected = toMoney(
+    (creditAccount.collections || []).reduce(
+      (sum, col) => sum + Number(col.amountPaid || 0),
+      0
+    )
+  );
+
+  const remainingBalance = toMoney(Math.max(balanceAmount - totalCollected, 0));
+  const newStatus = remainingBalance <= 0 ? "PAID" : "ACTIVE";
+  const paidAt = remainingBalance <= 0 ? (creditAccount.paidAt || new Date()) : null;
+
+  const updatedCreditAccount = await tx.creditAccount.update({
+    where: { id: creditAccountId },
+    data: {
+      sourceTotalAmountSnapshot: toMoneyString(newCashPromoTotal),
+      cashPromoTotalAmount: toMoneyString(newCashPromoTotal),
+      regularPriceTotalAmount: toMoneyString(regularPriceTotalAmount),
+      downpaymentAmount: toMoneyString(newDownpaymentAmount),
+      balanceAmount: toMoneyString(balanceAmount),
+      totalCollected: toMoneyString(totalCollected),
+      remainingBalance: toMoneyString(remainingBalance),
+      termBasis,
+      monthlyDueAmount: toMoneyString(monthlyDueAmount),
+      status: newStatus,
+      paidAt,
+      updatedById: actor.id,
+    },
+  });
+
+  await createAuditLog(
+    {
+      actor,
+      branchId: creditAccount.branchId,
+      action: "RECEIVABLE_ACCOUNT_UPDATED",
+      entityType: "CreditAccount",
+      entityId: creditAccount.id,
+      description: `Credit account ${creditAccount.creditCode} recalculated with appended sale items`,
+      metadata: {
+        creditCode: creditAccount.creditCode,
+        previousBalanceAmount: creditAccount.balanceAmount.toString(),
+        newBalanceAmount: toMoneyString(balanceAmount),
+        addedCashPromoAmount: toMoneyString(addedCashPromoAmount),
+        addedDownpaymentAmount: toMoneyString(addedDownpaymentAmount),
+        remainingBalance: toMoneyString(remainingBalance),
+      },
+    },
+    tx
+  );
+
+  return updatedCreditAccount;
+};
+
 module.exports = {
   RECEIVABLE_PROVIDERS,
   RECEIVABLE_SOURCE_TYPES,
   createReceivableAccount,
+  recalculateReceivableForSale,
   deriveReceivablePaymentState,
   deriveSourcePaymentStatus,
   testInternals: {

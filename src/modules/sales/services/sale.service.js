@@ -5,6 +5,8 @@ const cashLinkService = require("../../cash-boxes/services/cashLink.service");
 const incentiveService = require("../../incentives/services/incentive.service");
 const {
   createReceivableAccount,
+  recalculateReceivableForSale,
+  deriveSourcePaymentStatus,
 } = require("../../credit-accounts/services/receivableAccount.service");
 const { createAuditLog } = require("../../../utils/auditLogger");
 const { businessDateCode } = require("../../../utils/businessDate");
@@ -2991,12 +2993,7 @@ const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
       throw error;
     }
 
-    if (sale.creditAccount) {
-      const error = new Error("CANNOT_APPEND_TO_CREDIT_SALE");
-      error.statusCode = 400;
-      throw error;
-    }
-
+    const isCreditSale = Boolean(sale.creditAccount);
     const branch = sale.branch;
 
     const {
@@ -3011,17 +3008,28 @@ const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
     const addedGrandTotal = toMoney(addedSubtotal - addedDiscount);
 
     const { salePayments: newSalePayments, amountPaid: addedAmountPaid } =
-      buildSalePayments(actor, payload.payments);
+      buildSalePayments(actor, payload.payments || []);
 
-    if (addedAmountPaid < addedGrandTotal) {
+    if (!isCreditSale && addedAmountPaid < addedGrandTotal) {
       const error = new Error("INSUFFICIENT_PAYMENT_FOR_ADDED_ITEMS");
       error.statusCode = 400;
       throw error;
     }
 
-    const addedChangeAmount = toMoney(
-      Math.max(addedAmountPaid - addedGrandTotal, 0)
-    );
+    let addedChangeAmount = 0;
+    let effectiveDownpaymentAdded = addedAmountPaid;
+
+    if (isCreditSale) {
+      if (addedAmountPaid > addedGrandTotal) {
+        addedChangeAmount = toMoney(addedAmountPaid - addedGrandTotal);
+        effectiveDownpaymentAdded = addedGrandTotal;
+      }
+    } else {
+      addedChangeAmount = toMoney(
+        Math.max(addedAmountPaid - addedGrandTotal, 0)
+      );
+    }
+
     const addedCashPaymentTotal = toMoney(
       newSalePayments
         .filter((payment) => payment.paymentMethod === "CASH")
@@ -3100,15 +3108,34 @@ const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
       });
     }
 
+    let updatedCreditAccount = null;
+    if (isCreditSale) {
+      updatedCreditAccount = await recalculateReceivableForSale(tx, actor, {
+        creditAccountId: sale.creditAccount.id,
+        addedCashPromoAmount: addedGrandTotal,
+        addedDownpaymentAmount: effectiveDownpaymentAdded,
+      });
+    }
+
     const updatedSubtotal = toMoney(Number(sale.subtotal) + addedSubtotal);
     const updatedTotalDiscount = toMoney(
       Number(sale.totalDiscount) + addedDiscount
     );
     const updatedGrandTotal = toMoney(Number(sale.grandTotal) + addedGrandTotal);
-    const updatedTotalPaid = toMoney(Number(sale.totalPaid) + addedAmountPaid);
+    const updatedAmountPaid = toMoney(
+      Number(sale.amountPaid || 0) + (isCreditSale ? effectiveDownpaymentAdded : addedAmountPaid)
+    );
     const updatedChangeAmount = toMoney(
       Number(sale.changeAmount || 0) + addedChangeAmount
     );
+
+    let updatedPaymentStatus = sale.paymentStatus;
+    if (isCreditSale && updatedCreditAccount) {
+      updatedPaymentStatus = deriveSourcePaymentStatus({
+        account: updatedCreditAccount,
+        initialSettlementAmount: Number(updatedCreditAccount.downpaymentAmount),
+      });
+    }
 
     const updatedSale = await tx.sale.update({
       where: { id: sale.id },
@@ -3116,8 +3143,9 @@ const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
         subtotal: toMoneyString(updatedSubtotal),
         totalDiscount: toMoneyString(updatedTotalDiscount),
         grandTotal: toMoneyString(updatedGrandTotal),
-        totalPaid: toMoneyString(updatedTotalPaid),
+        amountPaid: toMoneyString(updatedAmountPaid),
         changeAmount: toMoneyString(updatedChangeAmount),
+        paymentStatus: updatedPaymentStatus,
         remarks: payload.remarks
           ? `${sale.remarks || ""}; Added items: ${payload.remarks.trim()}`.trim()
           : sale.remarks,
@@ -3143,6 +3171,11 @@ const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
           newGrandTotal: updatedGrandTotal,
           addedItemCount: newSaleItems.length,
           addedPaymentCount: newSalePayments.length,
+          isCreditSale,
+          creditAccountId: sale.creditAccount?.id || null,
+          newRemainingBalance: updatedCreditAccount
+            ? updatedCreditAccount.remainingBalance.toString()
+            : null,
         },
       },
       tx
