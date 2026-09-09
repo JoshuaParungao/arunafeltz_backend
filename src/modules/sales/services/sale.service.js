@@ -490,6 +490,24 @@ const generateSaleInventoryMovementCode = async (tx, branchCode, itemCode, branc
   return `${prefix}${String(count + 1).padStart(3, "0")}`;
 };
 
+const generateUniqueAutoBatchCode = async (tx, branchId) => {
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  let count = (await tx.inventoryBatch.count({ where: { branchId } })) + 1;
+  let candidate = `BAT-${dateStr}-${String(count).padStart(4, "0")}`;
+
+  while (
+    await tx.inventoryBatch.findFirst({
+      where: { branchId, batchCode: candidate },
+      select: { id: true },
+    })
+  ) {
+    count += 1;
+    candidate = `BAT-${dateStr}-${String(count).padStart(4, "0")}`;
+  }
+
+  return candidate;
+};
+
 const deductBatchStock = async ({
   tx,
   actor,
@@ -505,7 +523,7 @@ const deductBatchStock = async ({
     FOR UPDATE
   `;
 
-  const batch = await tx.inventoryBatch.findFirst({
+  let batch = await tx.inventoryBatch.findFirst({
     where: {
       id: batchId,
       branchId,
@@ -513,6 +531,20 @@ const deductBatchStock = async ({
       status: "ACTIVE",
     },
   });
+
+  if (!batch) {
+    const anyBatch = await tx.inventoryBatch.findFirst({
+      where: {
+        id: batchId,
+        branchId,
+        itemId: item.id,
+      },
+    });
+
+    if (anyBatch) {
+      batch = anyBatch;
+    }
+  }
 
   if (!batch) {
     const error = new Error("BATCH_NOT_FOUND");
@@ -682,19 +714,77 @@ const buildSaleItems = async (
             throw error;
           }
 
-          if (!serial.batchId) {
-            const error = new Error("SERIAL_BATCH_REQUIRED");
-            error.statusCode = 400;
-            throw error;
+          let batchToUse = null;
+
+          if (serial.batchId) {
+            batchToUse = await tx.inventoryBatch.findFirst({
+              where: {
+                id: serial.batchId,
+                branchId,
+                itemId: item.id,
+                status: "ACTIVE",
+                quantityAvailable: { gte: "1" },
+              },
+            });
           }
 
-          if (resolvedBatchId && resolvedBatchId !== serial.batchId) {
-            const error = new Error("SERIAL_BATCH_MISMATCH");
-            error.statusCode = 400;
-            throw error;
+          if (!batchToUse) {
+            batchToUse = await tx.inventoryBatch.findFirst({
+              where: {
+                branchId,
+                itemId: item.id,
+                status: "ACTIVE",
+                quantityAvailable: { gte: "1" },
+              },
+              orderBy: { createdAt: "desc" },
+            });
           }
 
-          resolvedBatchId = serial.batchId;
+          if (!batchToUse && serial.batchId) {
+            const existingDepletedBatch = await tx.inventoryBatch.findFirst({
+              where: {
+                id: serial.batchId,
+                branchId,
+                itemId: item.id,
+              },
+            });
+            if (existingDepletedBatch) {
+              batchToUse = await tx.inventoryBatch.update({
+                where: { id: existingDepletedBatch.id },
+                data: {
+                  quantityAvailable: "1",
+                  status: "ACTIVE",
+                  updatedById: actor.id,
+                },
+              });
+            }
+          }
+
+          if (!batchToUse) {
+            const autoBatchCode = await generateUniqueAutoBatchCode(tx, branchId);
+            batchToUse = await tx.inventoryBatch.create({
+              data: {
+                branchId,
+                itemId: item.id,
+                batchCode: autoBatchCode,
+                quantityIn: "1",
+                quantityAvailable: "1",
+                unitCost: item.costPrice.toString(),
+                operationalUnitCost: item.costPrice.toString(),
+                sellingPrice1: item.price1.toString(),
+                sellingPrice2: item.price2.toString(),
+                sellingPrice3: item.price3.toString(),
+                sellingPrice4: item.price4.toString(),
+                sellingPrice5: item.price5.toString(),
+                remarks: "Auto-created for available serial checkout",
+                status: "ACTIVE",
+                createdById: actor.id,
+                updatedById: actor.id,
+              },
+            });
+          }
+
+          resolvedBatchId = batchToUse.id;
 
           const deduction = await deductBatchStock({
             tx,
@@ -710,6 +800,7 @@ const buildSaleItems = async (
               id: serial.id,
             },
             data: {
+              batchId: resolvedBatchId,
               status: "SOLD",
               updatedById: actor.id,
             },
@@ -741,6 +832,7 @@ const buildSaleItems = async (
                 branchId,
                 itemId: item.id,
                 status: "ACTIVE",
+                quantityAvailable: { gte: "1" },
               },
             });
           }
@@ -751,16 +843,14 @@ const buildSaleItems = async (
                 branchId,
                 itemId: item.id,
                 status: "ACTIVE",
-                quantityAvailable: { gt: "0" },
+                quantityAvailable: { gte: "1" },
               },
               orderBy: { createdAt: "desc" },
             });
           }
 
           if (!targetBatch) {
-            const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-            const count = await tx.inventoryBatch.count({ where: { branchId } });
-            const autoBatchCode = `BAT-${dateStr}-${String(count + 1).padStart(4, "0")}`;
+            const autoBatchCode = await generateUniqueAutoBatchCode(tx, branchId);
 
             targetBatch = await tx.inventoryBatch.create({
               data: {
@@ -834,9 +924,38 @@ const buildSaleItems = async (
           throw error;
         }
 
-        if (!resolvedBatchId) {
-          const error = new Error("BATCH_REQUIRED");
-          error.statusCode = 400;
+        let targetBatch = null;
+
+        if (resolvedBatchId) {
+          targetBatch = await tx.inventoryBatch.findFirst({
+            where: {
+              id: resolvedBatchId,
+              branchId,
+              itemId: item.id,
+              status: "ACTIVE",
+            },
+          });
+        }
+
+        if (!targetBatch || Number(targetBatch.quantityAvailable || 0) < quantity) {
+          const fallbackBatch = await tx.inventoryBatch.findFirst({
+            where: {
+              branchId,
+              itemId: item.id,
+              status: "ACTIVE",
+              quantityAvailable: { gte: toMoneyString(quantity) },
+            },
+            orderBy: { createdAt: "desc" },
+          });
+          if (fallbackBatch) {
+            targetBatch = fallbackBatch;
+            resolvedBatchId = fallbackBatch.id;
+          }
+        }
+
+        if (!targetBatch) {
+          const error = new Error("BATCH_NOT_FOUND");
+          error.statusCode = 404;
           throw error;
         }
 
@@ -845,7 +964,7 @@ const buildSaleItems = async (
           actor,
           branchId,
           item,
-          batchId: resolvedBatchId,
+          batchId: targetBatch.id,
           quantity,
         });
 
