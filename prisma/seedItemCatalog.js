@@ -281,6 +281,31 @@ async function main() {
       name: "Peripherals",
       description: "Keyboard, mouse, monitor, and other peripherals.",
     },
+    {
+      categoryCode: "CAT-PSU",
+      name: "Power Supply",
+      description: "Power supply units (PSU) and modular power cables.",
+    },
+    {
+      categoryCode: "CAT-CASE",
+      name: "PC Case / Chassis",
+      description: "Computer chassis, gaming cases, and tower enclosures.",
+    },
+    {
+      categoryCode: "CAT-COOLING",
+      name: "Cooling & Fans",
+      description: "AIO liquid coolers, CPU air coolers, case fans, thermal paste.",
+    },
+    {
+      categoryCode: "CAT-MONITOR",
+      name: "Monitor / Display",
+      description: "PC monitors, gaming displays, and panel screens.",
+    },
+    {
+      categoryCode: "CAT-NETWORKING",
+      name: "Networking",
+      description: "Wi-Fi adapters, routers, switches, and patch cords.",
+    },
   ];
 
   console.log("");
