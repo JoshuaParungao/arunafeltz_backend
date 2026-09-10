@@ -277,7 +277,7 @@ const createReceivableAccount = async (
     }
   }
 
-  if (receivable?.term && receivable.term !== "STRAIGHT") {
+  if (receivable?.term) {
     let installmentComputation;
 
     try {
@@ -414,7 +414,7 @@ const recalculateReceivableForSale = async (
   let termBasis = creditAccount.termBasis;
   let monthlyDueAmount;
 
-  if (effectiveTerm && effectiveTerm !== "STRAIGHT") {
+  if (effectiveTerm) {
     const months = INSTALLMENT_TERM_MONTHS[effectiveTerm] || 1;
     let installmentComputation;
     try {
