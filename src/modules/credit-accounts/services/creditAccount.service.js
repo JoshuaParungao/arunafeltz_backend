@@ -49,6 +49,43 @@ const formatCreditAccount = (account) => {
 
   const { idempotencyKey, idempotencyFingerprint, ...safeAccount } = account;
 
+  const termKey = safeAccount.term;
+  const rawBasis = Number(safeAccount.termBasis || 0);
+  const basis =
+    rawBasis > 0 && rawBasis < 1
+      ? rawBasis
+      : termKey === "STRAIGHT"
+        ? 0.96
+        : termKey === "CASH_PROMO"
+          ? 1.0
+          : rawBasis || 1;
+
+  const cashTotal = toMoney(
+    safeAccount.cashPromoTotalAmount ||
+      safeAccount.sourceTotalAmountSnapshot ||
+      0
+  );
+  const regularAmount = toMoney(safeAccount.regularPriceTotalAmount);
+
+  if (
+    basis < 1 &&
+    cashTotal > 0 &&
+    (regularAmount <= cashTotal || Math.abs(regularAmount - cashTotal) < 1)
+  ) {
+    const computedRegular = toMoney(cashTotal / basis);
+    const dp = toMoney(safeAccount.downpaymentAmount || 0);
+    const collected = toMoney(safeAccount.totalCollected || 0);
+    const computedBalance = Math.max(
+      0,
+      toMoney(computedRegular - dp - collected)
+    );
+
+    safeAccount.termBasis = basis.toFixed(4);
+    safeAccount.regularPriceTotalAmount = toMoneyString(computedRegular);
+    safeAccount.balanceAmount = toMoneyString(computedBalance);
+    safeAccount.remainingBalance = toMoneyString(computedBalance);
+  }
+
   return {
     ...safeAccount,
     collections: Array.isArray(safeAccount.collections)
@@ -61,7 +98,7 @@ const formatCreditAccount = (account) => {
           return safeCollection;
         })
       : safeAccount.collections,
-    paymentState: deriveReceivablePaymentState(account),
+    paymentState: deriveReceivablePaymentState(safeAccount),
   };
 };
 

@@ -31,6 +31,53 @@ const sanitizeSaleCostSnapshotsForActor = (sale, actor) => {
       idempotencyFingerprint: creditIdempotencyFingerprint,
       ...safeCreditAccount
     } = safeSale.creditAccount;
+
+    const termKey = safeCreditAccount.term;
+    const rawBasis = Number(safeCreditAccount.termBasis || 0);
+    const basis =
+      rawBasis > 0 && rawBasis < 1
+        ? rawBasis
+        : termKey === "STRAIGHT"
+          ? 0.96
+          : termKey === "CASH_PROMO"
+            ? 1.0
+            : rawBasis || 1;
+
+    const cashTotal =
+      Math.round(
+        Number(
+          safeCreditAccount.cashPromoTotalAmount ||
+            safeCreditAccount.sourceTotalAmountSnapshot ||
+            safeSale.grandTotal ||
+            0
+        ) * 100
+      ) / 100;
+    const regularAmount =
+      Math.round(Number(safeCreditAccount.regularPriceTotalAmount || 0) * 100) / 100;
+
+    if (
+      basis < 1 &&
+      cashTotal > 0 &&
+      (regularAmount <= cashTotal || Math.abs(regularAmount - cashTotal) < 1)
+    ) {
+      const computedRegular = Math.round((cashTotal / basis) * 100) / 100;
+      const dp =
+        Math.round(
+          Number(safeCreditAccount.downpaymentAmount || safeSale.amountPaid || 0) * 100
+        ) / 100;
+      const collected =
+        Math.round(Number(safeCreditAccount.totalCollected || 0) * 100) / 100;
+      const computedBalance = Math.max(
+        0,
+        Math.round((computedRegular - dp - collected) * 100) / 100
+      );
+
+      safeCreditAccount.termBasis = basis.toFixed(4);
+      safeCreditAccount.regularPriceTotalAmount = computedRegular.toFixed(2);
+      safeCreditAccount.balanceAmount = computedBalance.toFixed(2);
+      safeCreditAccount.remainingBalance = computedBalance.toFixed(2);
+    }
+
     safeSale.creditAccount = safeCreditAccount;
   }
 
