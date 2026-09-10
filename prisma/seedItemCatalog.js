@@ -204,19 +204,44 @@ async function main() {
       description: "Default unit for individual products.",
     },
     {
-      unitCode: "SET",
-      name: "Set",
-      description: "Unit for bundled items or complete sets.",
+      unitCode: "PIECE",
+      name: "Piece",
+      description: "Individual product or item count.",
     },
     {
       unitCode: "BOX",
       name: "Box",
-      description: "Unit for boxed items.",
+      description: "Unit for boxed items or packaged boxes.",
+    },
+    {
+      unitCode: "KIT",
+      name: "Kit",
+      description: "Unit for kits, combo packages, or modular toolkits.",
     },
     {
       unitCode: "METER",
       name: "Meter",
       description: "Unit for cables and items measured by length.",
+    },
+    {
+      unitCode: "PAIR",
+      name: "Pair",
+      description: "Unit for paired items.",
+    },
+    {
+      unitCode: "ROLL",
+      name: "Roll",
+      description: "Unit for rolled cables, tape, or tubing.",
+    },
+    {
+      unitCode: "SET",
+      name: "Set",
+      description: "Unit for bundled items or complete sets.",
+    },
+    {
+      unitCode: "UNIT",
+      name: "Unit",
+      description: "Standard discrete unit / equipment.",
     },
   ];
 
