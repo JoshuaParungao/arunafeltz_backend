@@ -2234,7 +2234,7 @@ const releaseServiceJob = async (
 
     if (
       (!isCompletedOutcome && !isUnrepairedOutcome) ||
-      (isCompletedOutcome && serviceJob.status !== "READY_FOR_RELEASE") ||
+      (isCompletedOutcome && !ACTIVE_SERVICE_JOB_STATUSES.has(serviceJob.status)) ||
       (isUnrepairedOutcome && !ACTIVE_SERVICE_JOB_STATUSES.has(serviceJob.status))
     ) {
       throwServiceJobError("INVALID_SERVICE_JOB_RELEASE");
@@ -2466,7 +2466,7 @@ const updateServiceJobStatus = async (
       allowedNextStatuses.add("READY_FOR_RELEASE");
     }
 
-    if (targetStatus === "COMPLETED") {
+    if (payload.status === "COMPLETED" && serviceJob.status !== "COMPLETED") {
       throwServiceJobError("SERVICE_JOB_COMPLETION_REQUIRES_RELEASE");
     }
 
