@@ -3042,7 +3042,7 @@ const DEFAULT_SERVICE_PARTS_CATALOG = [
     id: "sp-power-ic-chip",
     name: "Power Management IC / MOSFET Chip",
     deviceType: "MOTHERBOARD",
-    category: "IC_CHIP",
+    category: "IC CHIP",
     costPrice: 450,
     markupAmount: 1050,
     description: "Charging controller, 19V rail MOSFET, or 3.3V/5V power buck regulator chip.",
