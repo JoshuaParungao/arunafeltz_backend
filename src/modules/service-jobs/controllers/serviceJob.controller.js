@@ -291,18 +291,72 @@ const deleteServiceCatalogItem = async (req, res, next) => {
   }
 };
 
+const getServicePartsCatalog = async (req, res, next) => {
+  try {
+    const parts = await serviceJobService.getServicePartsCatalog(req.user);
+    return res.status(200).json({
+      success: true,
+      data: parts,
+    });
+  } catch (error) {
+    return handleServiceJobError(error, res, next);
+  }
+};
+
+const createServicePartsCatalogItem = async (req, res, next) => {
+  try {
+    const item = await serviceJobService.createServicePartsCatalogItem(req.body, req.user);
+    return res.status(201).json({
+      success: true,
+      message: "Service parts catalog item created successfully",
+      data: item,
+    });
+  } catch (error) {
+    return handleServiceJobError(error, res, next);
+  }
+};
+
+const updateServicePartsCatalogItem = async (req, res, next) => {
+  try {
+    const item = await serviceJobService.updateServicePartsCatalogItem(req.params.id, req.body, req.user);
+    return res.status(200).json({
+      success: true,
+      message: "Service parts catalog item updated successfully",
+      data: item,
+    });
+  } catch (error) {
+    return handleServiceJobError(error, res, next);
+  }
+};
+
+const deleteServicePartsCatalogItem = async (req, res, next) => {
+  try {
+    const result = await serviceJobService.deleteServicePartsCatalogItem(req.params.id, req.user);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    return handleServiceJobError(error, res, next);
+  }
+};
+
 module.exports = {
   cancelServicePayment,
   createServiceCatalogItem,
   createServiceJob,
+  createServicePartsCatalogItem,
   createServicePayment,
   deleteServiceCatalogItem,
+  deleteServicePartsCatalogItem,
   getServiceCatalog,
   getServiceJobs,
+  getServicePartsCatalog,
   getServiceTechnicians,
   getServiceJobById,
   releaseServiceJob,
   updateServiceCatalogItem,
   updateServiceJobAssignment,
   updateServiceJobStatus,
+  updateServicePartsCatalogItem,
 };

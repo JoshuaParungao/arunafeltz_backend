@@ -7,15 +7,18 @@ const {
   cancelServicePaymentSchema,
   createServiceCatalogItemSchema,
   createServiceJobSchema,
+  createServicePartsCatalogItemSchema,
   createServicePaymentSchema,
   listServiceJobsSchema,
   listServiceTechniciansSchema,
   releaseServiceJobSchema,
   serviceCatalogIdParamSchema,
   serviceJobIdParamSchema,
+  servicePartsCatalogIdParamSchema,
   updateServiceCatalogItemSchema,
   updateServiceJobAssignmentSchema,
   updateServiceJobStatusSchema,
+  updateServicePartsCatalogItemSchema,
 } = require("../validations/serviceJob.validation");
 
 const router = express.Router();
@@ -37,6 +40,23 @@ router.delete(
   "/catalog/:id",
   validate(serviceCatalogIdParamSchema),
   serviceJobController.deleteServiceCatalogItem
+);
+
+router.get("/parts-catalog", serviceJobController.getServicePartsCatalog);
+router.post(
+  "/parts-catalog",
+  validate(createServicePartsCatalogItemSchema),
+  serviceJobController.createServicePartsCatalogItem
+);
+router.put(
+  "/parts-catalog/:id",
+  validate(updateServicePartsCatalogItemSchema),
+  serviceJobController.updateServicePartsCatalogItem
+);
+router.delete(
+  "/parts-catalog/:id",
+  validate(servicePartsCatalogIdParamSchema),
+  serviceJobController.deleteServicePartsCatalogItem
 );
 
 router.get(

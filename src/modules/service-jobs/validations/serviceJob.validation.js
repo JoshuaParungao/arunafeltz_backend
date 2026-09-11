@@ -102,6 +102,11 @@ const createServiceJobSchema = z.object({
     estimatedServiceCharge: nonNegativeMoney.optional().default(0),
     baseServiceCharge: nonNegativeMoney.optional(),
     markupPercent: optionalMarkupPercent,
+    partsCost: nonNegativeMoney.optional(),
+    partsMarkup: nonNegativeMoney.optional(),
+    technicianFee: nonNegativeMoney.optional(),
+    servicePartId: optionalString(100),
+    partDescription: optionalString(500),
   }),
 });
 
@@ -124,6 +129,11 @@ const updateServiceJobStatusSchema = z.object({
     baseServiceCharge: nonNegativeMoney.optional(),
     markupPercent: optionalMarkupPercent,
     finalServiceCharge: nonNegativeMoney.optional(),
+    partsCost: nonNegativeMoney.optional(),
+    partsMarkup: nonNegativeMoney.optional(),
+    technicianFee: nonNegativeMoney.optional(),
+    servicePartId: optionalString(100),
+    partDescription: optionalString(500),
     cancellationReason: optionalString(2000),
     releaseOutcome: z.enum(["REPAIRED", "SERVICE_COMPLETED"]).optional(),
     releaseNotes: optionalString(2000),
@@ -299,17 +309,53 @@ const serviceCatalogIdParamSchema = z.object({
   }),
 });
 
+const createServicePartsCatalogItemSchema = z.object({
+  body: z.object({
+    name: z.string().trim().min(2, "Part name is required").max(180),
+    deviceType: z.string().trim().min(1, "Unit/Device type is required").max(100),
+    category: z.string().trim().max(100).optional().default("OTHER"),
+    costPrice: z.coerce.number().min(0, "Cost price cannot be negative").max(9999999999.99),
+    markupAmount: z.coerce.number().min(0, "Markup amount cannot be negative").max(9999999999.99).default(0),
+    description: z.string().trim().max(2000).optional().nullable(),
+    isActive: z.boolean().default(true),
+  }),
+});
+
+const updateServicePartsCatalogItemSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Service parts catalog item ID is required"),
+  }),
+  body: z.object({
+    name: z.string().trim().min(2, "Part name is required").max(180).optional(),
+    deviceType: z.string().trim().min(1, "Unit/Device type is required").max(100).optional(),
+    category: z.string().trim().max(100).optional(),
+    costPrice: z.coerce.number().min(0, "Cost price cannot be negative").max(9999999999.99).optional(),
+    markupAmount: z.coerce.number().min(0, "Markup amount cannot be negative").max(9999999999.99).optional(),
+    description: z.string().trim().max(2000).optional().nullable(),
+    isActive: z.boolean().optional(),
+  }),
+});
+
+const servicePartsCatalogIdParamSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Service parts catalog item ID is required"),
+  }),
+});
+
 module.exports = {
   cancelServicePaymentSchema,
   createServiceCatalogItemSchema,
   createServiceJobSchema,
+  createServicePartsCatalogItemSchema,
   createServicePaymentSchema,
   listServiceJobsSchema,
   listServiceTechniciansSchema,
   releaseServiceJobSchema,
   serviceCatalogIdParamSchema,
   serviceJobIdParamSchema,
+  servicePartsCatalogIdParamSchema,
   updateServiceCatalogItemSchema,
   updateServiceJobAssignmentSchema,
   updateServiceJobStatusSchema,
+  updateServicePartsCatalogItemSchema,
 };

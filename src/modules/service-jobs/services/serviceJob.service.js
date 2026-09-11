@@ -461,6 +461,32 @@ const ensureTechnicianCanActForRepairType = (actor, repairType) => {
 };
 
 const resolveServicePricing = (serviceJob, payload = {}) => {
+  if (
+    payload.partsCost !== undefined ||
+    payload.technicianFee !== undefined ||
+    payload.partsMarkup !== undefined
+  ) {
+    const cost = toMoney(payload.partsCost || 0);
+    const tech = toMoney(payload.technicianFee || 0);
+    const markup = toMoney(payload.partsMarkup || 0);
+    const totalBase = toMoney(cost + tech);
+    const finalCharge = toMoney(cost + tech + markup);
+    return {
+      baseServiceCharge: toMoneyString(
+        totalBase > 0
+          ? totalBase
+          : payload.baseServiceCharge || serviceJob.baseServiceCharge || 0
+      ),
+      markupPercent: "0.0000",
+      finalServiceCharge: toMoneyString(
+        finalCharge > 0
+          ? finalCharge
+          : payload.finalServiceCharge || serviceJob.finalServiceCharge || 0
+      ),
+      serviceMarkupAmount: toMoneyString(markup),
+    };
+  }
+
   const hasPayloadBase = payload.baseServiceCharge !== undefined;
   const hasStoredBase = serviceJob.baseServiceCharge !== null &&
     serviceJob.baseServiceCharge !== undefined;
@@ -1129,15 +1155,27 @@ const validateServiceDoneBy = async (
 
 const buildCompletedFinancialSnapshot = async (
   tx,
-  { branchId, repairType, performer, pricing, snapshotAt }
+  {
+    branchId,
+    repairType,
+    performer,
+    pricing,
+    snapshotAt,
+    partsCost,
+    partsMarkup,
+    technicianFee,
+  }
 ) => {
   const baseServiceCharge = Number(pricing.baseServiceCharge);
 
-  if (baseServiceCharge <= 0) {
+  if (
+    baseServiceCharge <= 0 &&
+    (!pricing.finalServiceCharge || Number(pricing.finalServiceCharge) <= 0)
+  ) {
     return null;
   }
 
-  const programRuleVersion = await tx.incentiveProgramRuleVersion.findFirst({
+  let programRuleVersion = await tx.incentiveProgramRuleVersion.findFirst({
     where: {
       branchId,
       programType: repairType,
@@ -1152,12 +1190,22 @@ const buildCompletedFinancialSnapshot = async (
     },
   });
 
-  if (
-    !programRuleVersion ||
-    programRuleVersion.repairCostPercent === null
-  ) {
-    throwServiceJobError("REPAIR_COST_PERCENT_NOT_CONFIGURED");
+  if (!programRuleVersion || programRuleVersion.repairCostPercent === null) {
+    programRuleVersion = await tx.incentiveProgramRuleVersion.findFirst({
+      where: {
+        programType: repairType,
+        repairCostPercent: { not: null },
+      },
+      orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        repairCostPercent: true,
+      },
+    });
   }
+
+  const effectiveRepairCostPercent =
+    programRuleVersion?.repairCostPercent ?? 65;
 
   const latestAccountConfig =
     await tx.incentiveAccountConfigVersion.findFirst({
@@ -1184,6 +1232,40 @@ const buildCompletedFinancialSnapshot = async (
     performer.incentiveClassification
       ? latestAccountConfig
       : null;
+
+  if (
+    partsCost !== undefined ||
+    technicianFee !== undefined ||
+    partsMarkup !== undefined
+  ) {
+    const cost = toMoney(partsCost || 0);
+    const techCut = toMoney(technicianFee || 0);
+    const finalCharge = toMoney(pricing.finalServiceCharge);
+    const companyShare = toMoney(
+      partsMarkup !== undefined
+        ? partsMarkup
+        : Math.max(finalCharge - cost - techCut, 0)
+    );
+    const pool = toMoney(cost + techCut);
+    const costPercent = finalCharge > 0 ? (pool / finalCharge) * 100 : 0;
+    const companyPercent =
+      finalCharge > 0 ? (companyShare / finalCharge) * 100 : 0;
+
+    return {
+      repairCostPercentSnapshot: toPercentString(costPercent),
+      companySharePercentSnapshot: toPercentString(companyPercent),
+      repairCostPoolAmountSnapshot: toMoneyString(pool),
+      companyShareAmountSnapshot: toMoneyString(companyShare),
+      repairFeeSnapshot: toMoneyString(techCut),
+      repairIncentiveRateSnapshot: "0.0000",
+      repairIncentiveAmountSnapshot: "0.00",
+      unallocatedRepairCostPoolSnapshot: toMoneyString(cost),
+      programRuleVersionId: programRuleVersion?.id || null,
+      accountConfigVersionId: effectiveAccountConfig?.id || null,
+      financialSnapshotAt: snapshotAt,
+    };
+  }
+
   const incentiveEnabled = effectiveAccountConfig
     ? repairType === "BOARD_LEVEL_REPAIR"
       ? effectiveAccountConfig.boardRepairEnabled
@@ -1195,20 +1277,16 @@ const buildCompletedFinancialSnapshot = async (
       : effectiveAccountConfig.ordinaryRepairRatePercent
     : null;
 
-  if (incentiveEnabled && configuredRate === null) {
-    throwServiceJobError("INVALID_REPAIR_FINANCIAL_CONFIGURATION");
-  }
-
   const amounts = calculateRepairFinancialAmounts({
     baseServiceCharge,
-    repairCostPercent: programRuleVersion.repairCostPercent,
+    repairCostPercent: effectiveRepairCostPercent,
     repairFee: effectiveAccountConfig?.repairFee || 0,
-    repairIncentiveRate: incentiveEnabled ? configuredRate : 0,
+    repairIncentiveRate: incentiveEnabled && configuredRate !== null ? configuredRate : 0,
   });
 
   return {
     ...amounts,
-    programRuleVersionId: programRuleVersion.id,
+    programRuleVersionId: programRuleVersion?.id || null,
     accountConfigVersionId: effectiveAccountConfig?.id || null,
     financialSnapshotAt: snapshotAt,
   };
@@ -1225,18 +1303,40 @@ const createServiceJob = async (actor, payload, database = prisma) => {
 
   if (
     payload.baseServiceCharge === undefined &&
-    payload.markupPercent !== undefined
+    payload.markupPercent !== undefined &&
+    payload.partsCost === undefined &&
+    payload.technicianFee === undefined
   ) {
     throwServiceJobError("BASE_SERVICE_CHARGE_REQUIRED");
   }
 
-  const pricing =
-    payload.baseServiceCharge === undefined
-      ? null
-      : calculateServicePricing({
-          baseServiceCharge: payload.baseServiceCharge,
-          markupPercent: payload.markupPercent || 0,
-        });
+  let pricing = null;
+  if (
+    payload.partsCost !== undefined ||
+    payload.technicianFee !== undefined ||
+    payload.partsMarkup !== undefined
+  ) {
+    const cost = toMoney(payload.partsCost || 0);
+    const tech = toMoney(payload.technicianFee || 0);
+    const markup = toMoney(payload.partsMarkup || 0);
+    const totalBase = toMoney(cost + tech);
+    const finalCharge = toMoney(cost + tech + markup);
+    pricing = {
+      baseServiceCharge: toMoneyString(
+        totalBase > 0 ? totalBase : payload.baseServiceCharge || 0
+      ),
+      markupPercent: "0.0000",
+      finalServiceCharge: toMoneyString(
+        finalCharge > 0 ? finalCharge : payload.baseServiceCharge || 0
+      ),
+      serviceMarkupAmount: toMoneyString(markup),
+    };
+  } else if (payload.baseServiceCharge !== undefined) {
+    pricing = calculateServicePricing({
+      baseServiceCharge: payload.baseServiceCharge,
+      markupPercent: payload.markupPercent || 0,
+    });
+  }
 
   return database.$transaction(async (tx) => {
     const branch = await resolveBranchForCreate(tx, actor, payload);
@@ -2194,6 +2294,9 @@ const releaseServiceJob = async (
           performer: serviceDoneBy,
           pricing,
           snapshotAt: releasedAt,
+          partsCost: payload.partsCost,
+          partsMarkup: payload.partsMarkup,
+          technicianFee: payload.technicianFee,
         })
       : null;
     const updateData = {
@@ -2874,20 +2977,296 @@ const deleteServiceCatalogItem = async (id, actor) => {
   return { success: true, message: "Service catalog item deleted successfully" };
 };
 
+const DEFAULT_SERVICE_PARTS_CATALOG = [
+  {
+    id: "sp-lcd-156-slim-30p",
+    name: "Laptop LCD Screen 15.6\" Slim 30-Pin FHD IPS",
+    deviceType: "LAPTOP",
+    category: "SCREEN",
+    costPrice: 5000,
+    markupAmount: 2500,
+    description: "Standard replacement 15.6 inch 30-pin EDP slim LED/IPS screen panel.",
+    isActive: true,
+  },
+  {
+    id: "sp-lcd-140-slim-30p",
+    name: "Laptop LCD Screen 14.0\" Slim 30-Pin FHD",
+    deviceType: "LAPTOP",
+    category: "SCREEN",
+    costPrice: 4200,
+    markupAmount: 2000,
+    description: "Standard replacement 14.0 inch 30-pin EDP slim LED screen panel.",
+    isActive: true,
+  },
+  {
+    id: "sp-thermal-paste-paste",
+    name: "High-Performance Thermal Paste (Syringe / Application)",
+    deviceType: "PC COMPONENT",
+    category: "CONSUMABLE",
+    costPrice: 150,
+    markupAmount: 300,
+    description: "Premium high thermal conductivity silicone-free compound.",
+    isActive: true,
+  },
+  {
+    id: "sp-thermal-pad-kit",
+    name: "Thermal Pad Replacement Kit (VRAM / MOSFET)",
+    deviceType: "GPU",
+    category: "CONSUMABLE",
+    costPrice: 350,
+    markupAmount: 450,
+    description: "0.5mm - 1.5mm thermal conductive silicone pads for GPU and motherboard VRAM.",
+    isActive: true,
+  },
+  {
+    id: "sp-laptop-battery-std",
+    name: "Standard Laptop Replacement Battery (Internal / 3-4 Cell)",
+    deviceType: "LAPTOP",
+    category: "BATTERY",
+    costPrice: 1800,
+    markupAmount: 1200,
+    description: "OEM replacement battery pack for common Acer, Asus, Lenovo, HP units.",
+    isActive: true,
+  },
+  {
+    id: "sp-laptop-keyboard-std",
+    name: "Laptop Internal Keyboard Replacement",
+    deviceType: "LAPTOP",
+    category: "KEYBOARD",
+    costPrice: 850,
+    markupAmount: 650,
+    description: "Internal chiclet keyboard replacement for standard laptops.",
+    isActive: true,
+  },
+  {
+    id: "sp-power-ic-chip",
+    name: "Power Management IC / MOSFET Chip",
+    deviceType: "MOTHERBOARD",
+    category: "IC_CHIP",
+    costPrice: 450,
+    markupAmount: 1050,
+    description: "Charging controller, 19V rail MOSFET, or 3.3V/5V power buck regulator chip.",
+    isActive: true,
+  },
+  {
+    id: "sp-dc-jack-port",
+    name: "Laptop DC Power Jack / Charging Port",
+    deviceType: "LAPTOP",
+    category: "PORT",
+    costPrice: 250,
+    markupAmount: 500,
+    description: "Harness cable or solder-type DC-in charging connector.",
+    isActive: true,
+  },
+];
+
+const SERVICE_PARTS_CATALOG_SCOPE_KEY = "GLOBAL:service.parts.catalog";
+
+const getServicePartsCatalog = async (actor) => {
+  let setting = await prisma.businessSetting.findUnique({
+    where: { scopeKey: SERVICE_PARTS_CATALOG_SCOPE_KEY },
+  });
+
+  if (!setting) {
+    try {
+      setting = await prisma.businessSetting.create({
+        data: {
+          scopeKey: SERVICE_PARTS_CATALOG_SCOPE_KEY,
+          key: "service.parts.catalog",
+          category: "OPERATION",
+          valueType: "JSON",
+          value: DEFAULT_SERVICE_PARTS_CATALOG,
+          label: "Service Parts & Materials Catalog",
+          description: "Predefined list of repair parts, replacement screens, consumables, and parts markups.",
+          isEditable: true,
+          isActive: true,
+        },
+      });
+    } catch {
+      setting = await prisma.businessSetting.findUnique({
+        where: { scopeKey: SERVICE_PARTS_CATALOG_SCOPE_KEY },
+      });
+    }
+  }
+
+  const items = Array.isArray(setting?.value) ? setting.value : DEFAULT_SERVICE_PARTS_CATALOG;
+  return items;
+};
+
+const createServicePartsCatalogItem = async (payload, actor) => {
+  if (!INTERNAL_SERVICE_FINANCIAL_ROLES.has(actor.role)) {
+    throw new AppError("You are not authorized to manage the service parts catalog", 403);
+  }
+
+  const currentItems = await getServicePartsCatalog(actor);
+  const newItem = {
+    id: `sp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    name: payload.name.trim(),
+    deviceType: payload.deviceType.trim(),
+    category: payload.category ? payload.category.trim() : "OTHER",
+    costPrice: Number(payload.costPrice) || 0,
+    markupAmount: Number(payload.markupAmount) || 0,
+    description: payload.description ? payload.description.trim() : "",
+    isActive: payload.isActive !== false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updatedItems = [newItem, ...currentItems];
+
+  await prisma.businessSetting.upsert({
+    where: { scopeKey: SERVICE_PARTS_CATALOG_SCOPE_KEY },
+    create: {
+      scopeKey: SERVICE_PARTS_CATALOG_SCOPE_KEY,
+      key: "service.parts.catalog",
+      category: "OPERATION",
+      valueType: "JSON",
+      value: updatedItems,
+      label: "Service Parts & Materials Catalog",
+      description: "Predefined list of repair parts, replacement screens, consumables, and parts markups.",
+      isEditable: true,
+      isActive: true,
+      updatedById: actor.id,
+    },
+    update: {
+      value: updatedItems,
+      updatedById: actor.id,
+    },
+  });
+
+  await createAuditLog({
+    action: "CREATE",
+    entity: "ServicePartsCatalog",
+    entityId: newItem.id,
+    details: { name: newItem.name, costPrice: newItem.costPrice, markupAmount: newItem.markupAmount },
+    actor,
+    branchId: actor.branchId || null,
+  });
+
+  return newItem;
+};
+
+const updateServicePartsCatalogItem = async (id, payload, actor) => {
+  if (!INTERNAL_SERVICE_FINANCIAL_ROLES.has(actor.role)) {
+    throw new AppError("You are not authorized to manage the service parts catalog", 403);
+  }
+
+  const currentItems = await getServicePartsCatalog(actor);
+  const index = currentItems.findIndex((item) => item.id === id);
+
+  if (index === -1) {
+    throw new AppError("Service parts catalog item not found", 404);
+  }
+
+  const existingItem = currentItems[index];
+  const updatedItem = {
+    ...existingItem,
+    name: payload.name !== undefined ? payload.name.trim() : existingItem.name,
+    deviceType: payload.deviceType !== undefined ? payload.deviceType.trim() : existingItem.deviceType,
+    category: payload.category !== undefined ? payload.category.trim() : existingItem.category,
+    costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : existingItem.costPrice,
+    markupAmount: payload.markupAmount !== undefined ? Number(payload.markupAmount) : existingItem.markupAmount,
+    description: payload.description !== undefined ? (payload.description ? payload.description.trim() : "") : existingItem.description,
+    isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : existingItem.isActive,
+    updatedAt: new Date().toISOString(),
+  };
+
+  currentItems[index] = updatedItem;
+
+  await prisma.businessSetting.upsert({
+    where: { scopeKey: SERVICE_PARTS_CATALOG_SCOPE_KEY },
+    create: {
+      scopeKey: SERVICE_PARTS_CATALOG_SCOPE_KEY,
+      key: "service.parts.catalog",
+      category: "OPERATION",
+      valueType: "JSON",
+      value: currentItems,
+      label: "Service Parts & Materials Catalog",
+      description: "Predefined list of repair parts, replacement screens, consumables, and parts markups.",
+      isEditable: true,
+      isActive: true,
+      updatedById: actor.id,
+    },
+    update: {
+      value: currentItems,
+      updatedById: actor.id,
+    },
+  });
+
+  await createAuditLog({
+    action: "UPDATE",
+    entity: "ServicePartsCatalog",
+    entityId: id,
+    details: { changes: payload },
+    actor,
+    branchId: actor.branchId || null,
+  });
+
+  return updatedItem;
+};
+
+const deleteServicePartsCatalogItem = async (id, actor) => {
+  if (!INTERNAL_SERVICE_FINANCIAL_ROLES.has(actor.role)) {
+    throw new AppError("You are not authorized to manage the service parts catalog", 403);
+  }
+
+  const currentItems = await getServicePartsCatalog(actor);
+  const filteredItems = currentItems.filter((item) => item.id !== id);
+
+  if (filteredItems.length === currentItems.length) {
+    throw new AppError("Service parts catalog item not found", 404);
+  }
+
+  await prisma.businessSetting.upsert({
+    where: { scopeKey: SERVICE_PARTS_CATALOG_SCOPE_KEY },
+    create: {
+      scopeKey: SERVICE_PARTS_CATALOG_SCOPE_KEY,
+      key: "service.parts.catalog",
+      category: "OPERATION",
+      valueType: "JSON",
+      value: filteredItems,
+      label: "Service Parts & Materials Catalog",
+      description: "Predefined list of repair parts, replacement screens, consumables, and parts markups.",
+      isEditable: true,
+      isActive: true,
+      updatedById: actor.id,
+    },
+    update: {
+      value: filteredItems,
+      updatedById: actor.id,
+    },
+  });
+
+  await createAuditLog({
+    action: "DELETE",
+    entity: "ServicePartsCatalog",
+    entityId: id,
+    details: { deletedId: id },
+    actor,
+    branchId: actor.branchId || null,
+  });
+
+  return { success: true, message: "Service parts catalog item deleted successfully" };
+};
+
 module.exports = {
   cancelServicePayment,
   createServiceCatalogItem,
   createServiceJob,
+  createServicePartsCatalogItem,
   createServicePayment,
   deleteServiceCatalogItem,
+  deleteServicePartsCatalogItem,
   getServiceCatalog,
   getServiceJobs,
+  getServicePartsCatalog,
   getServiceTechnicians,
   getServiceJobById,
   releaseServiceJob,
   updateServiceCatalogItem,
   updateServiceJobAssignment,
   updateServiceJobStatus,
+  updateServicePartsCatalogItem,
   testInternals: Object.freeze({
     calculateRepairFinancialAmounts,
     calculateServicePricing,
