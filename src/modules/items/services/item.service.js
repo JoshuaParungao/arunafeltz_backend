@@ -230,17 +230,12 @@ const assertItemAccess = (item, actor) => {
   }
 };
 
-const PRICE_ADJUSTMENT_ROLES = new Set([
-  "SUPER_OWNER",
-  "ADMIN",
-]);
-
 const assertCanAdjustPrices = (actor) => {
-  if (!actor || !PRICE_ADJUSTMENT_ROLES.has(actor.role)) {
+  if (!actor) {
     throw new AppError(
-      "Only Main Admin and Admin are permitted to adjust item prices.",
-      403,
-      "PRICE_ADJUSTMENT_FORBIDDEN"
+      "Authentication required to adjust item prices.",
+      401,
+      "PRICE_ADJUSTMENT_UNAUTHORIZED"
     );
   }
 };
