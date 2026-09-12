@@ -549,9 +549,23 @@ const listItems = async (filters = {}, actor) => {
   const branchId = getBranchIdForList(actor, filters.branchId);
   const search = filters.search ? filters.search.trim() : null;
 
+  let categoryCondition = filters.categoryId;
+  if (filters.categoryId) {
+    const childCategories = await prisma.itemCategory.findMany({
+      where: { parentId: filters.categoryId },
+      select: { id: true },
+    });
+    if (childCategories.length > 0) {
+      categoryCondition = { in: [filters.categoryId, ...childCategories.map((c) => c.id)] };
+    }
+  }
+
   const where = {
     branchId,
-    categoryId: filters.categoryId,
+    ...(filters.categoryId ? { categoryId: categoryCondition } : {}),
+    ...(filters.brand && filters.brand.trim()
+      ? { brand: { contains: filters.brand.trim(), mode: "insensitive" } }
+      : {}),
     unitId: filters.unitId,
     status: filters.status,
     isSerialized: parseBooleanQuery(filters.isSerialized),

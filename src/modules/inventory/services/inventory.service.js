@@ -56,9 +56,23 @@ const getInventoryOverview = async (actor, query) => {
   const search = query.search ? String(query.search).trim() : "";
   const lowStockOnly = parseBoolean(query.lowStockOnly);
 
+  let categoryCondition = query.categoryId;
+  if (query.categoryId) {
+    const childCategories = await prisma.itemCategory.findMany({
+      where: { parentId: query.categoryId },
+      select: { id: true },
+    });
+    if (childCategories.length > 0) {
+      categoryCondition = { in: [query.categoryId, ...childCategories.map((c) => c.id)] };
+    }
+  }
+
   const where = {
     ...(branchId ? { branchId } : {}),
-    ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+    ...(query.categoryId ? { categoryId: categoryCondition } : {}),
+    ...(query.brand && query.brand.trim()
+      ? { brand: { contains: query.brand.trim(), mode: "insensitive" } }
+      : {}),
     ...(query.status ? { status: query.status } : {}),
     ...(search
       ? {
@@ -119,6 +133,7 @@ const getInventoryOverview = async (actor, query) => {
         modelName: true,
         status: true,
         isSerialized: true,
+        attributes: true,
         minimumStock: true,
         reorderLevel: true,
         branch: {
@@ -189,6 +204,7 @@ const getInventoryOverview = async (actor, query) => {
       modelName: item.modelName,
       status: item.status,
       isSerialized: item.isSerialized,
+      attributes: item.attributes || null,
       branch: item.branch,
       category: item.category,
       unit: item.unit,
