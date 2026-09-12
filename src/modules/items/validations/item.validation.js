@@ -74,6 +74,8 @@ const createItemSchema = z.object({
     categoryId: z.string().trim().min(1, "Category ID is required"),
     unitId: z.string().trim().min(1, "Unit ID is required"),
 
+    attributes: z.record(z.any()).optional().nullable(),
+
     isSerialized: z.boolean().optional(),
     hasWarranty: z.boolean().optional(),
 
@@ -150,6 +152,8 @@ const updateItemSchema = z.object({
       .optional(),
 
     unitId: z.string().trim().min(1, "Unit ID cannot be empty").optional(),
+
+    attributes: z.record(z.any()).optional().nullable(),
 
     status: z.enum(catalogStatusValues).optional(),
 

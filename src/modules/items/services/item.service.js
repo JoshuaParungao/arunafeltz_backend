@@ -10,6 +10,7 @@ const ITEM_SELECT = {
   brand: true,
   modelName: true,
   status: true,
+  attributes: true,
   isSerialized: true,
   hasWarranty: true,
   costPrice: true,
@@ -39,6 +40,15 @@ const ITEM_SELECT = {
       name: true,
       status: true,
       branchId: true,
+      parentId: true,
+      parent: {
+        select: {
+          id: true,
+          categoryCode: true,
+          name: true,
+        },
+      },
+      attributeSchema: true,
     },
   },
 
@@ -265,6 +275,8 @@ const getActiveCategoryOrThrow = async (categoryId) => {
       name: true,
       status: true,
       branchId: true,
+      parentId: true,
+      attributeSchema: true,
       branch: {
         select: {
           id: true,
@@ -288,6 +300,44 @@ const getActiveCategoryOrThrow = async (categoryId) => {
   }
 
   return category;
+};
+
+const validateItemAttributes = (attributes, attributeSchema) => {
+  if (!Array.isArray(attributeSchema) || attributeSchema.length === 0) {
+    if (attributes && typeof attributes === "object" && !Array.isArray(attributes)) {
+      return attributes;
+    }
+    return null;
+  }
+
+  const attrs = attributes && typeof attributes === "object" && !Array.isArray(attributes)
+    ? attributes
+    : {};
+
+  const missing = [];
+
+  for (const field of attributeSchema) {
+    const fieldName = field.name;
+    const value = attrs[fieldName];
+
+    if (value === undefined || value === null || String(value).trim() === "") {
+      missing.push(fieldName);
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new AppError(
+      `Please fill in all required specifications: ${missing.join(", ")}`,
+      400,
+      "SPECIFICATIONS_INCOMPLETE"
+    );
+  }
+
+  const cleaned = {};
+  for (const [key, val] of Object.entries(attrs)) {
+    cleaned[key] = typeof val === "string" ? val.trim() : val;
+  }
+  return cleaned;
 };
 
 const getActiveUnitOrThrow = async (unitId) => {
@@ -454,6 +504,8 @@ const createItem = async (payload, actor) => {
 
   await assertItemCodeIsUnique(branch.id, itemCode);
 
+  const attributes = validateItemAttributes(payload.attributes, category.attributeSchema);
+
   return prisma.item.create({
     data: {
       itemCode,
@@ -463,6 +515,7 @@ const createItem = async (payload, actor) => {
       brand: normalizeOptionalString(payload.brand),
       modelName: normalizeOptionalString(payload.modelName),
       status: "ACTIVE",
+      attributes,
       isSerialized: Boolean(payload.isSerialized),
       hasWarranty: Boolean(payload.hasWarranty),
 
@@ -673,12 +726,22 @@ const updateItemById = async (itemId, payload, actor) => {
     updateData.hasWarranty = Boolean(payload.hasWarranty);
   }
 
+  let targetCategory = null;
   if (payload.categoryId !== undefined) {
-    const category = await getActiveCategoryOrThrow(payload.categoryId);
+    targetCategory = await getActiveCategoryOrThrow(payload.categoryId);
 
-    assertCategoryBelongsToBranchId(category, existingItem.branchId);
+    assertCategoryBelongsToBranchId(targetCategory, existingItem.branchId);
 
-    updateData.categoryId = category.id;
+    updateData.categoryId = targetCategory.id;
+  }
+
+  if (payload.attributes !== undefined || targetCategory) {
+    const effectiveCategory = targetCategory || (await getActiveCategoryOrThrow(existingItem.categoryId));
+    if (payload.attributes !== undefined) {
+      updateData.attributes = validateItemAttributes(payload.attributes, effectiveCategory.attributeSchema);
+    } else if (targetCategory && Array.isArray(effectiveCategory.attributeSchema) && effectiveCategory.attributeSchema.length > 0) {
+      updateData.attributes = validateItemAttributes(existingItem.attributes, effectiveCategory.attributeSchema);
+    }
   }
 
   if (payload.unitId !== undefined) {

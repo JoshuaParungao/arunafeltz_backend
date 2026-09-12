@@ -7,6 +7,15 @@ const ITEM_CATEGORY_SELECT = {
   name: true,
   description: true,
   status: true,
+  parentId: true,
+  parent: {
+    select: {
+      id: true,
+      categoryCode: true,
+      name: true,
+    },
+  },
+  attributeSchema: true,
   branchId: true,
   branch: {
     select: {
@@ -293,6 +302,18 @@ const createItemCategory = async (payload, actor) => {
   const branchId = getActorBranchIdForCreate(actor, payload.branchId);
   const branch = await getActiveBranchOrThrow(branchId);
 
+  let parentId = null;
+  if (payload.parentId) {
+    const parentCategory = await prisma.itemCategory.findUnique({
+      where: { id: payload.parentId },
+      select: { id: true, branchId: true, status: true },
+    });
+    if (!parentCategory || parentCategory.branchId !== branch.id) {
+      throw new AppError("Parent category not found in this branch", 404, "PARENT_CATEGORY_NOT_FOUND");
+    }
+    parentId = parentCategory.id;
+  }
+
   const categoryCode = payload.categoryCode
     ? payload.categoryCode.trim().toUpperCase()
     : await generateCategoryCode(branch);
@@ -309,6 +330,8 @@ const createItemCategory = async (payload, actor) => {
       description: normalizeOptionalString(payload.description),
       status: "ACTIVE",
       branchId: branch.id,
+      parentId,
+      attributeSchema: payload.attributeSchema !== undefined ? payload.attributeSchema : null,
       createdById: actor.id,
       updatedById: actor.id,
     },
@@ -329,6 +352,14 @@ const listItemCategories = async (filters = {}, actor) => {
     branchId,
     status: filters.status,
   };
+
+  if (filters.parentId !== undefined) {
+    if (filters.parentId === "null" || filters.parentId === "" || filters.parentId === null) {
+      where.parentId = null;
+    } else {
+      where.parentId = filters.parentId;
+    }
+  }
 
   if (search) {
     where.OR = [
@@ -451,6 +482,31 @@ const updateItemCategoryById = async (categoryId, payload, actor) => {
 
   if (payload.description !== undefined) {
     updateData.description = normalizeOptionalString(payload.description);
+  }
+
+  if (payload.parentId !== undefined) {
+    if (payload.parentId === null || payload.parentId === "") {
+      updateData.parentId = null;
+    } else {
+      if (payload.parentId === existingCategory.id) {
+        throw new AppError("A category cannot be its own parent", 400, "INVALID_PARENT_CATEGORY");
+      }
+      const parentCategory = await prisma.itemCategory.findUnique({
+        where: { id: payload.parentId },
+        select: { id: true, branchId: true, parentId: true },
+      });
+      if (!parentCategory || parentCategory.branchId !== existingCategory.branchId) {
+        throw new AppError("Parent category not found in this branch", 404, "PARENT_CATEGORY_NOT_FOUND");
+      }
+      if (parentCategory.parentId === existingCategory.id) {
+        throw new AppError("Circular category hierarchy is not allowed", 400, "CIRCULAR_CATEGORY_HIERARCHY");
+      }
+      updateData.parentId = parentCategory.id;
+    }
+  }
+
+  if (payload.attributeSchema !== undefined) {
+    updateData.attributeSchema = payload.attributeSchema;
   }
 
   if (payload.status !== undefined) {

@@ -5,6 +5,7 @@ const catalogStatusValues = ["ACTIVE", "INACTIVE"];
 const createItemCategorySchema = z.object({
   body: z.object({
     branchId: z.string().trim().min(1, "Branch ID is required").optional(),
+    parentId: z.string().trim().min(1, "Parent Category ID cannot be empty").optional().nullable(),
     categoryCode: z
       .string()
       .trim()
@@ -17,6 +18,7 @@ const createItemCategorySchema = z.object({
       .min(1, "Description cannot be empty")
       .optional()
       .nullable(),
+    attributeSchema: z.any().optional().nullable(),
   }),
 });
 
@@ -24,6 +26,7 @@ const listItemCategoriesSchema = z.object({
   query: z.object({
     search: z.string().trim().optional(),
     branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
+    parentId: z.string().trim().optional().nullable(),
     status: z.enum(catalogStatusValues).optional(),
     page: z
       .string()
@@ -49,6 +52,7 @@ const updateItemCategorySchema = z.object({
     id: z.string().trim().min(1, "Category ID is required"),
   }),
   body: z.object({
+    parentId: z.string().trim().min(1, "Parent Category ID cannot be empty").optional().nullable(),
     categoryCode: z
       .string()
       .trim()
@@ -65,6 +69,7 @@ const updateItemCategorySchema = z.object({
       .min(1, "Description cannot be empty")
       .optional()
       .nullable(),
+    attributeSchema: z.any().optional().nullable(),
     status: z.enum(catalogStatusValues).optional(),
   }),
 });

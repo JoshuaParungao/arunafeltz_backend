@@ -1577,6 +1577,11 @@ model ItemCategory {
   description  String?
   status       CatalogStatus @default(ACTIVE)
 
+  parentId        String?
+  parent          ItemCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  subcategories   ItemCategory[] @relation("CategoryHierarchy")
+  attributeSchema Json?
+
   branchId String
   branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
@@ -1594,6 +1599,7 @@ model ItemCategory {
   @@unique([branchId, categoryCode])
   @@unique([branchId, name])
   @@index([branchId])
+  @@index([parentId])
   @@index([status])
   @@index([createdById])
   @@index([updatedById])
@@ -1631,6 +1637,8 @@ model Item {
   brand       String?
   modelName   String?
   status      CatalogStatus @default(ACTIVE)
+
+  attributes  Json?
 
   isSerialized Boolean @default(false)
   hasWarranty  Boolean @default(false)
