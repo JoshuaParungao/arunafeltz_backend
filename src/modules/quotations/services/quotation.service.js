@@ -751,6 +751,17 @@ const getQuotationById = async (actor, quotationId) => {
               modelName: true,
               status: true,
               isSerialized: true,
+              inventoryBatches: {
+                where: {
+                  status: "ACTIVE",
+                },
+                select: {
+                  id: true,
+                  batchCode: true,
+                  quantityAvailable: true,
+                  status: true,
+                },
+              },
             },
           },
         },
@@ -764,7 +775,21 @@ const getQuotationById = async (actor, quotationId) => {
     throw error;
   }
 
-  return hideInternalNotesIfNeeded(quotation, actor);
+  const formattedItems = (quotation.items || []).map((qItem) => {
+    let availableStock = null;
+    if (qItem.item && Array.isArray(qItem.item.inventoryBatches)) {
+      availableStock = qItem.item.inventoryBatches.reduce(
+        (sum, b) => sum + Number(b.quantityAvailable || 0),
+        0
+      );
+    }
+    return {
+      ...qItem,
+      availableStock,
+    };
+  });
+
+  return hideInternalNotesIfNeeded({ ...quotation, items: formattedItems }, actor);
 };
 
 

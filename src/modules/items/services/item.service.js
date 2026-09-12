@@ -72,8 +72,31 @@ const ITEM_SELECT = {
     },
   },
 
+  inventoryBatches: {
+    where: {
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+      batchCode: true,
+      quantityAvailable: true,
+      status: true,
+    },
+  },
+
   createdAt: true,
   updatedAt: true,
+};
+
+const attachAvailableStock = (item) => {
+  if (!item) return item;
+  const quantityAvailable = Array.isArray(item.inventoryBatches)
+    ? item.inventoryBatches.reduce(
+        (sum, b) => sum + Number(b.quantityAvailable || 0),
+        0
+      )
+    : 0;
+  return { ...item, quantityAvailable };
 };
 
 const normalizeOptionalString = (value) => {
@@ -548,7 +571,7 @@ const listItems = async (filters = {}, actor) => {
   const totalPages = Math.ceil(totalItems / safeLimit) || 1;
 
   return {
-    items,
+    items: items.map(attachAvailableStock),
     pagination: {
       page,
       limit: safeLimit,
@@ -574,7 +597,7 @@ const getItemById = async (itemId, actor) => {
 
   assertItemAccess(item, actor);
 
-  return item;
+  return attachAvailableStock(item);
 };
 
 const updateItemById = async (itemId, payload, actor) => {
