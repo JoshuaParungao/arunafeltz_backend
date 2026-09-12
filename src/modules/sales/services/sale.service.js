@@ -697,9 +697,11 @@ const buildSaleItems = async (
         STAFF_ROLES.has(actor.role) &&
         itemPayload.unitPrice !== undefined
       ) {
-        const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
-        error.statusCode = 403;
-        throw error;
+        if (toMoney(itemPayload.unitPrice) !== baseUnitPriceSnapshot) {
+          const error = new Error("STAFF_CUSTOM_PRICE_NOT_ALLOWED");
+          error.statusCode = 403;
+          throw error;
+        }
       } else if (
         !hasExplicitMarkup &&
         OWNER_ADMIN_ROLES.has(actor.role) &&
@@ -3144,23 +3146,30 @@ const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
       });
     }
 
+    const createdPayments = [];
     for (const paymentData of newSalePayments) {
-      await tx.salePayment.create({
+      const createdPayment = await tx.salePayment.create({
         data: {
           ...paymentData,
           saleId: sale.id,
         },
       });
+      createdPayments.push(createdPayment);
     }
 
     if (netCashReceived > 0) {
+      const primaryCashPayment = createdPayments.find(
+        (payment) => payment.paymentMethod === "CASH"
+      );
+      const cashSourceId = primaryCashPayment ? primaryCashPayment.id : sale.id;
+
       await cashLinkService.postSystemCashIn(tx, actor, branch, {
         type: "SALE_PAYMENT",
         source: "SALE",
         amount: netCashReceived,
         description: `Additional cash received from sale ${sale.receiptCode} after change.`,
-        referenceNo: null,
-        sourceId: sale.id,
+        referenceNo: primaryCashPayment?.referenceNo || null,
+        sourceId: cashSourceId,
         sourceCode: sale.receiptCode,
         transactionDate: new Date(),
       });
@@ -3194,6 +3203,11 @@ const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
         account: updatedCreditAccount,
         initialSettlementAmount: Number(updatedCreditAccount.downpaymentAmount),
       });
+    } else if (!isCreditSale) {
+      updatedPaymentStatus = computePaymentStatus(
+        updatedAmountPaid,
+        updatedGrandTotal
+      );
     }
 
     const updatedSale = await tx.sale.update({
