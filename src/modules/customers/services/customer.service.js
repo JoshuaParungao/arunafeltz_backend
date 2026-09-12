@@ -921,7 +921,7 @@ const getAccountsReceivable = async (filters = {}, actor) => {
       serviceJob: {
         select: {
           id: true,
-          jobOrderCode: true,
+          jobCode: true,
         },
       },
       branch: {
@@ -963,7 +963,7 @@ const getAccountsReceivable = async (filters = {}, actor) => {
 
     return {
       id: acc.id,
-      transactionNo: acc.sale?.receiptCode || acc.creditCode,
+      transactionNo: acc.sale?.receiptCode || acc.serviceJob?.jobCode || acc.creditCode,
       creditCode: acc.creditCode,
       receiptCode: acc.sale?.receiptCode,
       date: acc.sale?.saleDate || acc.createdAt,
