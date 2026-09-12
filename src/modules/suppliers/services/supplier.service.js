@@ -911,12 +911,176 @@ const getSupplierHistory = async (supplierId, query = {}, actor) => {
   };
 };
 
+const getAccountsPayable = async (filters = {}, actor) => {
+  if (!actor) {
+    throw new AppError("Authentication required", 401, "AUTHENTICATION_REQUIRED");
+  }
+
+  const branchFilter =
+    actor.role === "SUPER_OWNER"
+      ? filters.branchId
+        ? { branchId: filters.branchId }
+        : {}
+      : { branchId: actor.branchId };
+
+  const where = {
+    ...branchFilter,
+  };
+
+  if (filters.status && filters.status !== "ALL") {
+    where.status = filters.status;
+  } else if (!filters.status) {
+    where.status = "POSTED";
+  }
+
+  if (filters.supplierId) {
+    where.supplierId = filters.supplierId;
+  }
+
+  if (filters.dateFrom || filters.dateTo) {
+    where.receivingDate = {};
+    if (filters.dateFrom) {
+      const dFrom = new Date(filters.dateFrom);
+      if (!Number.isNaN(dFrom.getTime())) {
+        dFrom.setHours(0, 0, 0, 0);
+        where.receivingDate.gte = dFrom;
+      }
+    }
+    if (filters.dateTo) {
+      const dTo = new Date(filters.dateTo);
+      if (!Number.isNaN(dTo.getTime())) {
+        dTo.setHours(23, 59, 59, 999);
+        where.receivingDate.lte = dTo;
+      }
+    }
+  }
+
+  if (filters.search) {
+    const s = filters.search.trim();
+    where.OR = [
+      { receivingCode: { contains: s, mode: "insensitive" } },
+      { supplierDeliveryNo: { contains: s, mode: "insensitive" } },
+      { supplierInvoiceNo: { contains: s, mode: "insensitive" } },
+      { referenceNo: { contains: s, mode: "insensitive" } },
+      { supplierNameSnapshot: { contains: s, mode: "insensitive" } },
+      { supplier: { name: { contains: s, mode: "insensitive" } } },
+      { supplier: { supplierCode: { contains: s, mode: "insensitive" } } },
+    ];
+  }
+
+  const receivings = await prisma.purchaseReceiving.findMany({
+    where,
+    select: {
+      id: true,
+      receivingCode: true,
+      supplierDeliveryNo: true,
+      supplierInvoiceNo: true,
+      referenceNo: true,
+      status: true,
+      receivingDate: true,
+      subtotal: true,
+      totalDiscount: true,
+      grandTotal: true,
+      notes: true,
+      branchId: true,
+      branch: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+      },
+      supplierId: true,
+      supplier: {
+        select: {
+          id: true,
+          supplierCode: true,
+          name: true,
+          contactPerson: true,
+          contactNo: true,
+          email: true,
+          paymentTerms: true,
+        },
+      },
+    },
+    orderBy: {
+      receivingDate: "desc",
+    },
+    take: Math.min(Number(filters.limit || 500), 1000),
+  });
+
+  let totalAmount = 0;
+  let totalBalance = 0;
+  const now = new Date();
+
+  const items = receivings.map((rec) => {
+    const amount = Number(rec.grandTotal || 0);
+    const balance = amount;
+    totalAmount += amount;
+    totalBalance += balance;
+
+    const terms = rec.supplier?.paymentTerms || "COD";
+    let daysToAdd = 0;
+    const match = terms.match(/(\d+)\s*day/i);
+    if (match) {
+      daysToAdd = parseInt(match[1], 10);
+    } else if (/net\s*30/i.test(terms)) {
+      daysToAdd = 30;
+    } else if (/net\s*60/i.test(terms)) {
+      daysToAdd = 60;
+    } else if (/net\s*15/i.test(terms)) {
+      daysToAdd = 15;
+    } else if (/net\s*7/i.test(terms)) {
+      daysToAdd = 7;
+    }
+
+    const rDate = new Date(rec.receivingDate);
+    const dueDate = new Date(rDate);
+    dueDate.setDate(dueDate.getDate() + daysToAdd);
+
+    const diffTime = now.getTime() - dueDate.getTime();
+    const daysOverdue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+    const isOverdue = daysOverdue > 0 && daysToAdd > 0;
+
+    return {
+      id: rec.id,
+      transactionNo: rec.supplierDeliveryNo || rec.receivingCode,
+      receivingCode: rec.receivingCode,
+      supplierDeliveryNo: rec.supplierDeliveryNo,
+      supplierInvoiceNo: rec.supplierInvoiceNo,
+      date: rec.receivingDate,
+      supplierId: rec.supplierId,
+      supplierName: rec.supplier?.name || rec.supplierNameSnapshot || "Unknown Supplier",
+      supplierCode: rec.supplier?.supplierCode || "",
+      paymentTerms: terms,
+      amount,
+      balance,
+      dueDate,
+      daysOverdue,
+      isOverdue,
+      status: rec.status,
+      branch: rec.branch,
+    };
+  });
+
+  return {
+    summary: {
+      totalAmount,
+      totalBalance,
+      totalCount: items.length,
+      supplierCount: new Set(items.map((it) => it.supplierId)).size,
+    },
+    items,
+  };
+};
+
 module.exports = {
   SUPPLIER_SELECT,
   createSupplier,
   listSuppliers,
   getSupplierById,
   getSupplierHistory,
+  getAccountsPayable,
   updateSupplierById,
   updateSupplierStatusById,
 };

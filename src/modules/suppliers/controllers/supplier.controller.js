@@ -69,11 +69,21 @@ const getSupplierHistory = asyncHandler(async (req, res) => {
   });
 });
 
+const getAccountsPayable = asyncHandler(async (req, res) => {
+  const result = await supplierService.getAccountsPayable(req.query, req.user);
+
+  return sendSuccess(res, {
+    message: "Accounts payable retrieved successfully",
+    data: result,
+  });
+});
+
 module.exports = {
   createSupplier,
   listSuppliers,
   getSupplierById,
   getSupplierHistory,
+  getAccountsPayable,
   updateSupplierById,
   updateSupplierStatusById,
 };

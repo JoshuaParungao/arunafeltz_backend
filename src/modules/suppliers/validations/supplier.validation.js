@@ -87,6 +87,22 @@ const getSupplierHistorySchema = z.object({
   }),
 });
 
+const getAccountsPayableSchema = z.object({
+  query: z.object({
+    branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
+    supplierId: z.string().trim().min(1, "Supplier ID cannot be empty").optional(),
+    search: z.string().trim().optional(),
+    status: z.string().trim().optional(),
+    dateFrom: z.string().trim().optional(),
+    dateTo: z.string().trim().optional(),
+    limit: z
+      .string()
+      .trim()
+      .regex(/^[1-9][0-9]*$/, "Limit must be a positive number")
+      .optional(),
+  }),
+});
+
 module.exports = {
   createSupplierSchema,
   listSuppliersSchema,
@@ -94,4 +110,5 @@ module.exports = {
   updateSupplierSchema,
   updateSupplierStatusSchema,
   getSupplierHistorySchema,
+  getAccountsPayableSchema,
 };

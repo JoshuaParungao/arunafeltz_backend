@@ -12,9 +12,18 @@ const {
   updateSupplierSchema,
   updateSupplierStatusSchema,
   getSupplierHistorySchema,
+  getAccountsPayableSchema,
 } = require("../validations/supplier.validation");
 
 const router = express.Router();
+
+router.get(
+  "/accounts-payable",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_SUPPLIERS),
+  validate(getAccountsPayableSchema),
+  supplierController.getAccountsPayable
+);
 
 router.get(
   "/",

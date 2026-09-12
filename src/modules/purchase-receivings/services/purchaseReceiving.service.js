@@ -19,6 +19,7 @@ const PURCHASE_RECEIVING_INCLUDE = {
       contactPerson: true,
       contactNo: true,
       email: true,
+      paymentTerms: true,
       status: true,
       branchId: true,
     },
