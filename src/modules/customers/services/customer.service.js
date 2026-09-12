@@ -825,11 +825,184 @@ const updateCustomerById = async (customerId, payload, actor) => {
   });
 };
 
+const getAccountsReceivable = async (filters = {}, actor) => {
+  if (!actor) {
+    throw new AppError("Authentication required", 401, "AUTHENTICATION_REQUIRED");
+  }
+
+  const branchFilter =
+    actor.role === "SUPER_OWNER"
+      ? filters.branchId
+        ? { branchId: filters.branchId }
+        : {}
+      : { branchId: actor.branchId };
+
+  const where = {
+    ...branchFilter,
+    remainingBalance: {
+      gt: 0,
+    },
+  };
+
+  if (filters.status && filters.status !== "ALL") {
+    where.status = filters.status;
+  } else if (!filters.status) {
+    where.status = "ACTIVE";
+  }
+
+  if (filters.customerId) {
+    where.customerId = filters.customerId;
+  }
+
+  if (filters.dateFrom || filters.dateTo) {
+    where.createdAt = {};
+    if (filters.dateFrom) {
+      const dFrom = new Date(filters.dateFrom);
+      if (!Number.isNaN(dFrom.getTime())) {
+        dFrom.setHours(0, 0, 0, 0);
+        where.createdAt.gte = dFrom;
+      }
+    }
+    if (filters.dateTo) {
+      const dTo = new Date(filters.dateTo);
+      if (!Number.isNaN(dTo.getTime())) {
+        dTo.setHours(23, 59, 59, 999);
+        where.createdAt.lte = dTo;
+      }
+    }
+  }
+
+  if (filters.search) {
+    const s = filters.search.trim();
+    where.OR = [
+      { creditCode: { contains: s, mode: "insensitive" } },
+      { providerReferenceNo: { contains: s, mode: "insensitive" } },
+      { customer: { fullName: { contains: s, mode: "insensitive" } } },
+      { customer: { customerCode: { contains: s, mode: "insensitive" } } },
+      { customer: { mobileNumber: { contains: s, mode: "insensitive" } } },
+      { customer: { companyName: { contains: s, mode: "insensitive" } } },
+      { sale: { receiptCode: { contains: s, mode: "insensitive" } } },
+    ];
+  }
+
+  const accounts = await prisma.creditAccount.findMany({
+    where,
+    select: {
+      id: true,
+      creditCode: true,
+      status: true,
+      provider: true,
+      term: true,
+      balanceAmount: true,
+      downpaymentAmount: true,
+      totalCollected: true,
+      remainingBalance: true,
+      firstDueDate: true,
+      nextDueDate: true,
+      providerReferenceNo: true,
+      createdAt: true,
+      customer: {
+        select: {
+          id: true,
+          customerCode: true,
+          fullName: true,
+          mobileNumber: true,
+          companyName: true,
+        },
+      },
+      sale: {
+        select: {
+          id: true,
+          receiptCode: true,
+          saleDate: true,
+          grandTotal: true,
+        },
+      },
+      serviceJob: {
+        select: {
+          id: true,
+          jobOrderCode: true,
+        },
+      },
+      branch: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: Math.min(Number(filters.limit || 500), 1000),
+  });
+
+  let totalAmount = 0;
+  let totalBalance = 0;
+  let totalCollected = 0;
+  const now = new Date();
+
+  const items = accounts.map((acc) => {
+    const amount = Number(acc.balanceAmount || 0);
+    const balance = Number(acc.remainingBalance || 0);
+    const collected = Number(acc.totalCollected || 0);
+    totalAmount += amount;
+    totalBalance += balance;
+    totalCollected += collected;
+
+    const dueDate = acc.nextDueDate ? new Date(acc.nextDueDate) : acc.firstDueDate ? new Date(acc.firstDueDate) : null;
+    let daysOverdue = 0;
+    let isOverdue = false;
+
+    if (dueDate) {
+      const diffTime = now.getTime() - dueDate.getTime();
+      daysOverdue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+      isOverdue = daysOverdue > 0;
+    }
+
+    return {
+      id: acc.id,
+      transactionNo: acc.sale?.receiptCode || acc.creditCode,
+      creditCode: acc.creditCode,
+      receiptCode: acc.sale?.receiptCode,
+      date: acc.sale?.saleDate || acc.createdAt,
+      customerId: acc.customer?.id,
+      customerName: acc.customer?.fullName || "Walk-in Customer",
+      customerCode: acc.customer?.customerCode || "",
+      customerMobile: acc.customer?.mobileNumber || "",
+      companyName: acc.customer?.companyName || "",
+      provider: acc.provider,
+      term: acc.term,
+      amount,
+      collected,
+      balance,
+      dueDate,
+      daysOverdue,
+      isOverdue,
+      status: acc.status,
+      branch: acc.branch,
+    };
+  });
+
+  return {
+    summary: {
+      totalAmount,
+      totalBalance,
+      totalCollected,
+      totalCount: items.length,
+      customerCount: new Set(items.map((it) => it.customerId).filter(Boolean)).size,
+    },
+    items,
+  };
+};
+
 module.exports = {
   CUSTOMER_SELECT,
   createCustomer,
   listCustomers,
   getCustomerById,
   getCustomerHistory,
+  getAccountsReceivable,
   updateCustomerById,
 };

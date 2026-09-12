@@ -11,9 +11,18 @@ const {
   customerIdParamSchema,
   customerHistorySchema,
   updateCustomerSchema,
+  getAccountsReceivableSchema,
 } = require("../validations/customer.validation");
 
 const router = express.Router();
+
+router.get(
+  "/accounts-receivable",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_CUSTOMERS),
+  validate(getAccountsReceivableSchema),
+  customerController.getAccountsReceivable
+);
 
 router.get(
   "/",

@@ -56,10 +56,20 @@ const updateCustomerById = asyncHandler(async (req, res) => {
   });
 });
 
+const getAccountsReceivable = asyncHandler(async (req, res) => {
+  const result = await customerService.getAccountsReceivable(req.query, req.user);
+
+  return sendSuccess(res, {
+    message: "Accounts receivable retrieved successfully",
+    data: result,
+  });
+});
+
 module.exports = {
   createCustomer,
   listCustomers,
   getCustomerById,
   getCustomerHistory,
+  getAccountsReceivable,
   updateCustomerById,
 };
