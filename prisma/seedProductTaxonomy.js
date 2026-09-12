@@ -663,11 +663,18 @@ async function main() {
   console.log("\n✅ Product Taxonomy & Specification Schema successfully seeded!");
 }
 
-main()
-  .catch((err) => {
-    console.error("❌ Seeding failed:", err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+module.exports = {
+  ensureStandardProductTaxonomy: main,
+  TAXONOMY_DATA,
+};
+
+if (require.main === module) {
+  main()
+    .catch((err) => {
+      console.error("❌ Seeding failed:", err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

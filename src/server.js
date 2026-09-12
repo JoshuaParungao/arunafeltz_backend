@@ -84,6 +84,14 @@ const server = app.listen(env.port, () => {
   ensureDefaultSettings().catch((err) => {
     logger.warn("Initial settings sync warning", { error: err.message });
   });
+  try {
+    const { ensureStandardProductTaxonomy } = require("../prisma/seedProductTaxonomy");
+    ensureStandardProductTaxonomy().catch((err) => {
+      logger.warn("Initial product taxonomy sync warning", { error: err.message });
+    });
+  } catch (err) {
+    logger.warn("Could not load taxonomy seed helper", { error: err.message });
+  }
 });
 
 let isShuttingDown = false;
