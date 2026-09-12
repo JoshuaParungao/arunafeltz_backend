@@ -908,6 +908,7 @@ const getAccountsReceivable = async (filters = {}, actor) => {
           fullName: true,
           mobileNumber: true,
           companyName: true,
+          address: true,
         },
       },
       sale: {
@@ -971,6 +972,7 @@ const getAccountsReceivable = async (filters = {}, actor) => {
       customerName: acc.customer?.fullName || "Walk-in Customer",
       customerCode: acc.customer?.customerCode || "",
       customerMobile: acc.customer?.mobileNumber || "",
+      customerAddress: acc.customer?.address || "",
       companyName: acc.customer?.companyName || "",
       provider: acc.provider,
       term: acc.term,

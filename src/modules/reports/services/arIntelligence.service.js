@@ -752,7 +752,7 @@ const getCustomerArStatement = async (actor, customerId, query = {}) => {
       mobileNumber: true,
       email: true,
       address: true,
-      company: true,
+      companyName: true,
     },
   });
 
