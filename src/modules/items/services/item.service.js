@@ -106,7 +106,12 @@ const attachAvailableStock = (item) => {
         0
       )
     : 0;
-  return { ...item, quantityAvailable };
+  return {
+    ...item,
+    quantityAvailable,
+    totalStock: quantityAvailable,
+    stockQuantity: quantityAvailable,
+  };
 };
 
 const normalizeOptionalString = (value) => {
