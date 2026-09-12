@@ -661,10 +661,392 @@ async function main() {
   }
 
   console.log("\n✅ Product Taxonomy & Specification Schema successfully seeded!");
+
+  // 3. Automatically arrange and align all existing items in database
+  await autoAlignExistingItems();
+}
+
+function extractSpecsForSchema({ itemName = "", brand = "", modelName = "", schema = [], subcategoryName = "" }) {
+  const text = `${brand || ""} ${modelName || ""} ${itemName}`.trim();
+  const lower = text.toLowerCase();
+  const detected = {};
+
+  for (const field of schema) {
+    const nameLower = field.name.toLowerCase();
+    const suggestions = Array.isArray(field.suggestions) ? field.suggestions : [];
+
+    // 1. Check suggestions first (longest match)
+    if (suggestions.length > 0) {
+      const sorted = [...suggestions].sort((a, b) => b.length - a.length);
+      for (const sug of sorted) {
+        if (sug === "None" || sug === "N/A") continue;
+        const escaped = sug.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+        const regex = new RegExp(`(^|[^a-zA-Z0-9])${escaped}([^a-zA-Z0-9]|$)`, "i");
+        if (regex.test(text)) {
+          detected[field.name] = sug;
+          break;
+        }
+      }
+    }
+
+    if (detected[field.name]) continue;
+
+    // 2. Pattern-based extraction
+    // Brand
+    if (nameLower.includes("brand")) {
+      if (brand && brand.trim()) {
+        detected[field.name] = brand.trim();
+        continue;
+      }
+      const knownBrands = [
+        "Kingston", "Corsair", "G.Skill", "TeamGroup", "Crucial", "Adata", "Samsung",
+        "Seagate", "Western Digital", "WD", "ASUS", "MSI", "Gigabyte", "ASRock", "Palit",
+        "ZOTAC", "GALAX", "Inno3D", "PowerColor", "Sapphire", "XFX", "AMD", "Intel",
+        "DeepCool", "Thermaltake", "NZXT", "Cooler Master", "SilverStone", "Seasonic",
+        "UGREEN", "Baseus", "Anker", "Vention", "Belkin", "Orico", "Razer", "Logitech",
+        "Keychron", "Royal Kludge", "SteelSeries", "Redragon", "AOC", "ViewSonic", "BenQ", "LG"
+      ];
+      for (const b of knownBrands) {
+        const regex = new RegExp(`(^|[^a-zA-Z0-9])${b}([^a-zA-Z0-9]|$)`, "i");
+        if (regex.test(text)) {
+          detected[field.name] = b;
+          break;
+        }
+      }
+    }
+
+    // Capacity / VRAM / Storage Size
+    if (nameLower.includes("capacity") || nameLower.includes("size") || nameLower.includes("vram")) {
+      const match = text.match(/\b(\d+)\s*(GB|TB|MB)\b/i);
+      if (match) {
+        detected[field.name] = `${match[1]}${match[2].toUpperCase()}`;
+        continue;
+      }
+    }
+
+    // Speed / Frequency / Refresh Rate
+    if (nameLower.includes("speed") || nameLower.includes("frequency")) {
+      const match = text.match(/\b(\d{3,5})\s*(MHz|MT\/s|GHz)\b/i);
+      if (match) {
+        const u = match[2].toUpperCase() === "MT/S" ? " MT/s" : match[2].toUpperCase() === "GHZ" ? " GHz" : "MHz";
+        detected[field.name] = `${match[1]}${u}`;
+        continue;
+      }
+    }
+
+    // Refresh Rate
+    if (nameLower.includes("refresh rate")) {
+      const match = text.match(/\b(\d{2,3})\s*Hz\b/i);
+      if (match) {
+        detected[field.name] = `${match[1]}Hz`;
+        continue;
+      }
+    }
+
+    // RAM Type / Memory Type
+    if (nameLower.includes("ram type") || nameLower.includes("memory type")) {
+      const match = text.match(/\b(DDR5|DDR4|DDR3L?|GDDR6X?|GDDR5)\b/i);
+      if (match) {
+        detected[field.name] = match[1].toUpperCase();
+        continue;
+      }
+    }
+
+    // Socket
+    if (nameLower.includes("socket")) {
+      const match = text.match(/\b(AM4|AM5|LGA\s*1700|LGA\s*1851|LGA\s*1200|sTR5)\b/i);
+      if (match) {
+        detected[field.name] = match[1].toUpperCase().replace(/\s+/g, "");
+        continue;
+      }
+    }
+
+    // Chipset
+    if (nameLower.includes("chipset")) {
+      const match = text.match(/\b(B450|B550|X570|A520|B650|X670|X870|H610|B660|B760|Z690|Z790)\b/i);
+      if (match) {
+        detected[field.name] = match[1].toUpperCase();
+        continue;
+      }
+    }
+
+    // Series
+    if (nameLower.includes("series")) {
+      if (/ryzen\s*9/i.test(text)) detected[field.name] = "Ryzen 9";
+      else if (/ryzen\s*7/i.test(text)) detected[field.name] = "Ryzen 7";
+      else if (/ryzen\s*5/i.test(text)) detected[field.name] = "Ryzen 5";
+      else if (/ryzen\s*3/i.test(text)) detected[field.name] = "Ryzen 3";
+      else if (/core\s*i9/i.test(text)) detected[field.name] = "Core i9";
+      else if (/core\s*i7/i.test(text)) detected[field.name] = "Core i7";
+      else if (/core\s*i5/i.test(text)) detected[field.name] = "Core i5";
+      else if (/core\s*i3/i.test(text)) detected[field.name] = "Core i3";
+      if (detected[field.name]) continue;
+    }
+
+    // Generation
+    if (nameLower.includes("generation")) {
+      if (/5\d{3}g?/i.test(text) && /ryzen/i.test(text)) detected[field.name] = "Ryzen 5000";
+      else if (/7\d{3}x?/i.test(text) && /ryzen/i.test(text)) detected[field.name] = "Ryzen 7000";
+      else if (/12\d{3}/i.test(text) && /core/i.test(text)) detected[field.name] = "Intel 12th Gen";
+      else if (/13\d{3}/i.test(text) && /core/i.test(text)) detected[field.name] = "Intel 13th Gen";
+      else if (/14\d{3}/i.test(text) && /core/i.test(text)) detected[field.name] = "Intel 14th Gen";
+      if (detected[field.name]) continue;
+    }
+
+    // Cores & Threads
+    if (nameLower.includes("cores")) {
+      if (/5600g?|12400f?|13400f?/i.test(text)) detected[field.name] = "6 Cores";
+      else if (/5700x?|7700x?|12700f?/i.test(text)) detected[field.name] = "8 Cores";
+      else if (/5900x?/i.test(text)) detected[field.name] = "12 Cores";
+      else if (/5950x?|7950x?/i.test(text)) detected[field.name] = "16 Cores";
+      if (detected[field.name]) continue;
+    }
+
+    if (nameLower.includes("threads")) {
+      if (/5600g?|12400f?/i.test(text)) detected[field.name] = "12 Threads";
+      else if (/5700x?|7700x?/i.test(text)) detected[field.name] = "16 Threads";
+      else if (/5900x?/i.test(text)) detected[field.name] = "24 Threads";
+      else if (/5950x?|7950x?/i.test(text)) detected[field.name] = "32 Threads";
+      if (detected[field.name]) continue;
+    }
+
+    // Integrated Graphics
+    if (nameLower.includes("integrated graphics") || nameLower.includes("igpu")) {
+      if (/5600g|5700g|4650g/i.test(text)) detected[field.name] = "Radeon Graphics (2CU)";
+      else if (/f\b/i.test(text) && /intel/i.test(text)) detected[field.name] = "None (Discrete GPU Required)";
+      else if (/intel/i.test(text)) detected[field.name] = "Intel UHD Graphics 770";
+      else if (/amd|ryzen/i.test(text)) detected[field.name] = "Radeon Graphics";
+      if (detected[field.name]) continue;
+    }
+
+    // Cable Type
+    if (nameLower.includes("cable type")) {
+      if (/cat\s*6|cat\s*7|lan|ethernet/i.test(text)) detected[field.name] = "Ethernet RJ45";
+      else if (/hdmi/i.test(text)) detected[field.name] = "HDMI";
+      else if (/displayport|dp/i.test(text)) detected[field.name] = "DisplayPort";
+      else if (/type-c|usb-c/i.test(text)) detected[field.name] = "USB Type-C";
+      else if (/sata/i.test(text)) detected[field.name] = "SATA";
+      if (detected[field.name]) continue;
+    }
+
+    // Connectors
+    if (nameLower.includes("connector 1") || nameLower.includes("connector 2")) {
+      if (/cat\s*6|cat\s*7|lan|ethernet/i.test(text)) detected[field.name] = "RJ45";
+      else if (/hdmi/i.test(text)) detected[field.name] = "HDMI Male";
+      else if (/displayport|dp/i.test(text)) detected[field.name] = "DisplayPort Male";
+      else if (/type-c|usb-c/i.test(text)) detected[field.name] = "USB-C Male";
+      if (detected[field.name]) continue;
+    }
+
+    // Length
+    if (nameLower.includes("length")) {
+      const match = text.match(/\b(\d+(\.\d+)?)\s*(m|meter|meters|ft)\b/i);
+      if (match) {
+        detected[field.name] = `${match[1]}m`;
+        continue;
+      }
+    }
+
+    // Form Factor
+    if (nameLower.includes("form factor")) {
+      if (/so-dimm|sodimm|laptop/i.test(text)) detected[field.name] = "SO-DIMM";
+      else if (/dimm|desktop/i.test(text) || subcategoryName.includes("RAM")) detected[field.name] = "DIMM";
+      else if (/micro-atx|m-atx|matx/i.test(text)) detected[field.name] = "Micro-ATX (mATX)";
+      else if (/mini-itx|itx/i.test(text)) detected[field.name] = "Mini-ITX (mITX)";
+      else if (/atx/i.test(text)) detected[field.name] = "ATX";
+      else if (/m\.2/i.test(text)) detected[field.name] = "M.2 2280";
+      else if (/2\.5/i.test(text)) detected[field.name] = "2.5-Inch";
+      else if (/3\.5/i.test(text)) detected[field.name] = "3.5-Inch";
+      if (detected[field.name]) continue;
+    }
+
+    // Color
+    if (nameLower.includes("color")) {
+      const match = text.match(/\b(Black|White|Silver|Grey|Gray|Red|Blue|Pink|Green|Yellow|Gold)\b/i);
+      if (match) {
+        const c = match[1].toLowerCase();
+        detected[field.name] = c.charAt(0).toUpperCase() + c.slice(1);
+        continue;
+      }
+    }
+
+    // RGB
+    if (nameLower.includes("rgb") || nameLower.includes("lighting")) {
+      if (/non-rgb|without rgb|no rgb/i.test(text)) detected[field.name] = "Non-RGB";
+      else if (/argb|addressable rgb/i.test(text)) detected[field.name] = "5V 3-Pin ARGB";
+      else if (/rgb/i.test(text)) detected[field.name] = "RGB";
+      if (detected[field.name]) continue;
+    }
+
+    // Default fallback from suggestions or N/A
+    if (!detected[field.name]) {
+      detected[field.name] = suggestions[0] || "N/A";
+    }
+  }
+
+  return detected;
+}
+
+async function autoAlignExistingItems() {
+  console.log("\n🔄 Auto-aligning existing items to subcategories and extracting specs...");
+
+  const items = await prisma.item.findMany({
+    include: {
+      category: {
+        include: {
+          parent: true,
+        },
+      },
+    },
+  });
+
+  if (items.length === 0) {
+    console.log("  ℹ️ No existing items found to align.");
+    return;
+  }
+
+  const allSubcategories = await prisma.itemCategory.findMany({
+    where: {
+      parentId: { not: null },
+      status: "ACTIVE",
+    },
+    include: {
+      parent: true,
+    },
+  });
+
+  let alignedCount = 0;
+
+  for (const item of items) {
+    const isSittingOnMainCat = !item.category?.parentId;
+    const hasNoSpecs = !item.attributes || Object.keys(item.attributes).length === 0;
+
+    if (!isSittingOnMainCat && !hasNoSpecs) {
+      continue;
+    }
+
+    const branchSubs = allSubcategories.filter((s) => s.branchId === item.branchId);
+    if (branchSubs.length === 0) continue;
+
+    let targetSubcategoryName = "";
+    const text = `${item.itemName} ${item.brand || ""} ${item.modelName || ""} ${item.category?.name || ""}`.toLowerCase();
+    const parentName = (item.category?.parent?.name || item.category?.name || "").toLowerCase();
+
+    if (parentName.includes("ram") || parentName.includes("memory") || text.includes("ram") || text.includes("ddr")) {
+      if (text.includes("so-dimm") || text.includes("sodimm") || text.includes("laptop")) {
+        targetSubcategoryName = "Laptop RAM";
+      } else if (text.includes("server") || text.includes("rdimm") || text.includes("ecc reg")) {
+        targetSubcategoryName = "Server RAM";
+      } else {
+        targetSubcategoryName = "Desktop RAM";
+      }
+    } else if (parentName.includes("cpu") || parentName.includes("processor") || text.includes("ryzen") || text.includes("core i") || text.includes("processor") || text.includes("pentium") || text.includes("athlon")) {
+      if (text.includes("mobile") || text.includes("laptop")) {
+        targetSubcategoryName = "Laptop CPU";
+      } else if (text.includes("xeon") || text.includes("epyc") || text.includes("threadripper")) {
+        targetSubcategoryName = "Server CPU";
+      } else {
+        targetSubcategoryName = "Desktop CPU";
+      }
+    } else if (parentName.includes("gpu") || parentName.includes("graphics") || text.includes("geforce") || text.includes("radeon") || text.includes("rtx") || text.includes("gtx") || text.includes("arc")) {
+      if (text.includes("quadro") || text.includes("radeon pro") || text.includes("tesla") || text.includes("workstation")) {
+        targetSubcategoryName = "Professional / Workstation GPU";
+      } else if (text.includes("egpu") || text.includes("external")) {
+        targetSubcategoryName = "External GPU (eGPU)";
+      } else {
+        targetSubcategoryName = "Gaming GPU";
+      }
+    } else if (parentName.includes("motherboard") || parentName.includes("mainboard") || text.includes("motherboard") || text.includes("b550") || text.includes("b650") || text.includes("b760") || text.includes("z790") || text.includes("a520") || text.includes("h610")) {
+      if (text.includes("server") || text.includes("rack")) {
+        targetSubcategoryName = "Server Motherboard";
+      } else {
+        targetSubcategoryName = "Desktop Motherboard";
+      }
+    } else if (parentName.includes("storage") || text.includes("ssd") || text.includes("hdd") || text.includes("hard drive") || text.includes("nvme")) {
+      if (text.includes("nvme") || text.includes("m.2")) {
+        targetSubcategoryName = "NVMe SSD";
+      } else if (text.includes("sata ssd") || text.includes("2.5\" ssd") || text.includes("2.5 ssd")) {
+        targetSubcategoryName = "SATA SSD";
+      } else if (text.includes("external ssd") || text.includes("portable ssd")) {
+        targetSubcategoryName = "External SSD";
+      } else if (text.includes("external hdd") || text.includes("portable hdd") || text.includes("expansion")) {
+        targetSubcategoryName = "External HDD";
+      } else if (text.includes("flash") || text.includes("otg") || text.includes("usb drive") || text.includes("pen drive") || text.includes("thumb drive")) {
+        targetSubcategoryName = "USB Flash Drive";
+      } else {
+        targetSubcategoryName = "HDD";
+      }
+    } else if (parentName.includes("peripheral") || text.includes("keyboard") || text.includes("mouse") || text.includes("monitor") || text.includes("headset")) {
+      if (text.includes("keyboard")) targetSubcategoryName = "Keyboard";
+      else if (text.includes("mouse") && !text.includes("pad")) targetSubcategoryName = "Mouse";
+      else if (text.includes("monitor") || text.includes("display") || text.includes("screen")) targetSubcategoryName = "Monitor";
+      else if (text.includes("headset") || text.includes("headphone") || text.includes("earphone")) targetSubcategoryName = "Headset";
+      else if (text.includes("webcam") || text.includes("camera")) targetSubcategoryName = "Webcam";
+      else if (text.includes("speaker") || text.includes("soundbar")) targetSubcategoryName = "Speakers";
+      else if (text.includes("microphone") || text.includes("mic")) targetSubcategoryName = "Microphone";
+      else if (text.includes("controller") || text.includes("gamepad")) targetSubcategoryName = "Controller";
+      else targetSubcategoryName = "Keyboard";
+    } else if (parentName.includes("accessories") || text.includes("cable") || text.includes("adapter") || text.includes("hub") || text.includes("charger")) {
+      if (text.includes("cable") || text.includes("lan") || text.includes("wire") || text.includes("cord")) targetSubcategoryName = "Cables";
+      else if (text.includes("adapter") || text.includes("converter") || text.includes("dongle")) targetSubcategoryName = "Adapters";
+      else if (text.includes("hub") || text.includes("dock")) targetSubcategoryName = "Hubs";
+      else if (text.includes("charger") || text.includes("power adapter") || text.includes("power supply")) targetSubcategoryName = "Chargers";
+      else if (text.includes("cooler") || text.includes("fan") || text.includes("paste") || text.includes("thermal")) targetSubcategoryName = "Cooling Accessories";
+      else targetSubcategoryName = "Other Accessories";
+    }
+
+    let targetSubCat = null;
+    if (targetSubcategoryName) {
+      targetSubCat = branchSubs.find(
+        (s) => s.name.toLowerCase() === targetSubcategoryName.toLowerCase()
+      );
+    }
+    if (!targetSubCat && item.category) {
+      const parentId = item.category.parentId || item.category.id;
+      targetSubCat = branchSubs.find((s) => s.parentId === parentId) || null;
+    }
+
+    const subcategoryToUse = targetSubCat || (!isSittingOnMainCat ? item.category : null);
+    if (!subcategoryToUse) continue;
+
+    const schema = Array.isArray(subcategoryToUse.attributeSchema) ? subcategoryToUse.attributeSchema : [];
+    const updatedAttributes = { ...(item.attributes || {}) };
+
+    if (schema.length > 0) {
+      const detected = extractSpecsForSchema({
+        itemName: item.itemName,
+        brand: item.brand,
+        modelName: item.modelName,
+        schema,
+        subcategoryName: subcategoryToUse.name,
+      });
+
+      for (const field of schema) {
+        if (!updatedAttributes[field.name] || String(updatedAttributes[field.name]).trim() === "") {
+          updatedAttributes[field.name] = detected[field.name] || (field.suggestions?.[0] || "N/A");
+        }
+      }
+    }
+
+    await prisma.item.update({
+      where: { id: item.id },
+      data: {
+        categoryId: subcategoryToUse.id,
+        attributes: updatedAttributes,
+      },
+    });
+
+    alignedCount++;
+    console.log(`  ✓ Aligned [${item.itemCode}] "${item.itemName}" ➔ ${subcategoryToUse.name} (${Object.keys(updatedAttributes).length} specs)`);
+  }
+
+  console.log(`\n🎉 Successfully aligned ${alignedCount} items and populated specifications!`);
 }
 
 module.exports = {
   ensureStandardProductTaxonomy: main,
+  autoAlignExistingItems,
+  extractSpecsForSchema,
   TAXONOMY_DATA,
 };
 
@@ -678,3 +1060,4 @@ if (require.main === module) {
       await prisma.$disconnect();
     });
 }
+
