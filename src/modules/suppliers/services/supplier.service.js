@@ -12,6 +12,7 @@ const SUPPLIER_SELECT = {
   address: true,
   tin: true,
   notes: true,
+  paymentTerms: true,
   status: true,
   branchId: true,
   branch: {
@@ -329,6 +330,7 @@ const createSupplier = async (payload, actor) => {
         address: normalizeOptionalString(payload.address),
         tin: normalizeOptionalString(payload.tin),
         notes: normalizeOptionalString(payload.notes),
+        paymentTerms: normalizeOptionalString(payload.paymentTerms),
         status: "ACTIVE",
         branchId,
         createdById: actor.id,
@@ -409,6 +411,12 @@ const listSuppliers = async (filters = {}, actor) => {
           },
           {
             tin: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            paymentTerms: {
               contains: search,
               mode: "insensitive",
             },
@@ -540,6 +548,10 @@ const updateSupplierById = async (supplierId, payload, actor) => {
 
     if (payload.notes !== undefined) {
       updateData.notes = normalizeOptionalString(payload.notes);
+    }
+
+    if (payload.paymentTerms !== undefined) {
+      updateData.paymentTerms = normalizeOptionalString(payload.paymentTerms);
     }
 
     const changedFields = Object.keys(updateData).filter(

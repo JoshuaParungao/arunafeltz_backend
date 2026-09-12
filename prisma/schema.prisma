@@ -793,6 +793,7 @@ model Supplier {
   address       String?
   tin           String?
   notes         String?
+  paymentTerms  String?
 
   status SupplierStatus @default(ACTIVE)
 

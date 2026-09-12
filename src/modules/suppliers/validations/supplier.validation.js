@@ -20,6 +20,7 @@ const createSupplierSchema = z.object({
     address: optionalString,
     tin: optionalString,
     notes: optionalString,
+    paymentTerms: optionalString,
   }),
 });
 
@@ -60,6 +61,7 @@ const updateSupplierSchema = z.object({
     address: optionalString,
     tin: optionalString,
     notes: optionalString,
+    paymentTerms: optionalString,
   }),
 });
 
