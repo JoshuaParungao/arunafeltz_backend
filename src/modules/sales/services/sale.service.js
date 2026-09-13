@@ -1514,12 +1514,24 @@ const getSales = async (actor, query) => {
     where.cashierId = query.cashierId;
   }
 
-  if (query.priceTier) {
-    const tier = Number(query.priceTier);
-    if (!Number.isNaN(tier)) {
+  const rawPriceTier = query.priceTier || query.priceTiers;
+  if (rawPriceTier !== undefined && rawPriceTier !== null && rawPriceTier !== "") {
+    const rawStr = String(rawPriceTier);
+    const tiers = rawStr
+      .split(",")
+      .map((t) => Number(t.trim()))
+      .filter((n) => Number.isInteger(n) && n >= 1 && n <= 5);
+
+    if (tiers.length === 1) {
       where.items = {
         some: {
-          priceTier: tier,
+          priceTier: tiers[0],
+        },
+      };
+    } else if (tiers.length > 1) {
+      where.items = {
+        some: {
+          priceTier: { in: tiers },
         },
       };
     }
