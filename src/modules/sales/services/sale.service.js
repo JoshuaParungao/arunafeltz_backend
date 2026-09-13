@@ -1525,6 +1525,22 @@ const getSales = async (actor, query) => {
     }
   }
 
+  if (query.startDate || query.endDate) {
+    where.saleDate = {};
+    if (query.startDate) {
+      const parsedStart = new Date(query.startDate);
+      if (!Number.isNaN(parsedStart.getTime())) {
+        where.saleDate.gte = parsedStart;
+      }
+    }
+    if (query.endDate) {
+      const parsedEnd = new Date(query.endDate);
+      if (!Number.isNaN(parsedEnd.getTime())) {
+        where.saleDate.lte = parsedEnd;
+      }
+    }
+  }
+
   if (query.search) {
     const search = String(query.search).trim();
 
@@ -1603,6 +1619,8 @@ const getSales = async (actor, query) => {
             provider: true,
             term: true,
             termBasis: true,
+            cashPromoTotalAmount: true,
+            sourceTotalAmountSnapshot: true,
             downpaymentAmount: true,
             balanceAmount: true,
             totalCollected: true,

@@ -190,6 +190,8 @@ const listSalesSchema = z.object({
       cashierId: z.string().trim().min(1).max(191).optional(),
       priceTier: z.coerce.number().int().min(1).max(5).optional(),
       search: z.string().trim().max(100).optional(),
+      startDate: z.string().trim().optional(),
+      endDate: z.string().trim().optional(),
       page: z.coerce.number().int().min(1).optional(),
       limit: z.coerce.number().int().min(1).max(100).optional(),
     })
