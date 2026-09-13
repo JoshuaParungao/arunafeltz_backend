@@ -569,6 +569,12 @@ enum PurchaseReceivingStatus {
   CANCELLED
 }
 
+enum PurchaseReceivingPaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
 model PurchaseReceiving {
   id String @id @default(cuid())
 
@@ -590,6 +596,9 @@ model PurchaseReceiving {
   subtotal      Decimal @default(0) @db.Decimal(12, 2)
   totalDiscount Decimal @default(0) @db.Decimal(12, 2)
   grandTotal    Decimal @default(0) @db.Decimal(12, 2)
+
+  amountPaid    Decimal                        @default(0) @db.Decimal(12, 2)
+  paymentStatus PurchaseReceivingPaymentStatus @default(UNPAID)
 
   postedAt    DateTime?
   cancelledAt DateTime?
@@ -615,7 +624,8 @@ model PurchaseReceiving {
   cancelledById String?
   cancelledBy   User?   @relation("PurchaseReceivingCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
 
-  items PurchaseReceivingItem[]
+  items    PurchaseReceivingItem[]
+  payments PurchaseReceivingPayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -625,6 +635,7 @@ model PurchaseReceiving {
   @@index([supplierId])
   @@index([purchaseOrderId])
   @@index([status])
+  @@index([paymentStatus])
   @@index([receivingDate])
   @@index([createdById])
   @@index([updatedById])
@@ -688,6 +699,42 @@ model PurchaseReceivingSerial {
   @@unique([purchaseReceivingItemId, serialNumber])
   @@index([purchaseReceivingItemId])
   @@index([serialNumber])
+}
+
+model PurchaseReceivingPayment {
+  id String @id @default(cuid())
+
+  purchaseReceivingId String
+  purchaseReceiving   PurchaseReceiving @relation(fields: [purchaseReceivingId], references: [id], onDelete: Restrict)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  paymentNumber String
+  paymentDate   DateTime @default(now())
+  amount        Decimal  @db.Decimal(12, 2)
+
+  paymentMethod String
+  referenceNo   String?
+  notes         String?
+
+  cashBoxId         String?
+  cashTransactionId String?
+
+  createdById String?
+  createdBy   User?   @relation("PurchaseReceivingPaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([purchaseReceivingId])
+  @@index([branchId])
+  @@index([supplierId])
+  @@index([paymentDate])
+  @@index([cashBoxId])
 }
 
 model PurchaseOrder {
@@ -808,8 +855,9 @@ model Supplier {
 
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-  purchaseOrders     PurchaseOrder[]
-  purchaseReceivings PurchaseReceiving[]
+  purchaseOrders            PurchaseOrder[]
+  purchaseReceivings        PurchaseReceiving[]
+  purchaseReceivingPayments PurchaseReceivingPayment[]
 
   @@unique([branchId, supplierCode])
   @@index([branchId])
@@ -1305,6 +1353,7 @@ model Branch {
   suppliers                        Supplier[]
   purchaseOrders                   PurchaseOrder[]
   purchaseReceivings               PurchaseReceiving[]
+  purchaseReceivingPayments        PurchaseReceivingPayment[]
   stockTransfersFrom               StockTransfer[]                   @relation("StockTransferFromBranch")
   stockTransfersTo                 StockTransfer[]                   @relation("StockTransferToBranch")
   incentives                       Incentive[]
@@ -1426,6 +1475,7 @@ model User {
   updatedPurchaseReceivings             PurchaseReceiving[]               @relation("PurchaseReceivingUpdatedBy")
   postedPurchaseReceivings              PurchaseReceiving[]               @relation("PurchaseReceivingPostedBy")
   cancelledPurchaseReceivings           PurchaseReceiving[]               @relation("PurchaseReceivingCancelledBy")
+  createdPurchaseReceivingPayments      PurchaseReceivingPayment[]        @relation("PurchaseReceivingPaymentCreatedBy")
   requestedStockTransfers               StockTransfer[]                   @relation("StockTransferRequestedBy")
   approvedStockTransfers                StockTransfer[]                   @relation("StockTransferApprovedBy")
   rejectedStockTransfers                StockTransfer[]                   @relation("StockTransferRejectedBy")

@@ -93,6 +93,7 @@ const getAccountsPayableSchema = z.object({
     supplierId: z.string().trim().min(1, "Supplier ID cannot be empty").optional(),
     search: z.string().trim().optional(),
     status: z.string().trim().optional(),
+    paymentStatus: z.string().trim().optional(),
     dateFrom: z.string().trim().optional(),
     dateTo: z.string().trim().optional(),
     limit: z
@@ -100,6 +101,27 @@ const getAccountsPayableSchema = z.object({
       .trim()
       .regex(/^[1-9][0-9]*$/, "Limit must be a positive number")
       .optional(),
+  }),
+});
+
+const recordSupplierPaymentSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Purchase Receiving ID is required"),
+  }),
+  body: z.object({
+    amount: z.coerce.number().positive("Payment amount must be greater than 0"),
+    paymentMethod: z.enum([
+      "CASH",
+      "BANK_TRANSFER",
+      "CHECK",
+      "GCASH",
+      "MAYA",
+      "OTHER",
+    ]),
+    cashBoxId: z.string().trim().optional().nullable(),
+    paymentDate: z.string().trim().optional(),
+    referenceNo: z.string().trim().optional().nullable(),
+    notes: z.string().trim().optional().nullable(),
   }),
 });
 
@@ -111,4 +133,5 @@ module.exports = {
   updateSupplierStatusSchema,
   getSupplierHistorySchema,
   getAccountsPayableSchema,
+  recordSupplierPaymentSchema,
 };

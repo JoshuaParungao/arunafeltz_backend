@@ -78,12 +78,26 @@ const getAccountsPayable = asyncHandler(async (req, res) => {
   });
 });
 
+const recordSupplierPayment = asyncHandler(async (req, res) => {
+  const result = await supplierService.recordSupplierPayment(
+    req.params.id,
+    req.body,
+    req.user
+  );
+
+  return sendSuccess(res, {
+    message: "Supplier payment recorded successfully",
+    data: result,
+  });
+});
+
 module.exports = {
   createSupplier,
   listSuppliers,
   getSupplierById,
   getSupplierHistory,
   getAccountsPayable,
+  recordSupplierPayment,
   updateSupplierById,
   updateSupplierStatusById,
 };

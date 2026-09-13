@@ -933,6 +933,10 @@ const getAccountsPayable = async (filters = {}, actor) => {
     where.status = "POSTED";
   }
 
+  if (filters.paymentStatus && filters.paymentStatus !== "ALL") {
+    where.paymentStatus = filters.paymentStatus;
+  }
+
   if (filters.supplierId) {
     where.supplierId = filters.supplierId;
   }
@@ -981,6 +985,30 @@ const getAccountsPayable = async (filters = {}, actor) => {
       subtotal: true,
       totalDiscount: true,
       grandTotal: true,
+      amountPaid: true,
+      paymentStatus: true,
+      payments: {
+        select: {
+          id: true,
+          paymentNumber: true,
+          paymentDate: true,
+          amount: true,
+          paymentMethod: true,
+          referenceNo: true,
+          notes: true,
+          cashBoxId: true,
+          createdBy: {
+            select: {
+              id: true,
+              fullName: true,
+              username: true,
+            },
+          },
+        },
+        orderBy: {
+          paymentDate: "desc",
+        },
+      },
       notes: true,
       branchId: true,
       branch: {
@@ -1010,13 +1038,16 @@ const getAccountsPayable = async (filters = {}, actor) => {
   });
 
   let totalAmount = 0;
+  let totalPaid = 0;
   let totalBalance = 0;
   const now = new Date();
 
   const items = receivings.map((rec) => {
     const amount = Number(rec.grandTotal || 0);
-    const balance = amount;
+    const paid = Number(rec.amountPaid || 0);
+    const balance = Math.max(0, amount - paid);
     totalAmount += amount;
+    totalPaid += paid;
     totalBalance += balance;
 
     const terms = rec.supplier?.paymentTerms || "COD";
@@ -1059,7 +1090,10 @@ const getAccountsPayable = async (filters = {}, actor) => {
       notes: rec.notes || "",
       paymentTerms: terms,
       amount,
+      paid,
       balance,
+      paymentStatus: rec.paymentStatus || (paid >= amount ? "PAID" : paid > 0 ? "PARTIALLY_PAID" : "UNPAID"),
+      payments: rec.payments || [],
       dueDate,
       daysOverdue,
       isOverdue,
@@ -1071,12 +1105,199 @@ const getAccountsPayable = async (filters = {}, actor) => {
   return {
     summary: {
       totalAmount,
+      totalPaid,
       totalBalance,
       totalCount: items.length,
       supplierCount: new Set(items.map((it) => it.supplierId)).size,
     },
     items,
   };
+};
+
+const recordSupplierPayment = async (receivingId, payload, actor) => {
+  if (!actor) {
+    throw new AppError("Authentication required", 401, "AUTHENTICATION_REQUIRED");
+  }
+
+  const receiving = await prisma.purchaseReceiving.findUnique({
+    where: { id: receivingId },
+    include: {
+      supplier: {
+        select: { id: true, name: true, supplierCode: true },
+      },
+      branch: {
+        select: { id: true, code: true, name: true },
+      },
+    },
+  });
+
+  if (!receiving) {
+    throw new AppError("Purchase receiving record not found", 404, "PURCHASE_RECEIVING_NOT_FOUND");
+  }
+
+  if (actor.role !== "SUPER_OWNER" && receiving.branchId !== actor.branchId) {
+    throw new AppError("Forbidden: Cannot disburse funds outside permitted branch", 403, "FORBIDDEN");
+  }
+
+  if (receiving.status !== "POSTED") {
+    throw new AppError("Only posted purchase receivings can be paid", 400, "INVALID_RECEIVING_STATUS");
+  }
+
+  const amount = Number(payload.amount);
+  if (!amount || amount <= 0) {
+    throw new AppError("Payment amount must be greater than 0", 400, "INVALID_PAYMENT_AMOUNT");
+  }
+
+  const currentGrandTotal = Number(receiving.grandTotal || 0);
+  const currentPaid = Number(receiving.amountPaid || 0);
+  const remainingBalance = Math.max(0, currentGrandTotal - currentPaid);
+
+  if (amount > remainingBalance + 0.01) {
+    throw new AppError(
+      `Payment amount (PHP ${amount.toFixed(2)}) exceeds remaining balance (PHP ${remainingBalance.toFixed(2)})`,
+      400,
+      "PAYMENT_EXCEEDS_BALANCE"
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    let cashTxId = null;
+    let cashBoxId = null;
+
+    if (payload.paymentMethod === "CASH") {
+      if (!payload.cashBoxId) {
+        throw new AppError("Please select a Cash Register or Vault for cash payment", 400, "CASH_BOX_REQUIRED");
+      }
+
+      const cashBox = await tx.cashBox.findFirst({
+        where: {
+          id: payload.cashBoxId,
+          branchId: receiving.branchId,
+          status: "ACTIVE",
+        },
+      });
+
+      if (!cashBox) {
+        throw new AppError("Active Cash Register or Vault not found in this branch", 404, "CASH_BOX_NOT_FOUND");
+      }
+
+      const boxBalance = Number(cashBox.currentBalance || 0);
+      if (boxBalance < amount) {
+        throw new AppError(
+          `Insufficient balance in ${cashBox.name}. Available: PHP ${boxBalance.toFixed(2)}, Required: PHP ${amount.toFixed(2)}`,
+          400,
+          "INSUFFICIENT_CASH_BOX_BALANCE"
+        );
+      }
+
+      cashBoxId = cashBox.id;
+
+      // Deduct cash box balance
+      await tx.cashBox.update({
+        where: { id: cashBox.id },
+        data: {
+          currentBalance: { decrement: amount },
+        },
+      });
+
+      // Record CASH_OUT store expense transaction
+      const cashTx = await tx.cashTransaction.create({
+        data: {
+          cashBoxId: cashBox.id,
+          type: "CASH_OUT",
+          amount,
+          description: `[EXPENSE: Supplier Payment / Delivery] Paid to ${receiving.supplier?.name || "Supplier"} for Delivery ${receiving.supplierDeliveryNo || receiving.receivingCode}`,
+          referenceNo: payload.referenceNo || receiving.supplierInvoiceNo || receiving.supplierDeliveryNo || receiving.receivingCode,
+          createdById: actor.id,
+          transactionDate: payload.paymentDate ? new Date(payload.paymentDate) : new Date(),
+        },
+      });
+      cashTxId = cashTx.id;
+    }
+
+    // Generate unique payment number
+    const prefix = `SPAY-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-`;
+    const count = await tx.purchaseReceivingPayment.count({
+      where: {
+        paymentNumber: { startsWith: prefix },
+      },
+    });
+    const paymentNumber = `${prefix}${String(count + 1).padStart(4, "0")}`;
+
+    // Create PurchaseReceivingPayment
+    const payment = await tx.purchaseReceivingPayment.create({
+      data: {
+        purchaseReceivingId: receiving.id,
+        branchId: receiving.branchId,
+        supplierId: receiving.supplierId,
+        paymentNumber,
+        paymentDate: payload.paymentDate ? new Date(payload.paymentDate) : new Date(),
+        amount,
+        paymentMethod: payload.paymentMethod,
+        referenceNo: payload.referenceNo ? payload.referenceNo.trim() : null,
+        notes: payload.notes ? payload.notes.trim() : null,
+        cashBoxId,
+        cashTransactionId: cashTxId,
+        createdById: actor.id,
+      },
+      include: {
+        createdBy: {
+          select: { id: true, fullName: true, username: true },
+        },
+      },
+    });
+
+    const newAmountPaid = currentPaid + amount;
+    const isFullyPaid = newAmountPaid >= currentGrandTotal - 0.01;
+    const newPaymentStatus = isFullyPaid ? "PAID" : "PARTIALLY_PAID";
+
+    const updatedReceiving = await tx.purchaseReceiving.update({
+      where: { id: receiving.id },
+      data: {
+        amountPaid: newAmountPaid,
+        paymentStatus: newPaymentStatus,
+        updatedById: actor.id,
+      },
+      select: {
+        id: true,
+        receivingCode: true,
+        grandTotal: true,
+        amountPaid: true,
+        paymentStatus: true,
+      },
+    });
+
+    await createAuditLog(
+      {
+        actor,
+        branchId: receiving.branchId,
+        action: "SUPPLIER_PAYMENT_RECORDED",
+        entityType: "PurchaseReceivingPayment",
+        entityId: payment.id,
+        description: `Supplier payment of PHP ${amount.toFixed(2)} recorded for delivery ${receiving.receivingCode} (${receiving.supplier?.name}) via ${payload.paymentMethod}`,
+        metadata: {
+          receivingId: receiving.id,
+          receivingCode: receiving.receivingCode,
+          supplierId: receiving.supplierId,
+          supplierName: receiving.supplier?.name,
+          paymentNumber,
+          amount,
+          paymentMethod: payload.paymentMethod,
+          cashBoxId,
+          cashTransactionId: cashTxId,
+          newAmountPaid,
+          newPaymentStatus,
+        },
+      },
+      tx
+    );
+
+    return {
+      payment,
+      receiving: updatedReceiving,
+      remainingBalance: Math.max(0, currentGrandTotal - newAmountPaid),
+    };
+  });
 };
 
 module.exports = {
@@ -1086,6 +1307,7 @@ module.exports = {
   getSupplierById,
   getSupplierHistory,
   getAccountsPayable,
+  recordSupplierPayment,
   updateSupplierById,
   updateSupplierStatusById,
 };
