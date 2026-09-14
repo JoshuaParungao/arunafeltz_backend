@@ -874,6 +874,27 @@ const calculateServiceSettlementSnapshot = (serviceJob) => {
   const collectedAmount = toMoney(
     directCollectedAmount + receivableCollectedAmount
   );
+
+  const posInvoiceMatch =
+    (serviceJob.serviceNotes || "").match(/\[BILLED IN POS:\s*Invoice\s*([A-Za-z0-9_-]+)\]/i) ||
+    (serviceJob.releaseNotes || "").match(/via POS invoice\s*([A-Za-z0-9_-]+)/i) ||
+    (serviceJob.servicePerformed || "").match(/\[BILLED IN POS:\s*Invoice\s*([A-Za-z0-9_-]+)\]/i);
+  const isBilledInPos = Boolean(posInvoiceMatch);
+
+  if (isBilledInPos) {
+    const paidAmount =
+      finalCharge > 0 ? finalCharge : collectedAmount > 0 ? collectedAmount : 0;
+    return {
+      paymentState: "PAID",
+      directCollectedAmount: paidAmount,
+      receivableCollectedAmount: 0,
+      collectedAmount: paidAmount,
+      remainingBalance: 0,
+      billedInPos: true,
+      posInvoiceCode: posInvoiceMatch?.[1] || null,
+    };
+  }
+
   const isTerminal = ["COMPLETED", "CANCELLED"].includes(serviceJob.status);
   const isFormallyReleased =
     Boolean(serviceJob.releasedAt) || serviceJob.status === "COMPLETED";
