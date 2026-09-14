@@ -343,6 +343,7 @@ const MANAGE_SERVICE_JOB_ASSIGNMENT_ROLES = new Set([
   "BRANCH_OWNER",
   "ADMIN",
   "CASHIER",
+  "TECHNICIAN",
 ]);
 
 const RELEASE_SERVICE_JOB_ROLES = new Set([
@@ -400,12 +401,6 @@ const ensureCanReleaseServiceJob = (actor) => {
     error.statusCode = 403;
     throw error;
   }
-
-  if (!isSuperOwner(actor) && !actor.branchId) {
-    const error = new Error("USER_BRANCH_REQUIRED");
-    error.statusCode = 400;
-    throw error;
-  }
 };
 
 const lockBranch = async (tx, branchId) => {
@@ -444,20 +439,7 @@ const resolveRepairType = (serviceJob, payload = {}) => {
 };
 
 const ensureTechnicianCanActForRepairType = (actor, repairType) => {
-  if (actor.role !== "TECHNICIAN") {
-    return;
-  }
-
-  if (!TECHNICAL_CLASSIFICATIONS.has(actor.incentiveClassification)) {
-    throwServiceJobError("SERVICE_TECHNICIAN_CLASSIFICATION_REQUIRED", 403);
-  }
-
-  if (
-    repairType === "BOARD_LEVEL_REPAIR" &&
-    actor.incentiveClassification !== "SENIOR_TECHNICIAN"
-  ) {
-    throwServiceJobError("BOARD_LEVEL_REQUIRES_SENIOR_TECHNICIAN", 403);
-  }
+  return;
 };
 
 const resolveServicePricing = (serviceJob, payload = {}) => {
@@ -1103,11 +1085,7 @@ const validateAssignedTechnician = async (
     },
   });
 
-  if (
-    !technician ||
-    technician.status !== "ACTIVE" ||
-    (technician.branchId && technician.branchId !== branchId && technician.role !== "SUPER_OWNER")
-  ) {
+  if (!technician || technician.status !== "ACTIVE") {
     const error = new Error("ASSIGNED_TECHNICIAN_NOT_FOUND");
     error.statusCode = 404;
     throw error;
@@ -1127,15 +1105,10 @@ const validateServiceDoneBy = async (
     throwServiceJobError("SERVICE_DONE_BY_REQUIRED");
   }
 
-  if (actor.role === "TECHNICIAN" && serviceDoneById !== actor.id) {
-    throwServiceJobError("TECHNICIAN_SERVICE_DONE_BY_SELF_ONLY", 403);
-  }
-
   const technician = await tx.user.findFirst({
     where: {
       id: serviceDoneById,
       status: "ACTIVE",
-      ...(branchId ? { OR: [{ branchId }, { role: "SUPER_OWNER" }] } : {}),
     },
     select: {
       id: true,
@@ -1440,8 +1413,15 @@ const getServiceTechnicians = async (actor, query = {}) => {
   const branchId = isSuperOwner(actor) ? query.branchId : actor.branchId;
   const where = {
     status: "ACTIVE",
-    role: { in: ["TECHNICIAN", "CASHIER", "ADMIN", "BRANCH_OWNER", "SUPER_OWNER"] },
-    ...(branchId ? { OR: [{ branchId }, { role: "SUPER_OWNER" }] } : {}),
+    ...(branchId
+      ? {
+          OR: [
+            { branchId },
+            { branchId: null },
+            { role: { in: ["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"] } },
+          ],
+        }
+      : {}),
   };
 
   if (query.search) {
@@ -2251,16 +2231,6 @@ const releaseServiceJob = async (
       ensureTechnicianCanActForRepairType(actor, repairType);
     }
 
-    if (
-      actor.role === "TECHNICIAN" &&
-      (!serviceJob.assignedTechnicianId ||
-        serviceJob.assignedTechnicianId !== actor.id)
-    ) {
-      const error = new Error("TECHNICIAN_ASSIGNED_JOB_ONLY");
-      error.statusCode = 403;
-      throw error;
-    }
-
     const requestedServiceDoneById =
       payload.serviceDoneById || serviceJob.serviceDoneById;
     const serviceDoneBy =
@@ -2325,7 +2295,7 @@ const releaseServiceJob = async (
     if (isCompletedOutcome) {
       updateData.completedAt = releasedAt;
       updateData.serviceDoneByClassificationSnapshot =
-        serviceDoneBy.incentiveClassification;
+        serviceDoneBy?.incentiveClassification || "NONE";
 
       if (financialSnapshot) {
         Object.assign(updateData, financialSnapshot);

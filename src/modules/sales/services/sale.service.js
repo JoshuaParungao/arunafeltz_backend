@@ -2929,6 +2929,32 @@ const cancelSale = async (actor, saleId, payload, database = prisma) => {
       });
     }
 
+    // Unlink any service jobs billed under this voided sale so they can be re-billed or released without repair
+    try {
+      const billedJobs = await tx.serviceJob.findMany({
+        where: {
+          branchId: sale.branchId,
+          serviceNotes: { contains: sale.receiptCode },
+        },
+      });
+      for (const bj of billedJobs) {
+        if (bj.serviceNotes?.includes(sale.receiptCode)) {
+          const cleaned = bj.serviceNotes
+            .replace(new RegExp(`\\[BILLED IN POS:[^\\]]*${sale.receiptCode}[^\\]]*\\]`, "gi"), "")
+            .trim();
+          await tx.serviceJob.update({
+            where: { id: bj.id },
+            data: {
+              serviceNotes: cleaned || null,
+              ...(bj.status === "COMPLETED" ? { status: "READY_FOR_RELEASE", releasedAt: null, releasedById: null } : {}),
+            },
+          });
+        }
+      }
+    } catch {
+      // Non-fatal if no service jobs matched
+    }
+
     const cancelledSale = await tx.sale.update({
       where: {
         id: sale.id,
