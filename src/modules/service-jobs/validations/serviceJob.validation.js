@@ -70,6 +70,14 @@ const optionalMarkupPercent = z.coerce
   .lt(100, "Mark up percentage must be less than 100")
   .optional();
 
+const optionalWarrantyDays = z.coerce
+  .number()
+  .int("Warranty days must be a whole number")
+  .min(0, "Warranty days cannot be negative")
+  .optional();
+
+const optionalWarrantyDate = z.coerce.date().optional();
+
 const serviceJobIdParamSchema = z.object({
   params: z.object({
     id: z.string().trim().min(1, "Service job ID is required"),
@@ -91,13 +99,19 @@ const createServiceJobSchema = z.object({
     deviceDescription: optionalString(500),
     problemDescription: optionalString(2000),
     diagnosis: optionalString(2000),
-    serviceNotes: optionalString(3000),
+    serviceNotes: optionalString(10000),
     customerNameSnapshot: optionalString(180),
     customerContactSnapshot: optionalString(250),
     serialNumber: optionalString(180),
     accessoriesReceived: optionalString(1200),
     receivingRemarks: optionalString(2000),
     isQuickService: z.boolean().optional().default(false),
+    warrantyDays: optionalWarrantyDays,
+    warrantyExpiresAt: optionalWarrantyDate,
+    isBackjob: z.boolean().optional(),
+    parentJobCode: optionalString(180),
+    parentJobId: z.string().trim().min(1).optional(),
+    backjobReason: optionalString(1000),
 
     estimatedServiceCharge: nonNegativeMoney.optional().default(0),
     baseServiceCharge: nonNegativeMoney.optional(),
@@ -123,12 +137,18 @@ const updateServiceJobStatusSchema = z.object({
       ])
       .optional(),
     diagnosis: optionalString(2000),
-    serviceNotes: optionalString(3000),
+    serviceNotes: optionalString(10000),
     repairType: repairType.optional(),
     serviceDoneById: z.string().trim().min(1).optional(),
     baseServiceCharge: nonNegativeMoney.optional(),
     markupPercent: optionalMarkupPercent,
     finalServiceCharge: nonNegativeMoney.optional(),
+    warrantyDays: optionalWarrantyDays,
+    warrantyExpiresAt: optionalWarrantyDate,
+    isBackjob: z.boolean().optional(),
+    parentJobCode: optionalString(180),
+    parentJobId: z.string().trim().min(1).optional(),
+    backjobReason: optionalString(1000),
     partsCost: nonNegativeMoney.optional(),
     partsMarkup: nonNegativeMoney.optional(),
     technicianFee: nonNegativeMoney.optional(),
@@ -167,8 +187,14 @@ const releaseServiceJobSchema = z.object({
       baseServiceCharge: nonNegativeMoney.optional(),
       markupPercent: optionalMarkupPercent,
       finalServiceCharge: nonNegativeMoney.optional(),
+      warrantyDays: optionalWarrantyDays,
+      warrantyExpiresAt: optionalWarrantyDate,
+      isBackjob: z.boolean().optional(),
+      parentJobCode: optionalString(180),
+      parentJobId: z.string().trim().min(1).optional(),
+      backjobReason: optionalString(1000),
       diagnosis: optionalString(2000),
-      serviceNotes: optionalString(3000),
+      serviceNotes: optionalString(10000),
     })
     .superRefine((body, context) => {
       if (body.releaseOutcome === "OTHER" && !body.releaseNotes) {

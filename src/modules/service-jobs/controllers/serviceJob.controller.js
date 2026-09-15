@@ -24,6 +24,7 @@ const handleServiceJobError = (error, res, next) => {
     TECHNICIAN_ASSIGNED_JOB_ONLY: [403, "Technicians may only perform lifecycle actions on jobs assigned to them."],
     SERVICE_JOB_RELEASE_FORBIDDEN: [403, "You are not allowed to release service jobs."],
     SERVICE_JOB_ALREADY_RELEASED: [400, "Service job has already been released."],
+    SERVICE_JOB_BALANCE_UNPAID: [400, "Cannot complete and release a Job Order with an outstanding balance. Please settle the remaining balance before releasing."],
     INVALID_SERVICE_JOB_RELEASE: [400, "The release outcome is not valid for the current service status."],
     SERVICE_PAYMENT_CREATE_FORBIDDEN: [403, "You are not allowed to create service payments."],
     SERVICE_PAYMENT_CANCEL_FORBIDDEN: [403, "You are not allowed to cancel service payments."],

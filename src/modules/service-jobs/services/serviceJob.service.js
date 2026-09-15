@@ -875,23 +875,63 @@ const calculateServiceSettlementSnapshot = (serviceJob) => {
     directCollectedAmount + receivableCollectedAmount
   );
 
-  const posInvoiceMatch =
-    (serviceJob.serviceNotes || "").match(/\[BILLED IN POS:\s*Invoice\s*([A-Za-z0-9_-]+)\]/i) ||
-    (serviceJob.releaseNotes || "").match(/via POS invoice\s*([A-Za-z0-9_-]+)/i) ||
-    (serviceJob.servicePerformed || "").match(/\[BILLED IN POS:\s*Invoice\s*([A-Za-z0-9_-]+)\]/i);
-  const isBilledInPos = Boolean(posInvoiceMatch);
+  // Extract all POS invoice billings (supports multi-invoice e.g. [BILLED IN POS: Invoice 00028 Amount: 1200])
+  const posRegex = /\[BILLED IN POS:\s*Invoice\s*([A-Za-z0-9_-]+)(?:\s+Amount:\s*([\d.]+))?\]/gi;
+  const notesText = [
+    serviceJob.serviceNotes || "",
+    serviceJob.releaseNotes || "",
+    serviceJob.servicePerformed || "",
+  ].join("\n");
+
+  const posMatches = [...notesText.matchAll(posRegex)];
+  const billedInvoices = [];
+  let posBilledAmount = 0;
+  let hasPosTagWithoutAmount = false;
+
+  for (const match of posMatches) {
+    const invCode = match[1];
+    if (!billedInvoices.includes(invCode)) {
+      billedInvoices.push(invCode);
+    }
+    if (match[2]) {
+      posBilledAmount += Number(match[2]);
+    } else {
+      hasPosTagWithoutAmount = true;
+    }
+  }
+
+  const legacyMatch = (serviceJob.releaseNotes || "").match(/via POS invoice\s*([A-Za-z0-9_-]+)/i);
+  if (legacyMatch && !billedInvoices.includes(legacyMatch[1])) {
+    billedInvoices.push(legacyMatch[1]);
+    hasPosTagWithoutAmount = true;
+  }
+
+  const isBilledInPos = billedInvoices.length > 0;
+
+  if (isBilledInPos && posBilledAmount === 0 && hasPosTagWithoutAmount) {
+    posBilledAmount = finalCharge;
+  }
+
+  const totalCollectedAmount = toMoney(
+    directCollectedAmount + receivableCollectedAmount + posBilledAmount
+  );
+  const posRemainingBalance = toMoney(Math.max(0, finalCharge - totalCollectedAmount));
 
   if (isBilledInPos) {
-    const paidAmount =
-      finalCharge > 0 ? finalCharge : collectedAmount > 0 ? collectedAmount : 0;
     return {
-      paymentState: "PAID",
-      directCollectedAmount: paidAmount,
-      receivableCollectedAmount: 0,
-      collectedAmount: paidAmount,
-      remainingBalance: 0,
+      paymentState:
+        posRemainingBalance <= 0
+          ? "PAID"
+          : totalCollectedAmount > 0
+            ? "PARTIALLY_PAID"
+            : "UNPAID",
+      directCollectedAmount: toMoney(directCollectedAmount + posBilledAmount),
+      receivableCollectedAmount,
+      collectedAmount: totalCollectedAmount,
+      remainingBalance: posRemainingBalance,
       billedInPos: true,
-      posInvoiceCode: posInvoiceMatch?.[1] || null,
+      posInvoiceCode: billedInvoices.join(", ") || null,
+      posBilledAmount: toMoney(posBilledAmount),
     };
   }
 
@@ -900,12 +940,18 @@ const calculateServiceSettlementSnapshot = (serviceJob) => {
     Boolean(serviceJob.releasedAt) || serviceJob.status === "COMPLETED";
 
   if (!isTerminal || !isFormallyReleased) {
+    const unreleasedRemaining = toMoney(Math.max(0, finalCharge - collectedAmount));
     return {
-      paymentState: "NOT_DUE",
+      paymentState:
+        collectedAmount > 0
+          ? unreleasedRemaining <= 0
+            ? "PAID"
+            : "PARTIALLY_PAID"
+          : "NOT_DUE",
       directCollectedAmount,
       receivableCollectedAmount,
       collectedAmount,
-      remainingBalance: finalCharge,
+      remainingBalance: unreleasedRemaining,
     };
   }
 
@@ -958,6 +1004,90 @@ const calculateServiceSettlementSnapshot = (serviceJob) => {
   };
 };
 
+const BACKJOB_RECORD_HEADER = "[BACKJOB_RECORD_V1]:";
+const SERVICE_TASKS_HEADER = "[SERVICE_TASKS_V1]:";
+
+const extractJobWarrantyAndBackjob = (serviceJob) => {
+  const notes = serviceJob.serviceNotes || "";
+  let warrantyDays = 0;
+
+  const tasksIdx = notes.indexOf(SERVICE_TASKS_HEADER);
+  if (tasksIdx !== -1) {
+    try {
+      const rest = notes.slice(tasksIdx + SERVICE_TASKS_HEADER.length);
+      const nextHeaderIdx = rest.search(/\[(INTAKE_RECORD_V1|SERVICE_PARTS_V1|BACKJOB_RECORD_V1)\]:/);
+      const jsonStr = nextHeaderIdx !== -1 ? rest.slice(0, nextHeaderIdx).trim() : rest.split("\n\n")[0].trim();
+      const parsed = JSON.parse(jsonStr);
+      if (Array.isArray(parsed)) {
+        for (const t of parsed) {
+          if (typeof t.warrantyDays === "number") {
+            warrantyDays = Math.max(warrantyDays, t.warrantyDays);
+          } else if (t.warrantyDuration) {
+            const match = String(t.warrantyDuration).match(/(\d+)/);
+            if (match) {
+              warrantyDays = Math.max(warrantyDays, parseInt(match[1], 10));
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const completionDate = serviceJob.releasedAt || serviceJob.completedAt;
+  let warrantyExpiresAt = null;
+  let isUnderWarranty = false;
+  let daysRemaining = 0;
+  if (completionDate && warrantyDays > 0) {
+    const startTime = new Date(completionDate).getTime();
+    const expiry = new Date(startTime + warrantyDays * 24 * 60 * 60 * 1000);
+    warrantyExpiresAt = expiry.toISOString();
+    isUnderWarranty = Date.now() <= expiry.getTime();
+    daysRemaining = isUnderWarranty
+      ? Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+      : 0;
+  }
+
+  let isBackjob = false;
+  let parentJobCode = null;
+  let parentJobId = null;
+  let backjobReason = "";
+
+  const bjIdx = notes.indexOf(BACKJOB_RECORD_HEADER);
+  if (bjIdx !== -1) {
+    try {
+      const rest = notes.slice(bjIdx + BACKJOB_RECORD_HEADER.length);
+      const nextHeaderIdx = rest.search(/\[(INTAKE_RECORD_V1|SERVICE_TASKS_V1|SERVICE_PARTS_V1)\]:/);
+      const jsonStr = nextHeaderIdx !== -1 ? rest.slice(0, nextHeaderIdx).trim() : rest.split("\n\n")[0].trim();
+      const parsed = JSON.parse(jsonStr);
+      isBackjob = true;
+      parentJobCode = parsed.originalJobCode || null;
+      parentJobId = parsed.originalJobId || null;
+      backjobReason = parsed.reason || "";
+    } catch {
+      // ignore
+    }
+  } else {
+    const titleMatch = (serviceJob.jobTitle || "").match(/\[BACKJOB(?::\s*([A-Za-z0-9_-]+))?\]/i);
+    if (titleMatch) {
+      isBackjob = true;
+      parentJobCode = titleMatch[1] || null;
+    }
+  }
+
+  return {
+    warrantyDays,
+    warrantyExpiresAt,
+    isUnderWarranty,
+    daysRemaining,
+    isBackjob,
+    parentJobCode,
+    parentJobId,
+    backjobReason,
+  };
+};
+
 const formatServiceJob = (serviceJob, actionHistory, actor = null) => {
   const customerContact = [
     serviceJob.customer?.mobileNumber,
@@ -966,6 +1096,7 @@ const formatServiceJob = (serviceJob, actionHistory, actor = null) => {
     .filter(Boolean)
     .join(" / ");
   const settlement = calculateServiceSettlementSnapshot(serviceJob);
+  const warrantyAndBackjob = extractJobWarrantyAndBackjob(serviceJob);
   const safePayments = (serviceJob.payments || []).map(
     stripIdempotencyMetadata
   );
@@ -989,6 +1120,7 @@ const formatServiceJob = (serviceJob, actionHistory, actor = null) => {
       serviceJob.customerContactSnapshot || customerContact || null,
     receivedBy: serviceJob.createdBy || null,
     ...settlement,
+    ...warrantyAndBackjob,
   };
 
   if (actionHistory) {
@@ -1419,6 +1551,7 @@ const createServiceJob = async (actor, payload, database = prisma) => {
           serviceMarkupAmount: serviceJob.serviceMarkupAmount
             ? toMoneyString(serviceJob.serviceMarkupAmount)
             : undefined,
+          ...extractJobWarrantyAndBackjob(serviceJob),
         },
       },
       tx
@@ -2276,6 +2409,27 @@ const releaseServiceJob = async (
         })
       : resolveServicePricing(serviceJob, payload);
 
+    if (isCompletedOutcome) {
+      const simulatedJob = {
+        ...serviceJob,
+        finalServiceCharge: pricing.finalServiceCharge,
+        serviceNotes:
+          payload.serviceNotes !== undefined
+            ? payload.serviceNotes
+            : serviceJob.serviceNotes,
+        releaseNotes:
+          payload.releaseNotes !== undefined
+            ? payload.releaseNotes
+            : serviceJob.releaseNotes,
+      };
+      const settlement = calculateServiceSettlementSnapshot(simulatedJob);
+      if (settlement.remainingBalance > 0) {
+        const error = new Error("SERVICE_JOB_BALANCE_UNPAID");
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
     const releasedAt = new Date();
     const nextStatus = isCompletedOutcome ? "COMPLETED" : "CANCELLED";
     const financialSnapshot = isCompletedOutcome
@@ -2366,6 +2520,7 @@ const releaseServiceJob = async (
           serviceDoneById: updatedServiceJob.serviceDoneById,
           serviceDoneByClassificationSnapshot:
             updatedServiceJob.serviceDoneByClassificationSnapshot,
+          ...extractJobWarrantyAndBackjob(updatedServiceJob),
           baseServiceCharge: optionalMoneyString(
             updatedServiceJob.baseServiceCharge
           ),
@@ -2590,6 +2745,7 @@ const updateServiceJobStatus = async (
           serviceDoneById: updatedServiceJob.serviceDoneById,
           serviceDoneByClassificationSnapshot:
             updatedServiceJob.serviceDoneByClassificationSnapshot,
+          ...extractJobWarrantyAndBackjob(updatedServiceJob),
           baseServiceCharge: optionalMoneyString(
             updatedServiceJob.baseServiceCharge
           ),
