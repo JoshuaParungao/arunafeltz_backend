@@ -1004,12 +1004,32 @@ const calculateServiceSettlementSnapshot = (serviceJob) => {
   };
 };
 
+const INTAKE_RECORD_HEADER = "[INTAKE_RECORD_V1]:";
 const BACKJOB_RECORD_HEADER = "[BACKJOB_RECORD_V1]:";
 const SERVICE_TASKS_HEADER = "[SERVICE_TASKS_V1]:";
 
 const extractJobWarrantyAndBackjob = (serviceJob) => {
   const notes = serviceJob.serviceNotes || "";
   let warrantyDays = 0;
+
+  if (typeof serviceJob.warrantyDays === "number" && serviceJob.warrantyDays > 0) {
+    warrantyDays = Math.max(warrantyDays, serviceJob.warrantyDays);
+  }
+
+  const intakeIdx = notes.indexOf(INTAKE_RECORD_HEADER);
+  if (intakeIdx !== -1) {
+    try {
+      const rest = notes.slice(intakeIdx + INTAKE_RECORD_HEADER.length);
+      const nextHeaderIdx = rest.search(/\[(SERVICE_TASKS_V1|SERVICE_PARTS_V1|BACKJOB_RECORD_V1)\]:/);
+      const jsonStr = nextHeaderIdx !== -1 ? rest.slice(0, nextHeaderIdx).trim() : rest.split("\n\n")[0].trim();
+      const parsed = JSON.parse(jsonStr);
+      if (typeof parsed?.serviceWarrantyDays === "number") {
+        warrantyDays = Math.max(warrantyDays, parsed.serviceWarrantyDays);
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   const tasksIdx = notes.indexOf(SERVICE_TASKS_HEADER);
   if (tasksIdx !== -1) {
