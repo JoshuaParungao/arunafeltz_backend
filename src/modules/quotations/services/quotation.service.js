@@ -2,6 +2,7 @@ const prisma = require("../../../config/prisma");
 
 const { BRANCH_SCOPED_ROLES } = require("../../../constants/roles");
 const { createAuditLog } = require("../../../utils/auditLogger");
+const logger = require("../../../utils/logger");
 
 const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
 const STAFF_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
@@ -565,6 +566,7 @@ const parsePagination = (query) => {
 };
 
 const getQuotations = async (actor, query) => {
+  cleanupExpiredQuotations().catch(() => {});
   const branchId = resolveBranchFilterForRead(actor, query.branchId);
   const search = query.search ? String(query.search).trim() : "";
 
@@ -1153,6 +1155,31 @@ const updateQuotationStatus = async (actor, quotationId, payload) => {
   });
 };
 
+const cleanupExpiredQuotations = async () => {
+  try {
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+    const result = await prisma.quotation.deleteMany({
+      where: {
+        status: {
+          not: "CONVERTED",
+        },
+        createdAt: {
+          lt: ninetyDaysAgo,
+        },
+      },
+    });
+
+    if (result.count > 0) {
+      logger.info(`[QUOTATION CLEANUP] Deleted ${result.count} unproceeded quotation(s) older than 3 months`);
+    }
+    return result.count;
+  } catch (err) {
+    logger.warn(`[QUOTATION CLEANUP] Warning during quotation cleanup: ${err.message}`);
+    return 0;
+  }
+};
+
 module.exports = {
   createQuotation,
   getQuotations,
@@ -1160,6 +1187,7 @@ module.exports = {
   getQuotationById,
   updateQuotation,
   updateQuotationStatus,
+  cleanupExpiredQuotations,
   testInternals: {
     applyMarkupToBasePrice,
     buildQuotationItems,

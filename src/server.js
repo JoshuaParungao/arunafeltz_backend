@@ -92,6 +92,18 @@ const server = app.listen(env.port, () => {
   } catch (err) {
     logger.warn("Could not load taxonomy seed helper", { error: err.message });
   }
+  try {
+    const { cleanupExpiredQuotations } = require("./modules/quotations/services/quotation.service");
+    cleanupExpiredQuotations().catch((err) => {
+      logger.warn("Initial quotation cleanup warning", { error: err.message });
+    });
+    const quotationCleanupInterval = setInterval(() => {
+      cleanupExpiredQuotations().catch(() => {});
+    }, 12 * 60 * 60 * 1000);
+    quotationCleanupInterval.unref();
+  } catch (err) {
+    logger.warn("Could not initialize quotation cleanup scheduler", { error: err.message });
+  }
 });
 
 let isShuttingDown = false;
