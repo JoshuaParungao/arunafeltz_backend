@@ -1153,7 +1153,7 @@ const resolveSupplierRma = async (actor, warrantyClaimId, payload) => {
     const branchId = warrantyClaim.branchId;
     const outcome = payload.outcome;
 
-    if (!["REPLACED_BY_SUPPLIER", "REPAIRED", "REJECTED"].includes(outcome)) {
+    if (!["REPLACED_BY_SUPPLIER", "CHANGE_MODEL", "CREDIT_MEMO", "REPAIRED", "REJECTED"].includes(outcome)) {
       const error = new Error("INVALID_SUPPLIER_OUTCOME");
       error.statusCode = 400;
       throw error;
@@ -1204,7 +1204,56 @@ const resolveSupplierRma = async (actor, warrantyClaimId, payload) => {
       return updatedClaim;
     }
 
-    const targetItemId = warrantyClaim.itemId;
+    if (outcome === "CREDIT_MEMO") {
+      const cmNumber = String(payload.creditMemoNumber || "").trim();
+      const cmAmount = Number(payload.creditMemoAmount || 0);
+
+      if (warrantyClaim.serialId) {
+        await tx.itemSerial.update({
+          where: { id: warrantyClaim.serialId },
+          data: {
+            status: "DAMAGED",
+            updatedById: actor.id,
+          },
+        });
+      }
+
+      const cmNote = `Supplier Credit Memo: ${cmNumber || "CM Issued"}${cmAmount > 0 ? ` (₱${cmAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })})` : ""} - to deduct from AP payables`;
+
+      const updatedClaim = await tx.warrantyClaim.update({
+        where: { id: warrantyClaim.id },
+        data: {
+          status: "REPLACED",
+          replacedAt: new Date(),
+          actionTaken: `Supplier issued Credit Memo ${cmNumber || "CM"}${cmAmount > 0 ? ` (Amount: ₱${cmAmount.toFixed(2)})` : ""}. ${payload.actionTaken || ""}`.trim(),
+          remarks: `${warrantyClaim.remarks ? warrantyClaim.remarks + " | " : ""}${cmNote}`.trim(),
+          statusUpdatedById: actor.id,
+          updatedById: actor.id,
+        },
+        include: WARRANTY_CLAIM_INCLUDE,
+      });
+
+      await createAuditLog({
+        actor,
+        branchId,
+        action: "WARRANTY_SUPPLIER_CREDIT_MEMO",
+        entityType: "WarrantyClaim",
+        entityId: updatedClaim.id,
+        description: `Supplier resolved ${updatedClaim.claimCode} via Credit Memo (${cmNumber || "N/A"})`,
+        metadata: {
+          creditMemoNumber: cmNumber,
+          creditMemoAmount: cmAmount,
+          supplierName: warrantyClaim.supplierName,
+        },
+      }, tx);
+
+      return updatedClaim;
+    }
+
+    const targetItemId = (outcome === "CHANGE_MODEL" && payload.replacementItemId)
+      ? payload.replacementItemId
+      : warrantyClaim.itemId;
+
     let targetBatch = null;
 
     if (targetItemId) {
@@ -1216,6 +1265,23 @@ const resolveSupplierRma = async (actor, warrantyClaimId, payload) => {
         },
         orderBy: { createdAt: "desc" },
       });
+
+      if (!targetBatch) {
+        const batchCode = `BATCH-RMA-${Date.now().toString().slice(-6)}`;
+        targetBatch = await tx.inventoryBatch.create({
+          data: {
+            batchCode,
+            quantityReceived: 0,
+            quantityAvailable: 0,
+            unitCost: 0,
+            status: "ACTIVE",
+            itemId: targetItemId,
+            branchId,
+            createdById: actor.id,
+            updatedById: actor.id,
+          },
+        });
+      }
     }
 
     if (targetBatch) {
@@ -1249,15 +1315,53 @@ const resolveSupplierRma = async (actor, warrantyClaimId, payload) => {
           createdById: actor.id,
         },
       });
+
+      if (payload.newSerial && payload.newSerial.trim()) {
+        const serialNo = payload.newSerial.trim();
+        const existingSerial = await tx.itemSerial.findFirst({
+          where: {
+            branchId,
+            serialNumber: serialNo,
+          },
+        });
+
+        if (existingSerial) {
+          await tx.itemSerial.update({
+            where: { id: existingSerial.id },
+            data: {
+              status: "AVAILABLE",
+              itemId: targetItemId,
+              batchId: targetBatch.id,
+              updatedById: actor.id,
+            },
+          });
+        } else {
+          await tx.itemSerial.create({
+            data: {
+              serialNumber: serialNo,
+              status: "AVAILABLE",
+              itemId: targetItemId,
+              batchId: targetBatch.id,
+              branchId,
+              createdById: actor.id,
+              updatedById: actor.id,
+            },
+          });
+        }
+      }
     }
 
-    const nextStatus = outcome === "REPLACED_BY_SUPPLIER" ? "REPLACED" : "REPAIRED";
+    const nextStatus = (outcome === "REPLACED_BY_SUPPLIER" || outcome === "CHANGE_MODEL") ? "REPLACED" : "REPAIRED";
+    const actionDesc = outcome === "CHANGE_MODEL"
+      ? `Supplier replaced with changed model (phased-out replacement). ${payload.actionTaken || ""}`.trim()
+      : `Supplier resolved with ${outcome}. ${payload.actionTaken || ""}`.trim();
+
     const updatedClaim = await tx.warrantyClaim.update({
       where: { id: warrantyClaim.id },
       data: {
         status: nextStatus,
         ...(nextStatus === "REPLACED" ? { replacedAt: new Date() } : { repairedAt: new Date() }),
-        actionTaken: `Supplier resolved with ${outcome}. ${payload.actionTaken || ""}`.trim(),
+        actionTaken: actionDesc,
         remarks: `${warrantyClaim.remarks ? warrantyClaim.remarks + " | " : ""}Received from supplier (${outcome}) on ${new Date().toLocaleDateString("en-PH")}`.trim(),
         statusUpdatedById: actor.id,
         updatedById: actor.id,
@@ -1272,7 +1376,11 @@ const resolveSupplierRma = async (actor, warrantyClaimId, payload) => {
       entityType: "WarrantyClaim",
       entityId: updatedClaim.id,
       description: `Supplier resolved RMA for ${updatedClaim.claimCode} (${outcome})`,
-      metadata: { outcome },
+      metadata: {
+        outcome,
+        replacementItemId: payload.replacementItemId || null,
+        newSerial: payload.newSerial || null,
+      },
     }, tx);
 
     return updatedClaim;
