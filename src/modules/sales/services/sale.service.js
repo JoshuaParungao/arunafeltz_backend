@@ -1585,6 +1585,16 @@ const getSales = async (actor, query) => {
           },
         },
       },
+      {
+        items: {
+          some: {
+            description: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        },
+      },
     ];
   }
 
