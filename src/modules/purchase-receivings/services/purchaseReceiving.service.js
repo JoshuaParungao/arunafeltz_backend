@@ -1480,15 +1480,9 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
       );
     }
 
-    if (existingBatch) {
-      throw new AppError(
-        "Batch code already exists in this branch and cannot be reused",
-        409,
-        "BATCH_CODE_ALREADY_EXISTS"
-      );
-    }
-
-    const previousQuantity = "0";
+    const previousQuantity = existingBatch
+      ? existingBatch.quantityAvailable.toString()
+      : "0";
 
     const referenceNo =
       receiving.supplierInvoiceNo ||
@@ -1498,8 +1492,69 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
 
     let batch;
 
-    try {
-      batch = await tx.inventoryBatch.create({
+    if (existingBatch) {
+      const preSoldQty = Math.max(
+        0,
+        Number(existingBatch.quantityIn || 0) - Number(existingBatch.quantityAvailable || 0)
+      );
+
+      const initialAvailable = item.isSerialized
+        ? quantityReceived
+        : Math.max(0, quantityReceived - preSoldQty);
+
+      batch = await tx.inventoryBatch.update({
+        where: { id: existingBatch.id },
+        data: {
+          quantityIn: quantityReceived.toString(),
+          quantityAvailable: initialAvailable.toString(),
+          unitCost: netAcquisitionUnitCost.toFixed(2),
+          operationalUnitCost: netAcquisitionUnitCost.toFixed(2),
+          sellingPrice1: item.price1.toString(),
+          sellingPrice2: item.price2.toString(),
+          sellingPrice3: item.price3.toString(),
+          sellingPrice4: item.price4.toString(),
+          sellingPrice5: item.price5.toString(),
+          supplierName: receiving.supplierNameSnapshot,
+          referenceNo,
+          remarks: `Purchase receiving ${receiving.receivingCode}${
+            preSoldQty > 0 ? ` (Reconciled pre-sale: ${preSoldQty} sold)` : ""
+          }`,
+          expiryDate: receivingItem.expiryDate || existingBatch.expiryDate || null,
+          status: initialAvailable > 0 ? "ACTIVE" : "DEPLETED",
+          updatedById: actor.id,
+        },
+      });
+
+      if (!item.isSerialized && preSoldQty > 0) {
+        const preSoldMovementCode = await createPurchaseStockInMovementCode(
+          tx,
+          receiving.branchId,
+          item.branch.code,
+          item.itemCode
+        );
+
+        await tx.inventoryMovement.create({
+          data: {
+            branchId: receiving.branchId,
+            itemId: item.id,
+            batchId: batch.id,
+            movementCode: preSoldMovementCode,
+            type: "STOCK_OUT",
+            source: "SALE",
+            quantity: preSoldQty.toString(),
+            previousQuantity: quantityReceived.toString(),
+            newQuantity: initialAvailable.toString(),
+            unitCost: netAcquisitionUnitCost.toFixed(2),
+            referenceNo,
+            remarks: `Auto-deducted ${preSoldQty} unit(s) already sold in POS prior to PO receiving ${receiving.receivingCode}`,
+            createdById: actor.id,
+            updatedById: actor.id,
+          },
+        });
+      }
+    } else {
+      try {
+        batch = await tx.inventoryBatch.create({
           data: {
             branchId: receiving.branchId,
             itemId: item.id,
@@ -1522,16 +1577,17 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
             updatedById: actor.id,
           },
         });
-    } catch (error) {
-      if (error?.code === "P2002") {
-        throw new AppError(
-          "Batch code already exists in this branch and cannot be reused",
-          409,
-          "BATCH_CODE_ALREADY_EXISTS"
-        );
-      }
+      } catch (error) {
+        if (error?.code === "P2002") {
+          throw new AppError(
+            "Batch code already exists in this branch and cannot be reused",
+            409,
+            "BATCH_CODE_ALREADY_EXISTS"
+          );
+        }
 
-      throw error;
+        throw error;
+      }
     }
 
     const newQuantity = batch.quantityAvailable.toString();

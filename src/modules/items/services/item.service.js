@@ -302,42 +302,17 @@ const getActiveCategoryOrThrow = async (categoryId) => {
   return category;
 };
 
-const validateItemAttributes = (attributes, attributeSchema) => {
-  if (!Array.isArray(attributeSchema) || attributeSchema.length === 0) {
-    if (attributes && typeof attributes === "object" && !Array.isArray(attributes)) {
-      return attributes;
+const validateItemAttributes = (attributes) => {
+  if (attributes && typeof attributes === "object" && !Array.isArray(attributes)) {
+    const cleaned = {};
+    for (const [key, val] of Object.entries(attributes)) {
+      if (val !== undefined && val !== null && String(val).trim() !== "") {
+        cleaned[key] = typeof val === "string" ? val.trim() : val;
+      }
     }
-    return null;
+    return Object.keys(cleaned).length > 0 ? cleaned : null;
   }
-
-  const attrs = attributes && typeof attributes === "object" && !Array.isArray(attributes)
-    ? attributes
-    : {};
-
-  const missing = [];
-
-  for (const field of attributeSchema) {
-    const fieldName = field.name;
-    const value = attrs[fieldName];
-
-    if (value === undefined || value === null || String(value).trim() === "") {
-      missing.push(fieldName);
-    }
-  }
-
-  if (missing.length > 0) {
-    throw new AppError(
-      `Please fill in all required specifications: ${missing.join(", ")}`,
-      400,
-      "SPECIFICATIONS_INCOMPLETE"
-    );
-  }
-
-  const cleaned = {};
-  for (const [key, val] of Object.entries(attrs)) {
-    cleaned[key] = typeof val === "string" ? val.trim() : val;
-  }
-  return cleaned;
+  return null;
 };
 
 const getActiveUnitOrThrow = async (unitId) => {
@@ -504,9 +479,9 @@ const createItem = async (payload, actor) => {
 
   await assertItemCodeIsUnique(branch.id, itemCode);
 
-  const attributes = validateItemAttributes(payload.attributes, category.attributeSchema);
+  const attributes = validateItemAttributes(payload.attributes);
 
-  return prisma.item.create({
+  const createdItem = await prisma.item.create({
     data: {
       itemCode,
       itemName: payload.itemName.trim(),
@@ -538,6 +513,140 @@ const createItem = async (payload, actor) => {
     },
     select: ITEM_SELECT,
   });
+
+  // Auto-propagate item across other active branches with 0 stock
+  try {
+    const otherBranches = await prisma.branch.findMany({
+      where: {
+        id: { not: branch.id },
+        status: "ACTIVE",
+      },
+      select: { id: true, code: true, name: true },
+    });
+
+    for (const targetBranch of otherBranches) {
+      const existingInTarget = await prisma.item.findUnique({
+        where: {
+          branchId_itemCode: {
+            branchId: targetBranch.id,
+            itemCode: createdItem.itemCode,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!existingInTarget) {
+        let targetCategoryId = null;
+
+        let matchedCat = await prisma.itemCategory.findFirst({
+          where: {
+            branchId: targetBranch.id,
+            OR: [
+              { categoryCode: category.categoryCode },
+              { name: { equals: category.name, mode: "insensitive" } },
+            ],
+          },
+          select: { id: true },
+        });
+
+        if (!matchedCat && category.parentId) {
+          const parentCat = await prisma.itemCategory.findUnique({
+            where: { id: category.parentId },
+            select: { id: true, categoryCode: true, name: true, description: true },
+          });
+
+          if (parentCat) {
+            let targetParentCat = await prisma.itemCategory.findFirst({
+              where: {
+                branchId: targetBranch.id,
+                OR: [
+                  { categoryCode: parentCat.categoryCode },
+                  { name: { equals: parentCat.name, mode: "insensitive" } },
+                ],
+              },
+              select: { id: true },
+            });
+
+            if (!targetParentCat) {
+              targetParentCat = await prisma.itemCategory.create({
+                data: {
+                  branchId: targetBranch.id,
+                  categoryCode: parentCat.categoryCode,
+                  name: parentCat.name,
+                  description: parentCat.description,
+                  status: "ACTIVE",
+                  createdById: actor.id,
+                  updatedById: actor.id,
+                },
+                select: { id: true },
+              });
+            }
+
+            matchedCat = await prisma.itemCategory.create({
+              data: {
+                branchId: targetBranch.id,
+                categoryCode: category.categoryCode,
+                name: category.name,
+                description: category.description,
+                parentId: targetParentCat.id,
+                status: "ACTIVE",
+                createdById: actor.id,
+                updatedById: actor.id,
+              },
+              select: { id: true },
+            });
+          }
+        } else if (!matchedCat) {
+          matchedCat = await prisma.itemCategory.create({
+            data: {
+              branchId: targetBranch.id,
+              categoryCode: category.categoryCode,
+              name: category.name,
+              description: category.description,
+              status: "ACTIVE",
+              createdById: actor.id,
+              updatedById: actor.id,
+            },
+            select: { id: true },
+          });
+        }
+
+        targetCategoryId = matchedCat ? matchedCat.id : category.id;
+
+        await prisma.item.create({
+          data: {
+            itemCode: createdItem.itemCode,
+            itemName: createdItem.itemName,
+            description: createdItem.description,
+            barcode: createdItem.barcode,
+            brand: createdItem.brand,
+            modelName: createdItem.modelName,
+            status: "ACTIVE",
+            attributes: createdItem.attributes,
+            isSerialized: createdItem.isSerialized,
+            hasWarranty: createdItem.hasWarranty,
+            costPrice: createdItem.costPrice,
+            price1: createdItem.price1,
+            price2: createdItem.price2,
+            price3: createdItem.price3,
+            price4: createdItem.price4,
+            price5: createdItem.price5,
+            minimumStock: "0.00",
+            reorderLevel: "0.00",
+            branchId: targetBranch.id,
+            categoryId: targetCategoryId,
+            unitId: createdItem.unitId,
+            createdById: actor.id,
+            updatedById: actor.id,
+          },
+        });
+      }
+    }
+  } catch (propagateErr) {
+    console.error("Auto-propagation to other branches non-fatal error:", propagateErr);
+  }
+
+  return createdItem;
 };
 
 const listItems = async (filters = {}, actor) => {
@@ -749,13 +858,8 @@ const updateItemById = async (itemId, payload, actor) => {
     updateData.categoryId = targetCategory.id;
   }
 
-  if (payload.attributes !== undefined || targetCategory) {
-    const effectiveCategory = targetCategory || (await getActiveCategoryOrThrow(existingItem.categoryId));
-    if (payload.attributes !== undefined) {
-      updateData.attributes = validateItemAttributes(payload.attributes, effectiveCategory.attributeSchema);
-    } else if (targetCategory && Array.isArray(effectiveCategory.attributeSchema) && effectiveCategory.attributeSchema.length > 0) {
-      updateData.attributes = validateItemAttributes(existingItem.attributes, effectiveCategory.attributeSchema);
-    }
+  if (payload.attributes !== undefined) {
+    updateData.attributes = validateItemAttributes(payload.attributes);
   }
 
   if (payload.unitId !== undefined) {

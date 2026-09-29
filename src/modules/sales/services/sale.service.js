@@ -1001,13 +1001,35 @@ const buildSaleItems = async (
           if (fallbackBatch) {
             targetBatch = fallbackBatch;
             resolvedBatchId = fallbackBatch.id;
+          } else {
+            targetBatch = null;
           }
         }
 
         if (!targetBatch) {
-          const error = new Error("BATCH_NOT_FOUND");
-          error.statusCode = 404;
-          throw error;
+          const autoBatchCode = await generateUniqueAutoBatchCode(tx, branchId);
+
+          targetBatch = await tx.inventoryBatch.create({
+            data: {
+              branchId,
+              itemId: item.id,
+              batchCode: autoBatchCode,
+              quantityIn: quantity.toString(),
+              quantityAvailable: quantity.toString(),
+              unitCost: item.costPrice.toString(),
+              operationalUnitCost: item.costPrice.toString(),
+              sellingPrice1: item.price1.toString(),
+              sellingPrice2: item.price2.toString(),
+              sellingPrice3: item.price3.toString(),
+              sellingPrice4: item.price4.toString(),
+              sellingPrice5: item.price5.toString(),
+              remarks: "Auto-created from POS checkout (legacy stock / pre-sale)",
+              status: "ACTIVE",
+              createdById: actor.id,
+              updatedById: actor.id,
+            },
+          });
+          resolvedBatchId = targetBatch.id;
         }
 
         const deduction = await deductBatchStock({
