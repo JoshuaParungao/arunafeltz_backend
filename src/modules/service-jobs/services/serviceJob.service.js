@@ -446,13 +446,25 @@ const resolveServicePricing = (serviceJob, payload = {}) => {
   if (
     payload.partsCost !== undefined ||
     payload.technicianFee !== undefined ||
-    payload.partsMarkup !== undefined
+    payload.partsMarkup !== undefined ||
+    payload.serviceRate !== undefined
   ) {
     const cost = toMoney(payload.partsCost || 0);
     const tech = toMoney(payload.technicianFee || 0);
     const markup = toMoney(payload.partsMarkup || 0);
-    const totalBase = toMoney(cost + tech);
-    const finalCharge = toMoney(cost + tech + markup);
+    const serviceRate = toMoney(
+      payload.serviceRate !== undefined
+        ? payload.serviceRate
+        : payload.baseServiceCharge !== undefined
+        ? Math.max(0, toMoney(payload.baseServiceCharge) - cost - markup)
+        : 0
+    );
+    const totalBase = toMoney(cost + serviceRate);
+    const finalCharge = toMoney(
+      payload.finalServiceCharge !== undefined && Number(payload.finalServiceCharge) > 0
+        ? payload.finalServiceCharge
+        : cost + markup + (serviceRate > 0 ? serviceRate : tech)
+    );
     return {
       baseServiceCharge: toMoneyString(
         totalBase > 0
@@ -1310,6 +1322,7 @@ const buildCompletedFinancialSnapshot = async (
     partsCost,
     partsMarkup,
     technicianFee,
+    serviceRate,
   }
 ) => {
   const baseServiceCharge = Number(pricing.baseServiceCharge);
@@ -1382,15 +1395,36 @@ const buildCompletedFinancialSnapshot = async (
   if (
     partsCost !== undefined ||
     technicianFee !== undefined ||
-    partsMarkup !== undefined
+    partsMarkup !== undefined ||
+    serviceRate !== undefined
   ) {
     const cost = toMoney(partsCost || 0);
-    const techCut = toMoney(technicianFee || 0);
+    let techCut = toMoney(technicianFee || 0);
     const finalCharge = toMoney(pricing.finalServiceCharge);
+    const markup = toMoney(partsMarkup || 0);
+    const laborRate = toMoney(
+      serviceRate !== undefined && Number(serviceRate) > 0
+        ? serviceRate
+        : Math.max(0, finalCharge - cost - markup)
+    );
+
+    // If tech cut is 0 or not passed, auto-compute strictly from laborRate using technician's incentive rule
+    if (techCut === 0 && effectiveAccountConfig && laborRate > 0) {
+      const incentiveEnabled =
+        repairType === "BOARD_LEVEL_REPAIR"
+          ? effectiveAccountConfig.boardRepairEnabled
+          : effectiveAccountConfig.ordinaryRepairEnabled;
+      const configuredRate =
+        repairType === "BOARD_LEVEL_REPAIR"
+          ? effectiveAccountConfig.boardRepairRatePercent
+          : effectiveAccountConfig.ordinaryRepairRatePercent;
+      if (incentiveEnabled && configuredRate !== null) {
+        techCut = toMoney((laborRate * Number(configuredRate)) / 100);
+      }
+    }
+
     const companyShare = toMoney(
-      partsMarkup !== undefined
-        ? partsMarkup
-        : Math.max(finalCharge - cost - techCut, 0)
+      Math.max(0, finalCharge - cost - techCut)
     );
     const pool = toMoney(cost + techCut);
     const costPercent = finalCharge > 0 ? (pool / finalCharge) * 100 : 0;
@@ -1460,13 +1494,25 @@ const createServiceJob = async (actor, payload, database = prisma) => {
   if (
     payload.partsCost !== undefined ||
     payload.technicianFee !== undefined ||
-    payload.partsMarkup !== undefined
+    payload.partsMarkup !== undefined ||
+    payload.serviceRate !== undefined
   ) {
     const cost = toMoney(payload.partsCost || 0);
     const tech = toMoney(payload.technicianFee || 0);
     const markup = toMoney(payload.partsMarkup || 0);
-    const totalBase = toMoney(cost + tech);
-    const finalCharge = toMoney(cost + tech + markup);
+    const serviceRate = toMoney(
+      payload.serviceRate !== undefined
+        ? payload.serviceRate
+        : payload.baseServiceCharge !== undefined
+        ? Math.max(0, toMoney(payload.baseServiceCharge) - cost - markup)
+        : 0
+    );
+    const totalBase = toMoney(cost + serviceRate);
+    const finalCharge = toMoney(
+      payload.finalServiceCharge !== undefined && Number(payload.finalServiceCharge) > 0
+        ? payload.finalServiceCharge
+        : cost + markup + (serviceRate > 0 ? serviceRate : tech)
+    );
     pricing = {
       baseServiceCharge: toMoneyString(
         totalBase > 0 ? totalBase : payload.baseServiceCharge || 0
@@ -1609,7 +1655,7 @@ const getServiceTechnicians = async (actor, query = {}) => {
     ];
   }
 
-  return prisma.user.findMany({
+  const technicians = await prisma.user.findMany({
     where,
     select: {
       id: true,
@@ -1618,8 +1664,42 @@ const getServiceTechnicians = async (actor, query = {}) => {
       role: true,
       branchId: true,
       incentiveClassification: true,
+      incentiveAccountConfigVersions: {
+        orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
+        take: 1,
+        select: {
+          id: true,
+          classificationSnapshot: true,
+          ordinaryRepairEnabled: true,
+          ordinaryRepairRatePercent: true,
+          boardRepairEnabled: true,
+          boardRepairRatePercent: true,
+          repairFee: true,
+        },
+      },
     },
     orderBy: [{ fullName: "asc" }, { username: "asc" }],
+  });
+
+  return technicians.map((tech) => {
+    const latestConfig = tech.incentiveAccountConfigVersions?.[0] || null;
+    return {
+      ...tech,
+      ordinaryRepairEnabled: latestConfig?.ordinaryRepairEnabled ?? false,
+      ordinaryRepairRatePercent:
+        latestConfig?.ordinaryRepairRatePercent !== null && latestConfig?.ordinaryRepairRatePercent !== undefined
+          ? Number(latestConfig.ordinaryRepairRatePercent)
+          : null,
+      boardRepairEnabled: latestConfig?.boardRepairEnabled ?? false,
+      boardRepairRatePercent:
+        latestConfig?.boardRepairRatePercent !== null && latestConfig?.boardRepairRatePercent !== undefined
+          ? Number(latestConfig.boardRepairRatePercent)
+          : null,
+      repairFee:
+        latestConfig?.repairFee !== null && latestConfig?.repairFee !== undefined
+          ? Number(latestConfig.repairFee)
+          : null,
+    };
   });
 };
 
@@ -2462,6 +2542,7 @@ const releaseServiceJob = async (
           partsCost: payload.partsCost,
           partsMarkup: payload.partsMarkup,
           technicianFee: payload.technicianFee,
+          serviceRate: payload.serviceRate,
         })
       : null;
     const updateData = {
