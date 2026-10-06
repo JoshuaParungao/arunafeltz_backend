@@ -176,14 +176,18 @@ const calculateRepairFinancialAmounts = ({
   };
 };
 
-const ensureCanCreateServiceJob = (actor) => {
+const ensureCanCreateServiceJob = (actor, payload = {}) => {
   if (!CREATE_SERVICE_JOB_ROLES.has(actor.role)) {
     const error = new Error("SERVICE_JOB_CREATE_FORBIDDEN");
     error.statusCode = 403;
     throw error;
   }
 
-  if (!isSuperOwner(actor) && !actor.branchId) {
+  const isGlobalUser =
+    isSuperOwner(actor) ||
+    actor.role === "ADMIN" ||
+    actor.role === "BRANCH_OWNER";
+  if (!isGlobalUser && !actor.branchId && !payload?.branchId) {
     const error = new Error("USER_BRANCH_REQUIRED");
     error.statusCode = 400;
     throw error;
@@ -1170,37 +1174,22 @@ const formatServiceJob = (serviceJob, actionHistory, actor = null) => {
 };
 
 const resolveBranchForCreate = async (tx, actor, payload) => {
-  if (isSuperOwner(actor)) {
-    if (!payload.branchId) {
-      const error = new Error("BRANCH_ID_REQUIRED");
-      error.statusCode = 400;
-      throw error;
-    }
+  const isGlobalUser =
+    isSuperOwner(actor) ||
+    actor.role === "ADMIN" ||
+    actor.role === "BRANCH_OWNER";
+  const targetBranchId =
+    (isGlobalUser && payload.branchId) ? payload.branchId : (actor.branchId || payload.branchId);
 
-    const branch = await tx.branch.findUnique({
-      where: {
-        id: payload.branchId,
-      },
-      select: {
-        id: true,
-        code: true,
-        name: true,
-        status: true,
-      },
-    });
-
-    if (!branch || branch.status !== "ACTIVE") {
-      const error = new Error("BRANCH_NOT_FOUND");
-      error.statusCode = 404;
-      throw error;
-    }
-
-    return branch;
+  if (!targetBranchId) {
+    const error = new Error("BRANCH_ID_REQUIRED");
+    error.statusCode = 400;
+    throw error;
   }
 
   const branch = await tx.branch.findUnique({
     where: {
-      id: actor.branchId,
+      id: targetBranchId,
     },
     select: {
       id: true,
@@ -1238,7 +1227,7 @@ const validateCustomer = async (tx, branchId, customerId) => {
     },
   });
 
-  if (!customer || customer.status !== "ACTIVE" || customer.branchId !== branchId) {
+  if (!customer || customer.status !== "ACTIVE" || (customer.branchId && branchId && customer.branchId !== branchId)) {
     const error = new Error("CUSTOMER_NOT_FOUND");
     error.statusCode = 404;
     throw error;
@@ -1390,7 +1379,7 @@ const buildCompletedFinancialSnapshot = async (
     latestAccountConfig?.classificationSnapshot ===
     performer.incentiveClassification
       ? latestAccountConfig
-      : null;
+      : latestAccountConfig || null;
 
   if (
     partsCost !== undefined ||
@@ -1408,16 +1397,18 @@ const buildCompletedFinancialSnapshot = async (
         : Math.max(0, finalCharge - cost - markup)
     );
 
+    const configuredRate = effectiveAccountConfig
+      ? repairType === "BOARD_LEVEL_REPAIR"
+        ? effectiveAccountConfig.boardRepairRatePercent
+        : effectiveAccountConfig.ordinaryRepairRatePercent
+      : null;
+
     // If tech cut is 0 or not passed, auto-compute strictly from laborRate using technician's incentive rule
     if (techCut === 0 && effectiveAccountConfig && laborRate > 0) {
       const incentiveEnabled =
         repairType === "BOARD_LEVEL_REPAIR"
           ? effectiveAccountConfig.boardRepairEnabled
           : effectiveAccountConfig.ordinaryRepairEnabled;
-      const configuredRate =
-        repairType === "BOARD_LEVEL_REPAIR"
-          ? effectiveAccountConfig.boardRepairRatePercent
-          : effectiveAccountConfig.ordinaryRepairRatePercent;
       if (incentiveEnabled && configuredRate !== null) {
         techCut = toMoney((laborRate * Number(configuredRate)) / 100);
       }
@@ -1437,8 +1428,11 @@ const buildCompletedFinancialSnapshot = async (
       repairCostPoolAmountSnapshot: toMoneyString(pool),
       companyShareAmountSnapshot: toMoneyString(companyShare),
       repairFeeSnapshot: toMoneyString(techCut),
-      repairIncentiveRateSnapshot: "0.0000",
-      repairIncentiveAmountSnapshot: "0.00",
+      repairIncentiveRateSnapshot:
+        configuredRate !== null && configuredRate !== undefined
+          ? toPercentString(Number(configuredRate))
+          : "0.0000",
+      repairIncentiveAmountSnapshot: toMoneyString(techCut),
       unallocatedRepairCostPoolSnapshot: toMoneyString(cost),
       programRuleVersionId: programRuleVersion?.id || null,
       accountConfigVersionId: effectiveAccountConfig?.id || null,
@@ -1473,7 +1467,7 @@ const buildCompletedFinancialSnapshot = async (
 };
 
 const createServiceJob = async (actor, payload, database = prisma) => {
-  ensureCanCreateServiceJob(actor);
+  ensureCanCreateServiceJob(actor, payload);
 
   if (!SERVICE_REPAIR_TYPES.has(payload.repairType)) {
     throwServiceJobError("REPAIR_TYPE_REQUIRED");

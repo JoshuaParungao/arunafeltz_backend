@@ -3109,8 +3109,17 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       serviceRevenue += charge;
 
       if (charge > 0) {
-        if (job.repairIncentiveAmountSnapshot !== null && job.repairIncentiveAmountSnapshot !== undefined) {
-          const snapAmount = toNumber(job.repairIncentiveAmountSnapshot);
+        const feeSnapshot = toNumber(job.repairFeeSnapshot);
+        const incentiveSnapshot = toNumber(job.repairIncentiveAmountSnapshot);
+        const snapAmount = feeSnapshot > 0 ? feeSnapshot : incentiveSnapshot;
+
+        if (snapAmount > 0) {
+          if (job.repairType === "BOARD_LEVEL_REPAIR") {
+            boardServiceIncentiveTotal += snapAmount;
+          } else {
+            ordinaryServiceIncentiveTotal += snapAmount;
+          }
+        } else if (job.repairIncentiveAmountSnapshot !== null && job.repairIncentiveAmountSnapshot !== undefined) {
           if (job.repairType === "BOARD_LEVEL_REPAIR") {
             boardServiceIncentiveTotal += snapAmount;
           } else {
