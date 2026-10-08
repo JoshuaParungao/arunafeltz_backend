@@ -1199,122 +1199,132 @@ const resetTransactionalData = async (actor) => {
     throw error;
   }
 
-  return prisma.$transaction(async (tx) => {
-    // 1. Incentive claims, lines, awards & configurations
-    await tx.incentiveClaimLine.deleteMany({});
-    await tx.incentiveClaim.deleteMany({});
-    await tx.incentive.deleteMany({});
-    await tx.incentiveItemRecipientSnapshot.deleteMany({});
-    await tx.incentiveItemBasisSnapshot.deleteMany({});
-    await tx.incentiveItemCycleRevision.deleteMany({});
-    await tx.incentiveCycle.deleteMany({});
-    await tx.incentiveProgramScheduleVersion.deleteMany({});
-    await tx.incentiveProgramRuleVersion.deleteMany({});
-    await tx.incentiveAccountConfigVersion.deleteMany({});
-    await tx.incentiveRate.deleteMany({});
-    await tx.incentiveRateVersion.deleteMany({});
-    await tx.incentiveScheduleVersion.deleteMany({});
+  let currentStep = "START";
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        currentStep = "INCENTIVES";
+        await tx.incentiveClaimLine.deleteMany({});
+        await tx.incentiveClaim.deleteMany({});
+        await tx.incentive.deleteMany({});
+        await tx.incentiveItemRecipientSnapshot.deleteMany({});
+        await tx.incentiveItemBasisSnapshot.deleteMany({});
+        await tx.incentiveItemCycleRevision.deleteMany({});
+        await tx.incentiveCycle.deleteMany({});
+        await tx.incentiveProgramScheduleVersion.deleteMany({});
+        await tx.incentiveProgramRuleVersion.deleteMany({});
+        await tx.incentiveAccountConfigVersion.deleteMany({});
+        await tx.incentiveRate.deleteMany({});
+        await tx.incentiveRateVersion.deleteMany({});
+        await tx.incentiveScheduleVersion.deleteMany({});
 
-    // 2. Warranty Claims
-    await tx.warrantyClaim.deleteMany({});
+        currentStep = "WARRANTY";
+        await tx.warrantyClaim.deleteMany({});
 
-    // 3. Credit Collections & Accounts
-    await tx.creditCollection.deleteMany({});
-    await tx.creditAccount.deleteMany({});
+        currentStep = "CREDIT";
+        await tx.creditCollection.deleteMany({});
+        await tx.creditAccount.deleteMany({});
 
-    // 4. Returns & Delivery Receipts
-    await tx.returnItem.deleteMany({});
-    await tx.returnRequest.deleteMany({});
-    await tx.deliveryReceiptItem.deleteMany({});
-    await tx.deliveryReceipt.deleteMany({});
+        currentStep = "RETURNS_DR";
+        await tx.returnItem.deleteMany({});
+        await tx.returnRequest.deleteMany({});
+        await tx.deliveryReceiptItem.deleteMany({});
+        await tx.deliveryReceipt.deleteMany({});
 
-    // 5. Sales, items, payments
-    await tx.salePayment.deleteMany({});
-    await tx.saleItem.deleteMany({});
-    await tx.sale.deleteMany({});
+        currentStep = "SALES";
+        await tx.salePayment.deleteMany({});
+        await tx.saleItem.deleteMany({});
+        await tx.sale.deleteMany({});
 
-    // 6. Service Jobs & payments
-    await tx.servicePayment.deleteMany({});
-    await tx.serviceJob.deleteMany({});
+        currentStep = "SERVICE_JOBS";
+        await tx.servicePayment.deleteMany({});
+        await tx.serviceJob.deleteMany({});
 
-    // 7. Quotations
-    await tx.quotationItem.deleteMany({});
-    await tx.quotation.deleteMany({});
+        currentStep = "QUOTATIONS";
+        await tx.quotationItem.deleteMany({});
+        await tx.quotation.deleteMany({});
 
-    // 8. Stock Transfers
-    await tx.stockTransferSerial.deleteMany({});
-    await tx.stockTransferDispatchAllocation.deleteMany({});
-    await tx.stockTransferAllocation.deleteMany({});
-    await tx.stockTransferSettlement.deleteMany({});
-    await tx.stockTransferItem.deleteMany({});
-    await tx.stockTransfer.deleteMany({});
+        currentStep = "STOCK_TRANSFERS";
+        await tx.stockTransferSerial.deleteMany({});
+        await tx.stockTransferDispatchAllocation.deleteMany({});
+        await tx.stockTransferAllocation.deleteMany({});
+        await tx.stockTransferSettlement.deleteMany({});
+        await tx.stockTransferItem.deleteMany({});
+        await tx.stockTransfer.deleteMany({});
 
-    // 9. Purchasing
-    await tx.purchaseReceivingSerial.deleteMany({});
-    await tx.purchaseReceivingPayment.deleteMany({});
-    await tx.purchaseReceivingItem.deleteMany({});
-    await tx.purchaseReceiving.deleteMany({});
-    await tx.purchaseOrderItem.deleteMany({});
-    await tx.purchaseOrder.deleteMany({});
+        currentStep = "PURCHASING";
+        await tx.purchaseReceivingSerial.deleteMany({});
+        await tx.purchaseReceivingPayment.deleteMany({});
+        await tx.purchaseReceivingItem.deleteMany({});
+        await tx.purchaseReceiving.deleteMany({});
+        await tx.purchaseOrderItem.deleteMany({});
+        await tx.purchaseOrder.deleteMany({});
 
-    // 10. Cash transactions, handovers, assignments & balance reset
-    await tx.cashTransaction.deleteMany({});
-    await tx.cashHandover.deleteMany({});
-    await tx.cashCustodianAssignment.deleteMany({});
-    await tx.cashBox.updateMany({
-      data: {
-        currentBalance: 0,
-        createdById: null,
-        updatedById: null,
+        currentStep = "CASH";
+        await tx.cashTransaction.deleteMany({});
+        await tx.cashHandover.deleteMany({});
+        await tx.cashCustodianAssignment.deleteMany({});
+        await tx.cashBox.updateMany({
+          data: {
+            currentBalance: 0,
+            createdById: null,
+            updatedById: null,
+          },
+        });
+
+        currentStep = "INVENTORY";
+        await tx.inventoryMovement.deleteMany({});
+        await tx.itemSerial.deleteMany({});
+        await tx.inventoryBatch.deleteMany({});
+
+        currentStep = "ITEMS";
+        await tx.item.deleteMany({});
+
+        currentStep = "CATEGORIES";
+        await tx.itemCategory.updateMany({
+          data: { parentId: null },
+        });
+        await tx.itemCategory.deleteMany({});
+
+        currentStep = "UNITS";
+        await tx.unit.deleteMany({});
+
+        currentStep = "CUSTOMERS_SUPPLIERS";
+        await tx.customer.deleteMany({});
+        await tx.supplier.deleteMany({});
+
+        currentStep = "AUDIT_LOGS";
+        await tx.auditLog.deleteMany({});
+
+        currentStep = "USERS";
+        await tx.user.updateMany({
+          data: { approvedById: null },
+        });
+
+        const deletedUsers = await tx.user.deleteMany({
+          where: {
+            username: {
+              notIn: ["superowner", "calix"],
+            },
+            role: {
+              not: "SUPER_OWNER",
+            },
+          },
+        });
+
+        return {
+          message: "Data reset successfully. Only Super Owner and Developer accounts and branch structures are preserved.",
+          deletedUsersCount: deletedUsers.count,
+        };
       },
-    });
-
-    // 11. Inventory batches, movements, and serials
-    await tx.inventoryMovement.deleteMany({});
-    await tx.itemSerial.deleteMany({});
-    await tx.inventoryBatch.deleteMany({});
-
-    // 12. Catalog items (Products)
-    await tx.item.deleteMany({});
-
-    // 13. Catalog categories (unlink self-reference parentId first)
-    await tx.itemCategory.updateMany({
-      data: { parentId: null },
-    });
-    await tx.itemCategory.deleteMany({});
-
-    // 14. Units
-    await tx.unit.deleteMany({});
-
-    // 15. Customers & Suppliers
-    await tx.customer.deleteMany({});
-    await tx.supplier.deleteMany({});
-
-    // 16. Audit logs
-    await tx.auditLog.deleteMany({});
-
-    // 17. Nullify user approval links prior to user deletion
-    await tx.user.updateMany({
-      data: { approvedById: null },
-    });
-
-    // 18. Delete all users except superowner and calix (Developer)
-    const deletedUsers = await tx.user.deleteMany({
-      where: {
-        username: {
-          notIn: ["superowner", "calix"],
-        },
-        role: {
-          not: "SUPER_OWNER",
-        },
-      },
-    });
-
-    return {
-      message: "Data reset successfully. Only Super Owner and Developer accounts and branch structures are preserved.",
-      deletedUsersCount: deletedUsers.count,
-    };
-  });
+      { timeout: 60000, maxWait: 15000 }
+    );
+  } catch (err) {
+    const opErr = new Error(`RESET_FAILED at step ${currentStep}: [${err.code || "UNKNOWN"}] ${err.message}`);
+    opErr.statusCode = 400;
+    opErr.isOperational = true;
+    throw opErr;
+  }
 };
 
 module.exports = {
