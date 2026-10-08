@@ -1200,7 +1200,7 @@ const resetTransactionalData = async (actor) => {
   }
 
   return prisma.$transaction(async (tx) => {
-    // 1. Incentive claims & lines & awards
+    // 1. Incentive claims, lines, awards & configurations
     await tx.incentiveClaimLine.deleteMany({});
     await tx.incentiveClaim.deleteMany({});
     await tx.incentive.deleteMany({});
@@ -1208,6 +1208,12 @@ const resetTransactionalData = async (actor) => {
     await tx.incentiveItemBasisSnapshot.deleteMany({});
     await tx.incentiveItemCycleRevision.deleteMany({});
     await tx.incentiveCycle.deleteMany({});
+    await tx.incentiveProgramScheduleVersion.deleteMany({});
+    await tx.incentiveProgramRuleVersion.deleteMany({});
+    await tx.incentiveAccountConfigVersion.deleteMany({});
+    await tx.incentiveRate.deleteMany({});
+    await tx.incentiveRateVersion.deleteMany({});
+    await tx.incentiveScheduleVersion.deleteMany({});
 
     // 2. Warranty Claims
     await tx.warrantyClaim.deleteMany({});
@@ -1251,20 +1257,62 @@ const resetTransactionalData = async (actor) => {
     await tx.purchaseOrderItem.deleteMany({});
     await tx.purchaseOrder.deleteMany({});
 
-    // 10. Cash transactions & handovers
+    // 10. Cash transactions, handovers, assignments & balance reset
     await tx.cashTransaction.deleteMany({});
     await tx.cashHandover.deleteMany({});
+    await tx.cashCustodianAssignment.deleteMany({});
+    await tx.cashBox.updateMany({
+      data: {
+        currentBalance: 0,
+        createdById: null,
+        updatedById: null,
+      },
+    });
 
     // 11. Inventory batches, movements, and serials
     await tx.inventoryMovement.deleteMany({});
     await tx.itemSerial.deleteMany({});
     await tx.inventoryBatch.deleteMany({});
 
-    // 12. Audit logs
+    // 12. Catalog items (Products)
+    await tx.item.deleteMany({});
+
+    // 13. Catalog categories (unlink self-reference parentId first)
+    await tx.itemCategory.updateMany({
+      data: { parentId: null },
+    });
+    await tx.itemCategory.deleteMany({});
+
+    // 14. Units
+    await tx.unit.deleteMany({});
+
+    // 15. Customers & Suppliers
+    await tx.customer.deleteMany({});
+    await tx.supplier.deleteMany({});
+
+    // 16. Audit logs
     await tx.auditLog.deleteMany({});
 
+    // 17. Nullify user approval links prior to user deletion
+    await tx.user.updateMany({
+      data: { approvedById: null },
+    });
+
+    // 18. Delete all users except superowner and calix (Developer)
+    const deletedUsers = await tx.user.deleteMany({
+      where: {
+        username: {
+          notIn: ["superowner", "calix"],
+        },
+        role: {
+          not: "SUPER_OWNER",
+        },
+      },
+    });
+
     return {
-      message: "Transactional and test data reset successfully. User accounts, branches, roles, rates, and settings are preserved.",
+      message: "Data reset successfully. Only Super Owner and Developer accounts and branch structures are preserved.",
+      deletedUsersCount: deletedUsers.count,
     };
   });
 };
