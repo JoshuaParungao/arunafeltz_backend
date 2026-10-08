@@ -1203,7 +1203,7 @@ const resetTransactionalData = async (actor) => {
   try {
     return await prisma.$transaction(
       async (tx) => {
-        currentStep = "INCENTIVES";
+        currentStep = "INCENTIVE_TRANSACTIONS";
         await tx.incentiveClaimLine.deleteMany({});
         await tx.incentiveClaim.deleteMany({});
         await tx.incentive.deleteMany({});
@@ -1211,12 +1211,6 @@ const resetTransactionalData = async (actor) => {
         await tx.incentiveItemBasisSnapshot.deleteMany({});
         await tx.incentiveItemCycleRevision.deleteMany({});
         await tx.incentiveCycle.deleteMany({});
-        await tx.incentiveProgramScheduleVersion.deleteMany({});
-        await tx.incentiveProgramRuleVersion.deleteMany({});
-        await tx.incentiveAccountConfigVersion.deleteMany({});
-        await tx.incentiveRate.deleteMany({});
-        await tx.incentiveRateVersion.deleteMany({});
-        await tx.incentiveScheduleVersion.deleteMany({});
 
         currentStep = "WARRANTY";
         await tx.warrantyClaim.deleteMany({});
@@ -1239,6 +1233,14 @@ const resetTransactionalData = async (actor) => {
         currentStep = "SERVICE_JOBS";
         await tx.servicePayment.deleteMany({});
         await tx.serviceJob.deleteMany({});
+
+        currentStep = "INCENTIVE_RULES";
+        await tx.incentiveProgramScheduleVersion.deleteMany({});
+        await tx.incentiveProgramRuleVersion.deleteMany({});
+        await tx.incentiveAccountConfigVersion.deleteMany({});
+        await tx.incentiveRate.deleteMany({});
+        await tx.incentiveRateVersion.deleteMany({});
+        await tx.incentiveScheduleVersion.deleteMany({});
 
         currentStep = "QUOTATIONS";
         await tx.quotationItem.deleteMany({});
