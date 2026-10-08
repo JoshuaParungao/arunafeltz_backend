@@ -100,6 +100,13 @@ router.post(
   settingController.computeCashBoxStatusTest
 );
 
+router.post(
+  "/reset-transactions",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_SETTINGS),
+  settingController.resetTransactions
+);
+
 router.get(
   "/scope/:scopeKey",
   protect,

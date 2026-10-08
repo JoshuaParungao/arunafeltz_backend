@@ -122,6 +122,15 @@ const computeCashBoxStatusTest = asyncHandler(async (req, res) => {
   });
 });
 
+const resetTransactions = asyncHandler(async (req, res) => {
+  const result = await settingService.resetTransactionalData(req.user);
+
+  return sendSuccess(res, {
+    message: result.message,
+    data: result,
+  });
+});
+
 module.exports = {
   listSettings,
   getSettingByScopeKey,
@@ -135,4 +144,5 @@ module.exports = {
   computeWarrantyTest,
   getCashBoxRuleSettings,
   computeCashBoxStatusTest,
+  resetTransactions,
 };

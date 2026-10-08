@@ -1192,6 +1192,83 @@ const computeCashBoxStatusTest = async ({
   };
 };
 
+const resetTransactionalData = async (actor) => {
+  if (actor.role !== "SUPER_OWNER" && actor.role !== "ADMIN") {
+    const error = new Error("UNAUTHORIZED_RESET");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Incentive claims & lines & awards
+    await tx.incentiveClaimLine.deleteMany({});
+    await tx.incentiveClaim.deleteMany({});
+    await tx.incentive.deleteMany({});
+    await tx.incentiveItemRecipientSnapshot.deleteMany({});
+    await tx.incentiveItemBasisSnapshot.deleteMany({});
+    await tx.incentiveItemCycleRevision.deleteMany({});
+    await tx.incentiveCycle.deleteMany({});
+
+    // 2. Warranty Claims
+    await tx.warrantyClaim.deleteMany({});
+
+    // 3. Credit Collections & Accounts
+    await tx.creditCollection.deleteMany({});
+    await tx.creditAccount.deleteMany({});
+
+    // 4. Returns & Delivery Receipts
+    await tx.returnItem.deleteMany({});
+    await tx.returnRequest.deleteMany({});
+    await tx.deliveryReceiptItem.deleteMany({});
+    await tx.deliveryReceipt.deleteMany({});
+
+    // 5. Sales, items, payments
+    await tx.salePayment.deleteMany({});
+    await tx.saleItem.deleteMany({});
+    await tx.sale.deleteMany({});
+
+    // 6. Service Jobs & payments
+    await tx.servicePayment.deleteMany({});
+    await tx.serviceJob.deleteMany({});
+
+    // 7. Quotations
+    await tx.quotationItem.deleteMany({});
+    await tx.quotation.deleteMany({});
+
+    // 8. Stock Transfers
+    await tx.stockTransferSerial.deleteMany({});
+    await tx.stockTransferDispatchAllocation.deleteMany({});
+    await tx.stockTransferAllocation.deleteMany({});
+    await tx.stockTransferSettlement.deleteMany({});
+    await tx.stockTransferItem.deleteMany({});
+    await tx.stockTransfer.deleteMany({});
+
+    // 9. Purchasing
+    await tx.purchaseReceivingSerial.deleteMany({});
+    await tx.purchaseReceivingPayment.deleteMany({});
+    await tx.purchaseReceivingItem.deleteMany({});
+    await tx.purchaseReceiving.deleteMany({});
+    await tx.purchaseOrderItem.deleteMany({});
+    await tx.purchaseOrder.deleteMany({});
+
+    // 10. Cash transactions & handovers
+    await tx.cashTransaction.deleteMany({});
+    await tx.cashHandover.deleteMany({});
+
+    // 11. Inventory batches, movements, and serials
+    await tx.inventoryMovement.deleteMany({});
+    await tx.itemSerial.deleteMany({});
+    await tx.inventoryBatch.deleteMany({});
+
+    // 12. Audit logs
+    await tx.auditLog.deleteMany({});
+
+    return {
+      message: "Transactional and test data reset successfully. User accounts, branches, roles, rates, and settings are preserved.",
+    };
+  });
+};
+
 module.exports = {
   listSettings,
   getSettingByScopeKey,
@@ -1205,4 +1282,5 @@ module.exports = {
   computeWarrantyTest,
   getCashBoxRuleSettings,
   computeCashBoxStatusTest,
+  resetTransactionalData,
 };

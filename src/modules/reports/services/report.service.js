@@ -2958,7 +2958,39 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
           companySharePercentSnapshot: true,
           repairCostPoolAmountSnapshot: true,
           companyShareAmountSnapshot: true,
+          repairFeeSnapshot: true,
           repairIncentiveAmountSnapshot: true,
+          serviceNotes: true,
+          releaseNotes: true,
+          serviceDoneById: true,
+          assignedTechnicianId: true,
+          releasedAt: true,
+          releaseOutcome: true,
+          payments: { select: { status: true } },
+        },
+      },
+      performedServiceJobs: {
+        where: activityDate ? { receivedAt: activityDate } : undefined,
+        select: {
+          id: true,
+          jobCode: true,
+          receivedAt: true,
+          customer: { select: { fullName: true } },
+          deviceDescription: true,
+          problemDescription: true,
+          status: true,
+          repairType: true,
+          finalServiceCharge: true,
+          repairCostPercentSnapshot: true,
+          companySharePercentSnapshot: true,
+          repairCostPoolAmountSnapshot: true,
+          companyShareAmountSnapshot: true,
+          repairFeeSnapshot: true,
+          repairIncentiveAmountSnapshot: true,
+          serviceNotes: true,
+          releaseNotes: true,
+          serviceDoneById: true,
+          assignedTechnicianId: true,
           releasedAt: true,
           releaseOutcome: true,
           payments: { select: { status: true } },
@@ -3024,7 +3056,15 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     const revenueSales = staff.cashierSales.filter((sale) =>
       ["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(sale.status)
     );
-    const releasedServices = staff.assignedServiceJobs.filter(
+    const allStaffJobs = [
+      ...(staff.assignedServiceJobs || []),
+      ...(staff.performedServiceJobs || []),
+    ];
+    const uniqueJobMap = new Map();
+    for (const j of allStaffJobs) {
+      if (!uniqueJobMap.has(j.id)) uniqueJobMap.set(j.id, j);
+    }
+    const releasedServices = Array.from(uniqueJobMap.values()).filter(
       (job) => Boolean(job.releasedAt) || job.status === "COMPLETED"
     );
 
@@ -3104,7 +3144,11 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     let serviceRevenue = 0;
 
     for (const job of releasedServices) {
-      const isPaid = job.payments?.some((p) => p.status === "POSTED");
+      const isPaid =
+        job.payments?.some((p) => p.status === "POSTED") ||
+        /\[BILLED IN POS:/i.test(job.serviceNotes || "") ||
+        /\[BILLED IN POS:/i.test(job.releaseNotes || "") ||
+        job.status === "COMPLETED";
       const charge = isPaid ? toNumber(job.finalServiceCharge) : 0;
       serviceRevenue += charge;
 
