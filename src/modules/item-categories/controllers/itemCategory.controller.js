@@ -46,9 +46,32 @@ const updateItemCategoryById = asyncHandler(async (req, res) => {
   });
 });
 
+const deleteItemCategoryById = asyncHandler(async (req, res) => {
+  const result = await itemCategoryService.deleteItemCategoryById(
+    req.params.id,
+    req.user
+  );
+
+  return sendSuccess(res, {
+    message: result.message,
+    data: result,
+  });
+});
+
+const clearAllCategories = asyncHandler(async (req, res) => {
+  const result = await itemCategoryService.clearAllCategories(req.user);
+
+  return sendSuccess(res, {
+    message: result.message,
+    data: result,
+  });
+});
+
 module.exports = {
   createItemCategory,
   listItemCategories,
   getItemCategoryById,
   updateItemCategoryById,
+  deleteItemCategoryById,
+  clearAllCategories,
 };

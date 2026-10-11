@@ -522,10 +522,68 @@ const updateItemCategoryById = async (categoryId, payload, actor) => {
   });
 };
 
+const deleteItemCategoryById = async (categoryId, actor) => {
+  const existingCategory = await getItemCategoryById(categoryId, actor);
+  if (!existingCategory) {
+    throw new AppError("Category not found", 404, "CATEGORY_NOT_FOUND");
+  }
+
+  const itemsCount = await prisma.item.count({
+    where: { categoryId: existingCategory.id },
+  });
+  if (itemsCount > 0) {
+    throw new AppError(
+      "Cannot delete category with items assigned to it. Please reassign or delete items first.",
+      400,
+      "CATEGORY_HAS_ITEMS"
+    );
+  }
+
+  // Unlink any child categories
+  await prisma.itemCategory.updateMany({
+    where: { parentId: existingCategory.id },
+    data: { parentId: null },
+  });
+
+  await prisma.itemCategory.delete({
+    where: { id: existingCategory.id },
+  });
+
+  return { success: true, message: `Category "${existingCategory.name}" deleted successfully` };
+};
+
+const clearAllCategories = async (actor) => {
+  if (actor.role !== "SUPER_OWNER" && actor.role !== "ADMIN") {
+    throw new AppError("Only Super Owner or Admin can clear categories", 403, "FORBIDDEN");
+  }
+
+  const itemsCount = await prisma.item.count({});
+  if (itemsCount > 0) {
+    throw new AppError(
+      "Cannot clear categories while items/products exist in the catalog.",
+      400,
+      "ITEMS_EXIST"
+    );
+  }
+
+  await prisma.itemCategory.updateMany({
+    data: { parentId: null },
+  });
+
+  const deleted = await prisma.itemCategory.deleteMany({});
+  return {
+    success: true,
+    deletedCount: deleted.count,
+    message: `All ${deleted.count} categories have been cleared successfully.`,
+  };
+};
+
 module.exports = {
   ITEM_CATEGORY_SELECT,
   createItemCategory,
   listItemCategories,
   getItemCategoryById,
   updateItemCategoryById,
+  deleteItemCategoryById,
+  clearAllCategories,
 };

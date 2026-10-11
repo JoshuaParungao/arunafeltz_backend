@@ -46,4 +46,19 @@ router.patch(
   itemCategoryController.updateItemCategoryById
 );
 
+router.delete(
+  "/clear-all",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_CATALOG),
+  itemCategoryController.clearAllCategories
+);
+
+router.delete(
+  "/:id",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_CATALOG),
+  validate(itemCategoryIdParamSchema),
+  itemCategoryController.deleteItemCategoryById
+);
+
 module.exports = router;
