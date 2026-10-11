@@ -323,7 +323,7 @@ const createItemCategory = async (payload, actor) => {
   await assertCategoryCodeIsUnique(branch.id, categoryCode);
   await assertCategoryNameIsUnique(branch.id, name);
 
-  return prisma.itemCategory.create({
+  const createdCategory = await prisma.itemCategory.create({
     data: {
       categoryCode,
       name,
@@ -337,9 +337,173 @@ const createItemCategory = async (payload, actor) => {
     },
     select: ITEM_CATEGORY_SELECT,
   });
+
+  // Automatically sync to all other active branches so catalog categories match everywhere
+  await syncCategoriesAcrossBranches(actor);
+
+  return createdCategory;
+};
+
+const syncCategoriesAcrossBranches = async (actor) => {
+  try {
+    const activeBranches = await prisma.branch.findMany({
+      where: { status: "ACTIVE" },
+      select: { id: true, code: true, name: true },
+      orderBy: { code: "asc" },
+    });
+
+    if (activeBranches.length <= 1) return { syncedCount: 0 };
+
+    // Fetch all existing categories across all active branches
+    const allCategories = await prisma.itemCategory.findMany({
+      where: {
+        branchId: { in: activeBranches.map((b) => b.id) },
+      },
+      select: {
+        id: true,
+        categoryCode: true,
+        name: true,
+        description: true,
+        status: true,
+        parentId: true,
+        attributeSchema: true,
+        branchId: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            categoryCode: true,
+          },
+        },
+      },
+      orderBy: [{ parentId: "asc" }, { createdAt: "asc" }],
+    });
+
+    if (allCategories.length === 0) return { syncedCount: 0 };
+
+    let createdCount = 0;
+
+    // Step 1: Sync Root/Main Categories (parentId is null)
+    const rootCategories = allCategories.filter((c) => !c.parentId);
+    const distinctRootNames = new Map();
+    for (const c of rootCategories) {
+      const key = c.name.trim().toLowerCase();
+      if (!distinctRootNames.has(key)) {
+        distinctRootNames.set(key, c);
+      }
+    }
+
+    for (const targetBranch of activeBranches) {
+      const existingInBranch = allCategories.filter((c) => c.branchId === targetBranch.id);
+      const existingNameSet = new Set(existingInBranch.map((c) => c.name.trim().toLowerCase()));
+
+      for (const [key, sourceCat] of distinctRootNames.entries()) {
+        if (!existingNameSet.has(key)) {
+          const categoryCode = await generateCategoryCode(targetBranch);
+          const created = await prisma.itemCategory.create({
+            data: {
+              categoryCode,
+              name: sourceCat.name.trim(),
+              description: sourceCat.description,
+              status: sourceCat.status || "ACTIVE",
+              branchId: targetBranch.id,
+              parentId: null,
+              attributeSchema: sourceCat.attributeSchema,
+              createdById: actor?.id || null,
+              updatedById: actor?.id || null,
+            },
+            select: { id: true, name: true, branchId: true },
+          });
+          existingInBranch.push(created);
+          allCategories.push(created);
+          existingNameSet.add(key);
+          createdCount++;
+        }
+      }
+    }
+
+    // Step 2: Sync Subcategories (parentId is not null)
+    const currentAllCats = await prisma.itemCategory.findMany({
+      where: {
+        branchId: { in: activeBranches.map((b) => b.id) },
+      },
+      select: {
+        id: true,
+        categoryCode: true,
+        name: true,
+        description: true,
+        status: true,
+        parentId: true,
+        attributeSchema: true,
+        branchId: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    const subcategories = currentAllCats.filter((c) => c.parentId && c.parent);
+    const distinctSubcats = new Map();
+    for (const sc of subcategories) {
+      const compositeKey = `${sc.parent.name.trim().toLowerCase()}:::${sc.name.trim().toLowerCase()}`;
+      if (!distinctSubcats.has(compositeKey)) {
+        distinctSubcats.set(compositeKey, sc);
+      }
+    }
+
+    for (const targetBranch of activeBranches) {
+      const branchCats = currentAllCats.filter((c) => c.branchId === targetBranch.id);
+      const branchCatByName = new Map(branchCats.map((c) => [c.name.trim().toLowerCase(), c]));
+
+      for (const [compositeKey, sourceSubcat] of distinctSubcats.entries()) {
+        const parentNameLower = sourceSubcat.parent.name.trim().toLowerCase();
+        const subcatNameLower = sourceSubcat.name.trim().toLowerCase();
+
+        const targetParent = branchCatByName.get(parentNameLower);
+        const targetSubcat = branchCatByName.get(subcatNameLower);
+
+        if (targetParent && !targetSubcat) {
+          const categoryCode = await generateCategoryCode(targetBranch);
+          const created = await prisma.itemCategory.create({
+            data: {
+              categoryCode,
+              name: sourceSubcat.name.trim(),
+              description: sourceSubcat.description,
+              status: sourceSubcat.status || "ACTIVE",
+              branchId: targetBranch.id,
+              parentId: targetParent.id,
+              attributeSchema: sourceSubcat.attributeSchema,
+              createdById: actor?.id || null,
+              updatedById: actor?.id || null,
+            },
+            select: { id: true, name: true, branchId: true },
+          });
+          branchCats.push(created);
+          branchCatByName.set(subcatNameLower, created);
+          createdCount++;
+        } else if (targetParent && targetSubcat && !targetSubcat.parentId) {
+          await prisma.itemCategory.update({
+            where: { id: targetSubcat.id },
+            data: { parentId: targetParent.id },
+          });
+        }
+      }
+    }
+
+    return { success: true, createdCount };
+  } catch (err) {
+    console.error("Failed to sync categories across branches:", err);
+    return { success: false, error: err.message };
+  }
 };
 
 const listItemCategories = async (filters = {}, actor) => {
+  // Automatically ensure all active branches are in sync
+  await syncCategoriesAcrossBranches(actor);
+
   const page = Number.parseInt(filters.page || "1", 10);
   const limit = Number.parseInt(filters.limit || "20", 10);
   const safeLimit = Math.min(limit, 100);
@@ -513,13 +677,69 @@ const updateItemCategoryById = async (categoryId, payload, actor) => {
     updateData.status = payload.status;
   }
 
-  return prisma.itemCategory.update({
+  const updatedCategory = await prisma.itemCategory.update({
     where: {
       id: existingCategory.id,
     },
     data: updateData,
     select: ITEM_CATEGORY_SELECT,
   });
+
+  // Sync category updates to matching categories in other active branches
+  try {
+    const matchingInOtherBranches = await prisma.itemCategory.findMany({
+      where: {
+        id: { not: existingCategory.id },
+        OR: [
+          { name: { equals: existingCategory.name, mode: "insensitive" } },
+          { categoryCode: existingCategory.categoryCode },
+        ],
+      },
+      select: { id: true, branchId: true },
+    });
+
+    for (const otherCat of matchingInOtherBranches) {
+      const otherUpdateData = {
+        updatedById: actor.id,
+      };
+      if (updateData.name) otherUpdateData.name = updateData.name;
+      if (updateData.description !== undefined) otherUpdateData.description = updateData.description;
+      if (updateData.status) otherUpdateData.status = updateData.status;
+      if (updateData.attributeSchema !== undefined) otherUpdateData.attributeSchema = updateData.attributeSchema;
+
+      if (updateData.parentId !== undefined) {
+        if (!updateData.parentId) {
+          otherUpdateData.parentId = null;
+        } else {
+          const newParent = await prisma.itemCategory.findUnique({
+            where: { id: updateData.parentId },
+            select: { name: true },
+          });
+          if (newParent) {
+            const targetParent = await prisma.itemCategory.findFirst({
+              where: {
+                branchId: otherCat.branchId,
+                name: { equals: newParent.name, mode: "insensitive" },
+              },
+              select: { id: true },
+            });
+            if (targetParent) {
+              otherUpdateData.parentId = targetParent.id;
+            }
+          }
+        }
+      }
+
+      await prisma.itemCategory.update({
+        where: { id: otherCat.id },
+        data: otherUpdateData,
+      });
+    }
+  } catch (syncUpdErr) {
+    console.error("Failed to sync category update across branches:", syncUpdErr);
+  }
+
+  return updatedCategory;
 };
 
 const deleteItemCategoryById = async (categoryId, actor) => {
@@ -548,6 +768,33 @@ const deleteItemCategoryById = async (categoryId, actor) => {
   await prisma.itemCategory.delete({
     where: { id: existingCategory.id },
   });
+
+  // Also sync deletion to matching categories in other branches if they also have 0 items assigned
+  try {
+    const matchingInOtherBranches = await prisma.itemCategory.findMany({
+      where: {
+        name: { equals: existingCategory.name, mode: "insensitive" },
+        id: { not: existingCategory.id },
+      },
+      include: {
+        items: { select: { id: true }, take: 1 },
+      },
+    });
+
+    for (const otherCat of matchingInOtherBranches) {
+      if (otherCat.items.length === 0) {
+        await prisma.itemCategory.updateMany({
+          where: { parentId: otherCat.id },
+          data: { parentId: null },
+        });
+        await prisma.itemCategory.delete({
+          where: { id: otherCat.id },
+        });
+      }
+    }
+  } catch (syncDelErr) {
+    console.error("Failed to sync category deletion across branches:", syncDelErr);
+  }
 
   return { success: true, message: `Category "${existingCategory.name}" deleted successfully` };
 };
@@ -586,4 +833,5 @@ module.exports = {
   updateItemCategoryById,
   deleteItemCategoryById,
   clearAllCategories,
+  syncCategoriesAcrossBranches,
 };

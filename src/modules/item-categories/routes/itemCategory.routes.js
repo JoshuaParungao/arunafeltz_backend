@@ -46,6 +46,13 @@ router.patch(
   itemCategoryController.updateItemCategoryById
 );
 
+router.post(
+  "/sync",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_CATALOG),
+  itemCategoryController.syncCategoriesAcrossBranches
+);
+
 router.delete(
   "/clear-all",
   protect,

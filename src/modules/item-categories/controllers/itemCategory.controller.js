@@ -67,6 +67,15 @@ const clearAllCategories = asyncHandler(async (req, res) => {
   });
 });
 
+const syncCategoriesAcrossBranches = asyncHandler(async (req, res) => {
+  const result = await itemCategoryService.syncCategoriesAcrossBranches(req.user);
+
+  return sendSuccess(res, {
+    message: "Categories synchronized across branches successfully",
+    data: result,
+  });
+});
+
 module.exports = {
   createItemCategory,
   listItemCategories,
@@ -74,4 +83,5 @@ module.exports = {
   updateItemCategoryById,
   deleteItemCategoryById,
   clearAllCategories,
+  syncCategoriesAcrossBranches,
 };
