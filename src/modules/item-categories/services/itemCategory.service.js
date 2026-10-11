@@ -501,9 +501,6 @@ const syncCategoriesAcrossBranches = async (actor) => {
 };
 
 const listItemCategories = async (filters = {}, actor) => {
-  // Automatically ensure all active branches are in sync
-  await syncCategoriesAcrossBranches(actor);
-
   const page = Number.parseInt(filters.page || "1", 10);
   const limit = Number.parseInt(filters.limit || "20", 10);
   const safeLimit = Math.min(limit, 100);
@@ -769,59 +766,41 @@ const deleteItemCategoryById = async (categoryId, actor) => {
     where: { id: existingCategory.id },
   });
 
-  // Also sync deletion to matching categories in other branches if they also have 0 items assigned
-  try {
-    const matchingInOtherBranches = await prisma.itemCategory.findMany({
-      where: {
-        name: { equals: existingCategory.name, mode: "insensitive" },
-        id: { not: existingCategory.id },
-      },
-      include: {
-        items: { select: { id: true }, take: 1 },
-      },
-    });
-
-    for (const otherCat of matchingInOtherBranches) {
-      if (otherCat.items.length === 0) {
-        await prisma.itemCategory.updateMany({
-          where: { parentId: otherCat.id },
-          data: { parentId: null },
-        });
-        await prisma.itemCategory.delete({
-          where: { id: otherCat.id },
-        });
-      }
-    }
-  } catch (syncDelErr) {
-    console.error("Failed to sync category deletion across branches:", syncDelErr);
-  }
-
-  return { success: true, message: `Category "${existingCategory.name}" deleted successfully` };
+  return { success: true, message: `Category "${existingCategory.name}" deleted successfully from this branch.` };
 };
 
-const clearAllCategories = async (actor) => {
-  if (actor.role !== "SUPER_OWNER" && actor.role !== "ADMIN") {
-    throw new AppError("Only Super Owner or Admin can clear categories", 403, "FORBIDDEN");
+const clearAllCategories = async (actor, requestedBranchId) => {
+  if (actor.role !== "SUPER_OWNER" && actor.role !== "ADMIN" && actor.role !== "BRANCH_OWNER") {
+    throw new AppError("Only Owner or Admin can clear categories", 403, "FORBIDDEN");
   }
 
-  const itemsCount = await prisma.item.count({});
+  const branchId = getActorBranchIdForCreate(actor, requestedBranchId);
+  const branch = await getActiveBranchOrThrow(branchId);
+
+  const itemsCount = await prisma.item.count({
+    where: { branchId: branch.id },
+  });
   if (itemsCount > 0) {
     throw new AppError(
-      "Cannot clear categories while items/products exist in the catalog.",
+      `Cannot clear categories in ${branch.name} while items/products exist in this branch's catalog. Please delete or reassign items first.`,
       400,
       "ITEMS_EXIST"
     );
   }
 
   await prisma.itemCategory.updateMany({
+    where: { branchId: branch.id },
     data: { parentId: null },
   });
 
-  const deleted = await prisma.itemCategory.deleteMany({});
+  const deleted = await prisma.itemCategory.deleteMany({
+    where: { branchId: branch.id },
+  });
+
   return {
     success: true,
     deletedCount: deleted.count,
-    message: `All ${deleted.count} categories have been cleared successfully.`,
+    message: `All ${deleted.count} categories in ${branch.name} have been cleared successfully. Other branches were not affected.`,
   };
 };
 

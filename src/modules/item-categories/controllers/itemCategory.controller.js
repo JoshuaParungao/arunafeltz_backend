@@ -59,7 +59,8 @@ const deleteItemCategoryById = asyncHandler(async (req, res) => {
 });
 
 const clearAllCategories = asyncHandler(async (req, res) => {
-  const result = await itemCategoryService.clearAllCategories(req.user);
+  const branchId = req.query?.branchId || req.body?.branchId || req.user?.branchId;
+  const result = await itemCategoryService.clearAllCategories(req.user, branchId);
 
   return sendSuccess(res, {
     message: result.message,
