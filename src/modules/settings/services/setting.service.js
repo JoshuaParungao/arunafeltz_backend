@@ -1295,6 +1295,42 @@ const resetTransactionalData = async (actor) => {
         await tx.customer.deleteMany({});
         await tx.supplier.deleteMany({});
 
+        currentStep = "SERVICE_CATALOG";
+        await tx.businessSetting.upsert({
+          where: { scopeKey: "GLOBAL:service.catalog" },
+          create: {
+            scopeKey: "GLOBAL:service.catalog",
+            key: "service.catalog",
+            category: "OPERATION",
+            valueType: "JSON",
+            value: [],
+            label: "Service & Repair Rates Catalog",
+            description: "Predefined list of standard service rates, repair classifications, and pricing.",
+            isEditable: true,
+            isActive: true,
+          },
+          update: {
+            value: [],
+          },
+        });
+        await tx.businessSetting.upsert({
+          where: { scopeKey: "GLOBAL:service.parts.catalog" },
+          create: {
+            scopeKey: "GLOBAL:service.parts.catalog",
+            key: "service.parts.catalog",
+            category: "OPERATION",
+            valueType: "JSON",
+            value: [],
+            label: "Service Parts & Materials Catalog",
+            description: "Predefined list of repair parts, replacement screens, consumables, and parts markups.",
+            isEditable: true,
+            isActive: true,
+          },
+          update: {
+            value: [],
+          },
+        });
+
         currentStep = "AUDIT_LOGS";
         await tx.auditLog.deleteMany({});
 
