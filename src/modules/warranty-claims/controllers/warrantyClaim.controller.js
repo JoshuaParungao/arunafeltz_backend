@@ -211,6 +211,42 @@ const rejectCustomerClaim = async (req, res, next) => {
   }
 };
 
+const issueLoanerUnit = async (req, res, next) => {
+  try {
+    const warrantyClaim = await warrantyClaimService.issueLoanerUnit(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Service loaner unit issued successfully",
+      data: warrantyClaim,
+    });
+  } catch (error) {
+    return handleWarrantyClaimError(error, res, next);
+  }
+};
+
+const returnLoanerUnit = async (req, res, next) => {
+  try {
+    const warrantyClaim = await warrantyClaimService.returnLoanerUnit(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Service loaner unit returned successfully",
+      data: warrantyClaim,
+    });
+  } catch (error) {
+    return handleWarrantyClaimError(error, res, next);
+  }
+};
+
 module.exports = {
   createWarrantyClaim,
   getWarrantyClaimById,
@@ -221,4 +257,7 @@ module.exports = {
   dispatchToSupplier,
   resolveSupplierRma,
   rejectCustomerClaim,
+  issueLoanerUnit,
+  returnLoanerUnit,
 };
+

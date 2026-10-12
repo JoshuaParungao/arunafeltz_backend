@@ -117,6 +117,20 @@ const receiveStockTransfer = asyncHandler(async (req, res) => {
   });
 });
 
+const returnBorrowTransfer = asyncHandler(async (req, res) => {
+  const stockTransfer = await stockTransferService.returnBorrowTransfer(
+    req.params.id,
+    req.body,
+    req.user
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Borrowed stock marked as returned successfully",
+    data: stockTransfer,
+  });
+});
+
 module.exports = {
   createStockTransferRequest,
   listRequestableStock,
@@ -128,4 +142,6 @@ module.exports = {
   updateStockTransferStatusById,
   dispatchStockTransfer,
   receiveStockTransfer,
+  returnBorrowTransfer,
 };
+

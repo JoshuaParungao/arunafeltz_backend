@@ -13,6 +13,8 @@ const {
   dispatchSupplierSchema,
   resolveSupplierRmaSchema,
   rejectCustomerClaimSchema,
+  issueLoanerSchema,
+  returnLoanerSchema,
 } = require("../validations/warrantyClaim.validation");
 
 const router = express.Router();
@@ -59,6 +61,18 @@ router.post(
   "/:id/reject",
   validate(rejectCustomerClaimSchema),
   warrantyClaimController.rejectCustomerClaim
+);
+
+router.post(
+  "/:id/loaner",
+  validate(issueLoanerSchema),
+  warrantyClaimController.issueLoanerUnit
+);
+
+router.post(
+  "/:id/return-loaner",
+  validate(returnLoanerSchema),
+  warrantyClaimController.returnLoanerUnit
 );
 
 router.patch(

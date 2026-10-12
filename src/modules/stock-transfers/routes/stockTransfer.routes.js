@@ -16,6 +16,7 @@ const {
   updateStockTransferStatusSchema,
   dispatchStockTransferSchema,
   receiveStockTransferSchema,
+  returnBorrowTransferSchema,
 } = require("../validations/stockTransfer.validation");
 
 const router = express.Router();
@@ -74,6 +75,14 @@ router.post(
   requirePermission(PERMISSIONS.MANAGE_STOCK_TRANSFERS),
   validate(receiveStockTransferSchema),
   stockTransferController.receiveStockTransfer
+);
+
+router.post(
+  "/:id/return-borrow",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_STOCK_TRANSFERS),
+  validate(returnBorrowTransferSchema),
+  stockTransferController.returnBorrowTransfer
 );
 
 router.patch(

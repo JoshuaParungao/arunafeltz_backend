@@ -1439,6 +1439,152 @@ const rejectCustomerClaim = async (actor, warrantyClaimId, payload) => {
   });
 };
 
+const issueLoanerUnit = async (actor, warrantyClaimId, payload) => {
+  ensureCanUpdateWarrantyStatus(actor);
+
+  return prisma.$transaction(async (tx) => {
+    const warrantyClaim = await tx.warrantyClaim.findUnique({
+      where: { id: warrantyClaimId },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    if (!warrantyClaim) {
+      const error = new Error("WARRANTY_CLAIM_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    ensureCanAccessWarrantyClaimBranch(actor, warrantyClaim);
+
+    if (["REPLACED", "OUT", "REJECTED"].includes(warrantyClaim.status)) {
+      const error = new Error("WARRANTY_CLAIM_ALREADY_SETTLED_OR_REJECTED");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const loanerData = {
+      loanerItemId: payload.loanerItemId || null,
+      loanerItemName: payload.loanerItemName.trim(),
+      loanerSerialId: payload.loanerSerialId || null,
+      loanerSerialNumber: payload.loanerSerialNumber.trim(),
+      loanedAt: new Date().toISOString(),
+      issuedById: actor.id,
+      issuedByName: actor.fullName || actor.username,
+      status: "ON_LOAN",
+      loanRemarks: payload.loanRemarks || null,
+    };
+
+    const cleanPrevRemarks = (warrantyClaim.remarks || "")
+      .replace(/\[LOANER_DATA\][\s\S]*?\[\/LOANER_DATA\]/g, "")
+      .trim();
+
+    const newRemarks = `${cleanPrevRemarks ? cleanPrevRemarks + "\n" : ""}[LOANER_DATA]:${JSON.stringify(loanerData)}[/LOANER_DATA]`;
+
+    const updatedClaim = await tx.warrantyClaim.update({
+      where: { id: warrantyClaim.id },
+      data: {
+        actionTaken: `${warrantyClaim.actionTaken ? warrantyClaim.actionTaken + " | " : ""}Service loaner issued: ${payload.loanerItemName} (SN: ${payload.loanerSerialNumber})`.trim(),
+        remarks: newRemarks,
+        updatedById: actor.id,
+      },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    await createAuditLog(
+      {
+        actor,
+        branchId: warrantyClaim.branchId,
+        action: "WARRANTY_LOANER_ISSUED",
+        entityType: "WarrantyClaim",
+        entityId: updatedClaim.id,
+        description: `Service loaner unit (${payload.loanerItemName}, SN: ${payload.loanerSerialNumber}) issued to client for claim ${updatedClaim.claimCode}`,
+        metadata: {
+          claimCode: updatedClaim.claimCode,
+          loanerData,
+        },
+      },
+      tx
+    );
+
+    return updatedClaim;
+  });
+};
+
+const returnLoanerUnit = async (actor, warrantyClaimId, payload) => {
+  ensureCanUpdateWarrantyStatus(actor);
+
+  return prisma.$transaction(async (tx) => {
+    const warrantyClaim = await tx.warrantyClaim.findUnique({
+      where: { id: warrantyClaimId },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    if (!warrantyClaim) {
+      const error = new Error("WARRANTY_CLAIM_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    ensureCanAccessWarrantyClaimBranch(actor, warrantyClaim);
+
+    let existingLoaner = null;
+    if (warrantyClaim.remarks && warrantyClaim.remarks.includes("[LOANER_DATA]:")) {
+      try {
+        const jsonStr = warrantyClaim.remarks.split("[LOANER_DATA]:")[1]?.split("[/LOANER_DATA]")[0];
+        if (jsonStr) existingLoaner = JSON.parse(jsonStr);
+      } catch {
+        // ignore
+      }
+    }
+
+    const returnCondition = payload.returnCondition || "Good / Working Condition";
+    const returnedAt = new Date().toISOString();
+
+    const returnedLoanerData = {
+      ...(existingLoaner || {}),
+      status: "RETURNED",
+      returnedAt,
+      returnCondition,
+      returnedById: actor.id,
+      returnRemarks: payload.remarks || null,
+    };
+
+    let newRemarks = warrantyClaim.remarks || "";
+    if (newRemarks.includes("[LOANER_DATA]:")) {
+      newRemarks = newRemarks.replace(/\[LOANER_DATA\][\s\S]*?\[\/LOANER_DATA\]/g, "");
+    }
+    newRemarks = `${newRemarks ? newRemarks + "\n" : ""}[LOANER_DATA]:${JSON.stringify(returnedLoanerData)}[/LOANER_DATA]`;
+
+    const updatedClaim = await tx.warrantyClaim.update({
+      where: { id: warrantyClaim.id },
+      data: {
+        actionTaken: `${warrantyClaim.actionTaken ? warrantyClaim.actionTaken + " | " : ""}Service loaner returned (${returnCondition})`.trim(),
+        remarks: newRemarks,
+        updatedById: actor.id,
+      },
+      include: WARRANTY_CLAIM_INCLUDE,
+    });
+
+    await createAuditLog(
+      {
+        actor,
+        branchId: warrantyClaim.branchId,
+        action: "WARRANTY_LOANER_RETURNED",
+        entityType: "WarrantyClaim",
+        entityId: updatedClaim.id,
+        description: `Service loaner unit returned for claim ${updatedClaim.claimCode} (${returnCondition})`,
+        metadata: {
+          claimCode: updatedClaim.claimCode,
+          returnedLoanerData,
+        },
+      },
+      tx
+    );
+
+    return updatedClaim;
+  });
+};
+
 module.exports = {
   createWarrantyClaim,
   getWarrantyClaimById,
@@ -1449,4 +1595,7 @@ module.exports = {
   dispatchToSupplier,
   resolveSupplierRma,
   rejectCustomerClaim,
+  issueLoanerUnit,
+  returnLoanerUnit,
 };
+

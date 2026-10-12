@@ -159,6 +159,29 @@ const rejectCustomerClaimSchema = z.object({
   }),
 });
 
+const issueLoanerSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Warranty claim ID is required"),
+  }),
+  body: z.object({
+    loanerItemId: optionalString,
+    loanerItemName: z.string().trim().min(1, "Loaner item name is required"),
+    loanerSerialId: optionalString,
+    loanerSerialNumber: z.string().trim().min(1, "Loaner serial number is required"),
+    loanRemarks: optionalString,
+  }),
+});
+
+const returnLoanerSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Warranty claim ID is required"),
+  }),
+  body: z.object({
+    returnCondition: optionalString,
+    remarks: optionalString,
+  }),
+});
+
 module.exports = {
   createWarrantyClaimSchema,
   listWarrantyClaimsSchema,
@@ -169,4 +192,7 @@ module.exports = {
   dispatchSupplierSchema,
   resolveSupplierRmaSchema,
   rejectCustomerClaimSchema,
+  issueLoanerSchema,
+  returnLoanerSchema,
 };
+

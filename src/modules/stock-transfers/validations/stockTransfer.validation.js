@@ -183,6 +183,16 @@ const receiveStockTransferSchema = z.object({
   }).optional().default({}),
 });
 
+const returnBorrowTransferSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Stock Transfer ID is required"),
+  }),
+  body: z.object({
+    condition: optionalString,
+    remarks: optionalString,
+  }).optional().default({}),
+});
+
 module.exports = {
   createStockTransferRequestSchema,
   listRequestableStockSchema,
@@ -194,5 +204,7 @@ module.exports = {
   updateStockTransferStatusSchema,
   dispatchStockTransferSchema,
   receiveStockTransferSchema,
+  returnBorrowTransferSchema,
 };
+
 

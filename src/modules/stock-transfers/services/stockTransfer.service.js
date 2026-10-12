@@ -4152,6 +4152,50 @@ const receiveStockTransfer = async (stockTransferId, payload = {}, actor) => {
   });
 };
 
+const returnBorrowTransfer = async (stockTransferId, payload, actor) => {
+  const existingTransfer = await prisma.stockTransfer.findUnique({
+    where: { id: stockTransferId },
+    include: STOCK_TRANSFER_INCLUDE,
+  });
+
+  if (!existingTransfer) {
+    throw new AppError("Stock transfer not found", 404, "STOCK_TRANSFER_NOT_FOUND");
+  }
+
+  assertStockTransferAccess(existingTransfer, actor);
+
+  const condition = payload?.condition || "Good Condition";
+  const remarks = payload?.remarks || "";
+  const returnTag = `[BORROW_STATUS:RETURNED] Returned by ${actor.fullName || actor.username} on ${new Date().toLocaleDateString("en-PH")} (${condition})${remarks ? " - " + remarks : ""}`.trim();
+
+  const prevInternal = (existingTransfer.internalNotes || "").replace(/\[BORROW_STATUS:[\w]+\]/g, "").trim();
+  const newInternal = `${prevInternal ? prevInternal + " | " : ""}${returnTag}`;
+
+  const updatedTransfer = await prisma.stockTransfer.update({
+    where: { id: existingTransfer.id },
+    data: {
+      internalNotes: newInternal,
+      updatedById: actor.id,
+    },
+    include: STOCK_TRANSFER_INCLUDE,
+  });
+
+  await createAuditLog({
+    actor,
+    branchId: existingTransfer.toBranchId,
+    action: "STOCK_TRANSFER_BORROW_RETURNED",
+    entityType: "StockTransfer",
+    entityId: updatedTransfer.id,
+    description: `Borrowed stock transfer ${updatedTransfer.transferCode} returned (${condition})`,
+    metadata: {
+      transferCode: updatedTransfer.transferCode,
+      condition,
+    },
+  });
+
+  return updatedTransfer;
+};
+
 module.exports = {
   STOCK_TRANSFER_INCLUDE,
   createStockTransferRequest,
@@ -4164,7 +4208,9 @@ module.exports = {
   updateStockTransferStatusById,
   dispatchStockTransfer,
   receiveStockTransfer,
+  returnBorrowTransfer,
 };
+
 
 
 
