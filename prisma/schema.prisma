@@ -2237,6 +2237,12 @@ model IncentiveAccountConfigVersion {
   boardRepairEnabled     Boolean  @default(false)
   boardRepairRatePercent Decimal? @db.Decimal(7, 4)
 
+  ordinaryPartsRepairEnabled     Boolean  @default(false)
+  ordinaryPartsRepairRatePercent Decimal? @db.Decimal(7, 4)
+
+  boardPartsRepairEnabled     Boolean  @default(false)
+  boardPartsRepairRatePercent Decimal? @db.Decimal(7, 4)
+
   pcBuildEnabled     Boolean  @default(false)
   pcBuildRatePercent Decimal? @db.Decimal(7, 4)
 

@@ -196,19 +196,27 @@ const normalizeRules = (setting) => {
     };
   }
 
-  try {
-    assertIncentiveRules(setting.value);
-  } catch (error) {
-    throw new AppError(
-      "Saved incentive rules are invalid",
-      500,
-      "INVALID_INCENTIVE_RULES"
-    );
+  const raw =
+    setting.value && typeof setting.value === "object" && !Array.isArray(setting.value)
+      ? setting.value
+      : {};
+
+  const cleaned = {};
+  for (const field of BOOLEAN_RULE_FIELDS) {
+    cleaned[field] =
+      typeof raw[field] === "boolean" ? raw[field] : DEFAULT_RULES[field];
+  }
+  for (const field of PERCENT_RULE_FIELDS) {
+    const num = Number(raw[field]);
+    cleaned[field] =
+      Number.isFinite(num) && num >= 0 && num <= 100
+        ? num
+        : DEFAULT_RULES[field];
   }
 
   return {
     ...DEFAULT_RULES,
-    ...setting.value,
+    ...cleaned,
     isConfigured: true,
     isActive: Boolean(setting.isActive),
     updatedAt: setting.updatedAt,

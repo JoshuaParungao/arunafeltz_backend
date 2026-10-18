@@ -219,6 +219,18 @@ const accountConfigBody = z
     boardRepairRatePercent:
       nullableAccountRate,
 
+    ordinaryPartsRepairEnabled:
+      z.boolean().optional().default(false),
+
+    ordinaryPartsRepairRatePercent:
+      nullableAccountRate,
+
+    boardPartsRepairEnabled:
+      z.boolean().optional().default(false),
+
+    boardPartsRepairRatePercent:
+      nullableAccountRate,
+
     pcBuildEnabled:
       z.boolean().optional().default(false),
 
@@ -284,6 +296,32 @@ const accountConfigBody = z
 
         label:
           "Board Level Repair Incentive",
+      },
+      {
+        enabled:
+          body.ordinaryPartsRepairEnabled,
+
+        rate:
+          body.ordinaryPartsRepairRatePercent,
+
+        field:
+          "ordinaryPartsRepairRatePercent",
+
+        label:
+          "Parts Replacement (Standard) Incentive",
+      },
+      {
+        enabled:
+          body.boardPartsRepairEnabled,
+
+        rate:
+          body.boardPartsRepairRatePercent,
+
+        field:
+          "boardPartsRepairRatePercent",
+
+        label:
+          "Parts Replacement (Board-Level) Incentive",
       },
       {
         enabled:

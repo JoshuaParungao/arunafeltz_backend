@@ -1371,6 +1371,10 @@ const buildCompletedFinancialSnapshot = async (
         ordinaryRepairRatePercent: true,
         boardRepairEnabled: true,
         boardRepairRatePercent: true,
+        ordinaryPartsRepairEnabled: true,
+        ordinaryPartsRepairRatePercent: true,
+        boardPartsRepairEnabled: true,
+        boardPartsRepairRatePercent: true,
         repairFee: true,
       },
     });
@@ -1668,6 +1672,10 @@ const getServiceTechnicians = async (actor, query = {}) => {
           ordinaryRepairRatePercent: true,
           boardRepairEnabled: true,
           boardRepairRatePercent: true,
+          ordinaryPartsRepairEnabled: true,
+          ordinaryPartsRepairRatePercent: true,
+          boardPartsRepairEnabled: true,
+          boardPartsRepairRatePercent: true,
           repairFee: true,
         },
       },
@@ -1688,6 +1696,16 @@ const getServiceTechnicians = async (actor, query = {}) => {
       boardRepairRatePercent:
         latestConfig?.boardRepairRatePercent !== null && latestConfig?.boardRepairRatePercent !== undefined
           ? Number(latestConfig.boardRepairRatePercent)
+          : null,
+      ordinaryPartsRepairEnabled: latestConfig?.ordinaryPartsRepairEnabled ?? false,
+      ordinaryPartsRepairRatePercent:
+        latestConfig?.ordinaryPartsRepairRatePercent !== null && latestConfig?.ordinaryPartsRepairRatePercent !== undefined
+          ? Number(latestConfig.ordinaryPartsRepairRatePercent)
+          : null,
+      boardPartsRepairEnabled: latestConfig?.boardPartsRepairEnabled ?? false,
+      boardPartsRepairRatePercent:
+        latestConfig?.boardPartsRepairRatePercent !== null && latestConfig?.boardPartsRepairRatePercent !== undefined
+          ? Number(latestConfig.boardPartsRepairRatePercent)
           : null,
       repairFee:
         latestConfig?.repairFee !== null && latestConfig?.repairFee !== undefined
@@ -3228,6 +3246,7 @@ const DEFAULT_SERVICE_PARTS_CATALOG = [
     costPrice: 5000,
     markupAmount: 2500,
     description: "Standard replacement 15.6 inch 30-pin EDP slim LED/IPS screen panel.",
+    repairType: "ORDINARY_REPAIR",
     isActive: true,
   },
   {
@@ -3238,6 +3257,7 @@ const DEFAULT_SERVICE_PARTS_CATALOG = [
     costPrice: 4200,
     markupAmount: 2000,
     description: "Standard replacement 14.0 inch 30-pin EDP slim LED screen panel.",
+    repairType: "ORDINARY_REPAIR",
     isActive: true,
   },
   {
@@ -3248,6 +3268,7 @@ const DEFAULT_SERVICE_PARTS_CATALOG = [
     costPrice: 150,
     markupAmount: 300,
     description: "Premium high thermal conductivity silicone-free compound.",
+    repairType: "ORDINARY_REPAIR",
     isActive: true,
   },
   {
@@ -3258,6 +3279,7 @@ const DEFAULT_SERVICE_PARTS_CATALOG = [
     costPrice: 350,
     markupAmount: 450,
     description: "0.5mm - 1.5mm thermal conductive silicone pads for GPU and motherboard VRAM.",
+    repairType: "BOARD_LEVEL_REPAIR",
     isActive: true,
   },
   {
@@ -3268,6 +3290,7 @@ const DEFAULT_SERVICE_PARTS_CATALOG = [
     costPrice: 1800,
     markupAmount: 1200,
     description: "OEM replacement battery pack for common Acer, Asus, Lenovo, HP units.",
+    repairType: "ORDINARY_REPAIR",
     isActive: true,
   },
   {
@@ -3278,6 +3301,7 @@ const DEFAULT_SERVICE_PARTS_CATALOG = [
     costPrice: 850,
     markupAmount: 650,
     description: "Internal chiclet keyboard replacement for standard laptops.",
+    repairType: "ORDINARY_REPAIR",
     isActive: true,
   },
   {
@@ -3288,6 +3312,7 @@ const DEFAULT_SERVICE_PARTS_CATALOG = [
     costPrice: 450,
     markupAmount: 1050,
     description: "Charging controller, 19V rail MOSFET, or 3.3V/5V power buck regulator chip.",
+    repairType: "BOARD_LEVEL_REPAIR",
     isActive: true,
   },
   {
@@ -3298,6 +3323,7 @@ const DEFAULT_SERVICE_PARTS_CATALOG = [
     costPrice: 250,
     markupAmount: 500,
     description: "Harness cable or solder-type DC-in charging connector.",
+    repairType: "ORDINARY_REPAIR",
     isActive: true,
   },
 ];
@@ -3349,6 +3375,7 @@ const createServicePartsCatalogItem = async (payload, actor) => {
     costPrice: Number(payload.costPrice) || 0,
     markupAmount: Number(payload.markupAmount) || 0,
     description: payload.description ? payload.description.trim() : "",
+    repairType: payload.repairType === "BOARD_LEVEL_REPAIR" ? "BOARD_LEVEL_REPAIR" : "ORDINARY_REPAIR",
     isActive: payload.isActive !== false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -3409,6 +3436,9 @@ const updateServicePartsCatalogItem = async (id, payload, actor) => {
     costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : existingItem.costPrice,
     markupAmount: payload.markupAmount !== undefined ? Number(payload.markupAmount) : existingItem.markupAmount,
     description: payload.description !== undefined ? (payload.description ? payload.description.trim() : "") : existingItem.description,
+    repairType: payload.repairType !== undefined
+      ? (payload.repairType === "BOARD_LEVEL_REPAIR" ? "BOARD_LEVEL_REPAIR" : "ORDINARY_REPAIR")
+      : (existingItem.repairType || "ORDINARY_REPAIR"),
     isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : existingItem.isActive,
     updatedAt: new Date().toISOString(),
   };

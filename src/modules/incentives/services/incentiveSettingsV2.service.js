@@ -101,6 +101,8 @@ const getEligibility = () => ({
   soloSale: true,
   ordinaryRepair: true,
   boardLevelRepair: true,
+  ordinaryPartsRepair: true,
+  boardPartsRepair: true,
   pcBuild: true,
   repairFee: true,
 });
@@ -130,6 +132,16 @@ const formatSavedConfig = (version) =>
         boardRepairEnabled: version.boardRepairEnabled,
         boardRepairRatePercent: numberOrNull(
           version.boardRepairRatePercent
+        ),
+
+        ordinaryPartsRepairEnabled: Boolean(version.ordinaryPartsRepairEnabled),
+        ordinaryPartsRepairRatePercent: numberOrNull(
+          version.ordinaryPartsRepairRatePercent
+        ),
+
+        boardPartsRepairEnabled: Boolean(version.boardPartsRepairEnabled),
+        boardPartsRepairRatePercent: numberOrNull(
+          version.boardPartsRepairRatePercent
         ),
 
         pcBuildEnabled: Boolean(version.pcBuildEnabled),
@@ -166,6 +178,18 @@ const buildDefaultConfiguration = (eligibility) => ({
 
   boardLevelRepair: {
     available: eligibility.boardLevelRepair,
+    enabled: false,
+    ratePercent: null,
+  },
+
+  ordinaryPartsRepair: {
+    available: eligibility.ordinaryPartsRepair,
+    enabled: false,
+    ratePercent: null,
+  },
+
+  boardPartsRepair: {
+    available: eligibility.boardPartsRepair,
     enabled: false,
     ratePercent: null,
   },
@@ -232,6 +256,30 @@ const buildEffectiveConfiguration = ({
         eligibility.boardLevelRepair &&
         savedConfig.boardRepairEnabled
           ? savedConfig.boardRepairRatePercent
+          : null,
+    },
+
+    ordinaryPartsRepair: {
+      available: eligibility.ordinaryPartsRepair,
+      enabled:
+        eligibility.ordinaryPartsRepair &&
+        Boolean(savedConfig.ordinaryPartsRepairEnabled),
+      ratePercent:
+        eligibility.ordinaryPartsRepair &&
+        savedConfig.ordinaryPartsRepairEnabled
+          ? savedConfig.ordinaryPartsRepairRatePercent
+          : null,
+    },
+
+    boardPartsRepair: {
+      available: eligibility.boardPartsRepair,
+      enabled:
+        eligibility.boardPartsRepair &&
+        Boolean(savedConfig.boardPartsRepairEnabled),
+      ratePercent:
+        eligibility.boardPartsRepair &&
+        savedConfig.boardPartsRepairEnabled
+          ? savedConfig.boardPartsRepairRatePercent
           : null,
     },
 
@@ -444,6 +492,20 @@ const normalizeAccountConfigPayload = (
     ratePercent: payload.boardRepairRatePercent,
   });
 
+  const ordinaryPartsRepair = normalizeCategoryConfig({
+    label: "Parts Replacement (Standard) Incentive",
+    available: eligibility.ordinaryPartsRepair,
+    enabled: Boolean(payload.ordinaryPartsRepairEnabled),
+    ratePercent: payload.ordinaryPartsRepairRatePercent,
+  });
+
+  const boardPartsRepair = normalizeCategoryConfig({
+    label: "Parts Replacement (Board-Level) Incentive",
+    available: eligibility.boardPartsRepair,
+    enabled: Boolean(payload.boardPartsRepairEnabled),
+    ratePercent: payload.boardPartsRepairRatePercent,
+  });
+
   const pcBuild = normalizeCategoryConfig({
     label: "PC Build Incentive",
     available: eligibility.pcBuild,
@@ -470,6 +532,14 @@ const normalizeAccountConfigPayload = (
     boardRepairEnabled: boardRepair.enabled,
     boardRepairRatePercent:
       boardRepair.ratePercent,
+
+    ordinaryPartsRepairEnabled: ordinaryPartsRepair.enabled,
+    ordinaryPartsRepairRatePercent:
+      ordinaryPartsRepair.ratePercent,
+
+    boardPartsRepairEnabled: boardPartsRepair.enabled,
+    boardPartsRepairRatePercent:
+      boardPartsRepair.ratePercent,
 
     pcBuildEnabled: pcBuild.enabled,
     pcBuildRatePercent: pcBuild.ratePercent,
@@ -643,6 +713,18 @@ const createAccountConfigVersionInTransaction = async (
 
         boardRepairRatePercent:
           normalized.boardRepairRatePercent,
+
+        ordinaryPartsRepairEnabled:
+          normalized.ordinaryPartsRepairEnabled,
+
+        ordinaryPartsRepairRatePercent:
+          normalized.ordinaryPartsRepairRatePercent,
+
+        boardPartsRepairEnabled:
+          normalized.boardPartsRepairEnabled,
+
+        boardPartsRepairRatePercent:
+          normalized.boardPartsRepairRatePercent,
 
         pcBuildEnabled:
           normalized.pcBuildEnabled,
