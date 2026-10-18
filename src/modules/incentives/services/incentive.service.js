@@ -15,6 +15,8 @@ const DEFAULT_RULES = Object.freeze({
   enableServiceIncentives: false,
   defaultItemIncentivePercent: 0,
   defaultServiceIncentivePercent: 0,
+  defaultSoloSaleIncentivePercent: 0,
+  defaultPcBuildTechIncentivePercent: 0,
   staffCanViewOwnIncentives: true,
   ownerCanViewAllIncentives: true,
   requireOwnerApprovalBeforePayout: true,
@@ -31,6 +33,8 @@ const BOOLEAN_RULE_FIELDS = [
 const PERCENT_RULE_FIELDS = [
   "defaultItemIncentivePercent",
   "defaultServiceIncentivePercent",
+  "defaultSoloSaleIncentivePercent",
+  "defaultPcBuildTechIncentivePercent",
 ];
 
 const RULE_FIELDS = new Set([...BOOLEAN_RULE_FIELDS, ...PERCENT_RULE_FIELDS]);

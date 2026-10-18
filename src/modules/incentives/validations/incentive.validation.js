@@ -43,6 +43,8 @@ const updateIncentiveRulesSchema = z.object({
       enableServiceIncentives: z.boolean(),
       defaultItemIncentivePercent: z.number().finite().min(0).max(100),
       defaultServiceIncentivePercent: z.number().finite().min(0).max(100),
+      defaultSoloSaleIncentivePercent: z.number().finite().min(0).max(100).optional().default(0),
+      defaultPcBuildTechIncentivePercent: z.number().finite().min(0).max(100).optional().default(0),
       staffCanViewOwnIncentives: z.boolean(),
       ownerCanViewAllIncentives: z.boolean(),
       requireOwnerApprovalBeforePayout: z.boolean(),
@@ -181,13 +183,14 @@ const nullableAccountRate = z.preprocess(
 );
 
 const nullableRepairFee = z.preprocess(
-  (value) => (value === "" ? null : value),
+  (value) => (value === "" || value === undefined ? null : value),
   z.coerce
     .number()
     .finite()
     .min(0)
     .max(9999999999.99)
     .nullable()
+    .optional()
 );
 
 const accountConfigBody = z

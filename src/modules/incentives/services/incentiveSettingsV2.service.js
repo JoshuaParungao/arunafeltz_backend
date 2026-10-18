@@ -1514,6 +1514,9 @@ const createProgramRuleVersionInTransaction =
 
       latestSavedVersion:
         savedVersion,
+
+      ruleVersion:
+        savedVersion,
     };
   };
 
@@ -2390,6 +2393,9 @@ const createProgramScheduleVersionInTransaction =
         ),
 
       latestSavedVersion:
+        savedVersion,
+
+      scheduleVersion:
         savedVersion,
     };
   };

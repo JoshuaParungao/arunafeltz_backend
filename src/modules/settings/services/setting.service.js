@@ -600,6 +600,14 @@ const updateSettingByScopeKey = async (scopeKey, payload, actor = null) => {
 
   if (scopeKey === INCENTIVE_RULE_SCOPE_KEY && payload.value !== undefined) {
     const rules = payload.value;
+    if (rules && typeof rules === "object" && !Array.isArray(rules)) {
+      if (rules.defaultSoloSaleIncentivePercent === undefined) {
+        rules.defaultSoloSaleIncentivePercent = 1;
+      }
+      if (rules.defaultPcBuildTechIncentivePercent === undefined) {
+        rules.defaultPcBuildTechIncentivePercent = 2;
+      }
+    }
     const requiredBooleanFields = [
       "enableItemIncentives",
       "enableServiceIncentives",
