@@ -1355,33 +1355,34 @@ const buildCompletedFinancialSnapshot = async (
   const effectiveRepairCostPercent =
     programRuleVersion?.repairCostPercent ?? 65;
 
-  const latestAccountConfig =
-    await tx.incentiveAccountConfigVersion.findFirst({
-      where: {
-        accountId: performer.id,
-        effectiveFrom: {
-          lte: snapshotAt,
+  const latestAccountConfig = performer?.id
+    ? await tx.incentiveAccountConfigVersion.findFirst({
+        where: {
+          accountId: performer.id,
+          effectiveFrom: {
+            lte: snapshotAt,
+          },
         },
-      },
-      orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
-      select: {
-        id: true,
-        classificationSnapshot: true,
-        ordinaryRepairEnabled: true,
-        ordinaryRepairRatePercent: true,
-        boardRepairEnabled: true,
-        boardRepairRatePercent: true,
-        ordinaryPartsRepairEnabled: true,
-        ordinaryPartsRepairRatePercent: true,
-        boardPartsRepairEnabled: true,
-        boardPartsRepairRatePercent: true,
-        repairFee: true,
-      },
-    });
+        orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          classificationSnapshot: true,
+          ordinaryRepairEnabled: true,
+          ordinaryRepairRatePercent: true,
+          boardRepairEnabled: true,
+          boardRepairRatePercent: true,
+          ordinaryPartsRepairEnabled: true,
+          ordinaryPartsRepairRatePercent: true,
+          boardPartsRepairEnabled: true,
+          boardPartsRepairRatePercent: true,
+          repairFee: true,
+        },
+      })
+    : null;
 
   const effectiveAccountConfig =
     latestAccountConfig?.classificationSnapshot ===
-    performer.incentiveClassification
+    performer?.incentiveClassification
       ? latestAccountConfig
       : latestAccountConfig || null;
 
