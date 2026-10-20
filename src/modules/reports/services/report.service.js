@@ -3019,7 +3019,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         },
       },
       incentiveAccountConfigVersions: {
-        orderBy: { effectiveFrom: "desc" },
+        orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
         take: 1,
       },
     },
@@ -3131,6 +3131,18 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         : 0
       : 0;
 
+    const ordinaryPartsIncentivePercent = userConfig
+      ? userConfig.ordinaryPartsRepairEnabled && userConfig.ordinaryPartsRepairRatePercent !== null
+        ? toNumber(userConfig.ordinaryPartsRepairRatePercent)
+        : 0
+      : 0;
+
+    const boardPartsIncentivePercent = userConfig
+      ? userConfig.boardPartsRepairEnabled && userConfig.boardPartsRepairRatePercent !== null
+        ? toNumber(userConfig.boardPartsRepairRatePercent)
+        : 0
+      : 0;
+
     const pcBuildIncentivePercent = userConfig
       ? userConfig.pcBuildEnabled && userConfig.pcBuildRatePercent !== null
         ? toNumber(userConfig.pcBuildRatePercent)
@@ -3208,6 +3220,8 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       serviceIncentivePercent: techServiceIncentivePercent,
       serviceIncentiveAmount,
       boardIncentivePercent,
+      ordinaryPartsIncentivePercent,
+      boardPartsIncentivePercent,
       pcBuildIncentivePercent,
       totalIncentiveAmount,
       incentiveConfig: userConfig ? {
@@ -3220,6 +3234,10 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         ordinaryRepairRatePercent: userConfig.ordinaryRepairRatePercent !== null ? Number(userConfig.ordinaryRepairRatePercent) : null,
         boardRepairEnabled: Boolean(userConfig.boardRepairEnabled),
         boardRepairRatePercent: userConfig.boardRepairRatePercent !== null ? Number(userConfig.boardRepairRatePercent) : null,
+        ordinaryPartsRepairEnabled: Boolean(userConfig.ordinaryPartsRepairEnabled),
+        ordinaryPartsRepairRatePercent: userConfig.ordinaryPartsRepairRatePercent !== null ? Number(userConfig.ordinaryPartsRepairRatePercent) : null,
+        boardPartsRepairEnabled: Boolean(userConfig.boardPartsRepairEnabled),
+        boardPartsRepairRatePercent: userConfig.boardPartsRepairRatePercent !== null ? Number(userConfig.boardPartsRepairRatePercent) : null,
         pcBuildEnabled: Boolean(userConfig.pcBuildEnabled),
         pcBuildRatePercent: userConfig.pcBuildRatePercent !== null ? Number(userConfig.pcBuildRatePercent) : null,
         notes: userConfig.notes || "",
