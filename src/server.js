@@ -18,6 +18,7 @@ const ensureSchemaMigrations = async () => {
     `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "ordinaryPartsRepairRatePercent" DECIMAL(7,4);`,
     `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "boardPartsRepairEnabled" BOOLEAN NOT NULL DEFAULT false;`,
     `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "boardPartsRepairRatePercent" DECIMAL(7,4);`,
+    `ALTER TABLE "ServiceJob" DROP CONSTRAINT IF EXISTS "ServiceJob_financial_snapshot_check";`,
   ];
 
   for (const sql of migrations) {

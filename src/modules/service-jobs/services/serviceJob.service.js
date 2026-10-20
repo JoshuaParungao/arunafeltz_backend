@@ -1415,20 +1415,18 @@ const buildCompletedFinancialSnapshot = async (
       }
     }
 
-    const companyShare = toMoney(
-      Math.max(0, finalCharge - cost - techCut)
-    );
+    const base = toMoney(pricing.baseServiceCharge);
     const pool = toMoney(cost + techCut);
-    const costPercent = finalCharge > 0 ? (pool / finalCharge) * 100 : 0;
-    const companyPercent =
-      finalCharge > 0 ? (companyShare / finalCharge) * 100 : 0;
+    const companyShare = toMoney(Math.max(0, base - pool));
+    const costPercent = base > 0 ? (pool / base) * 100 : 0;
+    const companyPercent = base > 0 ? (companyShare / base) * 100 : 0;
 
     return {
       repairCostPercentSnapshot: toPercentString(costPercent),
       companySharePercentSnapshot: toPercentString(companyPercent),
       repairCostPoolAmountSnapshot: toMoneyString(pool),
       companyShareAmountSnapshot: toMoneyString(companyShare),
-      repairFeeSnapshot: toMoneyString(techCut),
+      repairFeeSnapshot: "0.00",
       repairIncentiveRateSnapshot:
         configuredRate !== null && configuredRate !== undefined
           ? toPercentString(Number(configuredRate))
