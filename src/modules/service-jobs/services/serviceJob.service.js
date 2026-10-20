@@ -1371,10 +1371,6 @@ const buildCompletedFinancialSnapshot = async (
           ordinaryRepairRatePercent: true,
           boardRepairEnabled: true,
           boardRepairRatePercent: true,
-          ordinaryPartsRepairEnabled: true,
-          ordinaryPartsRepairRatePercent: true,
-          boardPartsRepairEnabled: true,
-          boardPartsRepairRatePercent: true,
           repairFee: true,
         },
       })

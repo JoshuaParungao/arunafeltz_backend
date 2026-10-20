@@ -7,23 +7,27 @@ const { ensureDefaultSettings } = require("./modules/settings/services/setting.s
 const bcrypt = require("bcryptjs");
 
 const ensureSchemaMigrations = async () => {
-  try {
-    await prisma.$executeRawUnsafe(`
-      ALTER TABLE "QuotationItem" ADD COLUMN IF NOT EXISTS "warrantyDuration" TEXT;
-      ALTER TABLE "SaleItem" ADD COLUMN IF NOT EXISTS "warrantyDuration" TEXT;
-      ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "soloSaleEnabled" BOOLEAN NOT NULL DEFAULT false;
-      ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "soloSaleRatePercent" DECIMAL(7,4);
-      ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "pcBuildEnabled" BOOLEAN NOT NULL DEFAULT false;
-      ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "pcBuildRatePercent" DECIMAL(7,4);
-      ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "ordinaryPartsRepairEnabled" BOOLEAN NOT NULL DEFAULT false;
-      ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "ordinaryPartsRepairRatePercent" DECIMAL(7,4);
-      ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "boardPartsRepairEnabled" BOOLEAN NOT NULL DEFAULT false;
-      ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "boardPartsRepairRatePercent" DECIMAL(7,4);
-    `);
-    logger.info("Database schema self-check completed");
-  } catch (err) {
-    logger.warn("Database schema self-check warning", { error: err.message });
+  const migrations = [
+    `ALTER TABLE "QuotationItem" ADD COLUMN IF NOT EXISTS "warrantyDuration" TEXT;`,
+    `ALTER TABLE "SaleItem" ADD COLUMN IF NOT EXISTS "warrantyDuration" TEXT;`,
+    `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "soloSaleEnabled" BOOLEAN NOT NULL DEFAULT false;`,
+    `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "soloSaleRatePercent" DECIMAL(7,4);`,
+    `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "pcBuildEnabled" BOOLEAN NOT NULL DEFAULT false;`,
+    `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "pcBuildRatePercent" DECIMAL(7,4);`,
+    `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "ordinaryPartsRepairEnabled" BOOLEAN NOT NULL DEFAULT false;`,
+    `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "ordinaryPartsRepairRatePercent" DECIMAL(7,4);`,
+    `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "boardPartsRepairEnabled" BOOLEAN NOT NULL DEFAULT false;`,
+    `ALTER TABLE "IncentiveAccountConfigVersion" ADD COLUMN IF NOT EXISTS "boardPartsRepairRatePercent" DECIMAL(7,4);`,
+  ];
+
+  for (const sql of migrations) {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+    } catch (err) {
+      logger.warn("Database schema migration statement warning", { sql, error: err.message });
+    }
   }
+  logger.info("Database schema self-check completed");
 };
 
 const ensureDeveloperAccount = async () => {
