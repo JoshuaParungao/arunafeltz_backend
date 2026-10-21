@@ -4164,12 +4164,26 @@ const returnBorrowTransfer = async (stockTransferId, payload, actor) => {
 
   assertStockTransferAccess(existingTransfer, actor);
 
+  const actionType = payload?.actionType === "PURCHASE" ? "PURCHASE" : "RETURN";
   const condition = payload?.condition || "Good Condition";
   const remarks = payload?.remarks || "";
-  const returnTag = `[BORROW_STATUS:RETURNED] Returned by ${actor.fullName || actor.username} on ${new Date().toLocaleDateString("en-PH")} (${condition})${remarks ? " - " + remarks : ""}`.trim();
+
+  let statusTag = "";
+  let auditAction = "";
+  let auditDesc = "";
+
+  if (actionType === "PURCHASE") {
+    statusTag = `[BORROW_STATUS:PURCHASED] Babayaran nalang / converted to purchase by ${actor.fullName || actor.username} on ${new Date().toLocaleDateString("en-PH")}${remarks ? " - " + remarks : ""}`.trim();
+    auditAction = "STOCK_TRANSFER_BORROW_PURCHASED";
+    auditDesc = `Borrowed stock transfer ${existingTransfer.transferCode} converted to purchase (to be paid/settled)${remarks ? ": " + remarks : ""}`;
+  } else {
+    statusTag = `[BORROW_STATUS:RETURNED] Returned by ${actor.fullName || actor.username} on ${new Date().toLocaleDateString("en-PH")} (${condition})${remarks ? " - " + remarks : ""}`.trim();
+    auditAction = "STOCK_TRANSFER_BORROW_RETURNED";
+    auditDesc = `Borrowed stock transfer ${existingTransfer.transferCode} returned (${condition})${remarks ? ": " + remarks : ""}`;
+  }
 
   const prevInternal = (existingTransfer.internalNotes || "").replace(/\[BORROW_STATUS:[\w]+\]/g, "").trim();
-  const newInternal = `${prevInternal ? prevInternal + " | " : ""}${returnTag}`;
+  const newInternal = `${prevInternal ? prevInternal + " | " : ""}${statusTag}`;
 
   const updatedTransfer = await prisma.stockTransfer.update({
     where: { id: existingTransfer.id },
@@ -4183,13 +4197,15 @@ const returnBorrowTransfer = async (stockTransferId, payload, actor) => {
   await createAuditLog({
     actor,
     branchId: existingTransfer.toBranchId,
-    action: "STOCK_TRANSFER_BORROW_RETURNED",
+    action: auditAction,
     entityType: "StockTransfer",
     entityId: updatedTransfer.id,
-    description: `Borrowed stock transfer ${updatedTransfer.transferCode} returned (${condition})`,
+    description: auditDesc,
     metadata: {
       transferCode: updatedTransfer.transferCode,
-      condition,
+      actionType,
+      condition: actionType === "RETURN" ? condition : undefined,
+      remarks,
     },
   });
 

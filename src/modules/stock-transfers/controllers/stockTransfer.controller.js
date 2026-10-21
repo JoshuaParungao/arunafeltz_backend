@@ -124,9 +124,13 @@ const returnBorrowTransfer = asyncHandler(async (req, res) => {
     req.user
   );
 
+  const actionMsg = req.body?.actionType === "PURCHASE"
+    ? "Borrowed stock converted to purchase successfully"
+    : "Borrowed stock marked as returned successfully";
+
   res.status(200).json({
     success: true,
-    message: "Borrowed stock marked as returned successfully",
+    message: actionMsg,
     data: stockTransfer,
   });
 });

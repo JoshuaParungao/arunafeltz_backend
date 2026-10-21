@@ -188,6 +188,7 @@ const returnBorrowTransferSchema = z.object({
     id: z.string().trim().min(1, "Stock Transfer ID is required"),
   }),
   body: z.object({
+    actionType: z.enum(["RETURN", "PURCHASE"]).optional().default("RETURN"),
     condition: optionalString,
     remarks: optionalString,
   }).optional().default({}),
