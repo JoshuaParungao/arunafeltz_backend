@@ -188,9 +188,26 @@ const returnBorrowTransferSchema = z.object({
     id: z.string().trim().min(1, "Stock Transfer ID is required"),
   }),
   body: z.object({
-    actionType: z.enum(["RETURN", "PURCHASE"]).optional().default("RETURN"),
+    actionType: z.enum([
+      "RETURN",
+      "PURCHASE",
+      "INITIATE_RETURN",
+      "CONFIRM_RETURN",
+      "INITIATE_PURCHASE",
+      "SET_BILLING_AMOUNT",
+      "SUBMIT_PAYMENT",
+      "CONFIRM_PAYMENT",
+    ]).optional().default("RETURN"),
     condition: optionalString,
     remarks: optionalString,
+    fulfillmentMethod: z.enum(["PICKUP", "DELIVERY"]).optional(),
+    courier: optionalString,
+    trackingNo: optionalString,
+    replacementSerials: z.union([z.string(), z.array(z.string())]).optional(),
+    amount: z.union([z.number(), z.string()]).optional(),
+    paymentMethod: z.enum(["CASH", "GCASH", "BANK_TRANSFER", "CARD", "OTHER"]).optional(),
+    referenceNo: optionalString,
+    paymentInstructions: optionalString,
   }).optional().default({}),
 });
 

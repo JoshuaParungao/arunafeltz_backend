@@ -124,9 +124,18 @@ const returnBorrowTransfer = asyncHandler(async (req, res) => {
     req.user
   );
 
-  const actionMsg = req.body?.actionType === "PURCHASE"
-    ? "Borrowed stock converted to purchase successfully"
-    : "Borrowed stock marked as returned successfully";
+  const actionMsgMap = {
+    INITIATE_RETURN: "Replacement stock return dispatched successfully",
+    CONFIRM_RETURN: "Replacement stock confirmed received (Nasoli na)",
+    INITIATE_PURCHASE: "Purchase conversion requested; awaiting billing amount",
+    SET_BILLING_AMOUNT: "Billing amount sent successfully",
+    SUBMIT_PAYMENT: "Payment submitted successfully; awaiting confirmation",
+    CONFIRM_PAYMENT: "Payment confirmed successfully; transaction completed",
+    PURCHASE: "Borrowed stock converted to purchase successfully",
+    RETURN: "Borrowed stock marked as returned successfully",
+  };
+
+  const actionMsg = actionMsgMap[req.body?.actionType] || "Stock borrow status updated successfully";
 
   res.status(200).json({
     success: true,

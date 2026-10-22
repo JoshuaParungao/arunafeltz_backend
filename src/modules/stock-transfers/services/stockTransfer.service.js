@@ -4164,35 +4164,121 @@ const returnBorrowTransfer = async (stockTransferId, payload, actor) => {
 
   assertStockTransferAccess(existingTransfer, actor);
 
-  const actionType = payload?.actionType === "PURCHASE" ? "PURCHASE" : "RETURN";
+  const actionType = payload?.actionType || "RETURN";
   const condition = payload?.condition || "Good Condition";
   const remarks = payload?.remarks || "";
+  const fulfillmentMethod = payload?.fulfillmentMethod || "DELIVERY";
+  const courier = payload?.courier || "";
+  const trackingNo = payload?.trackingNo || "";
+  const replacementSerials = payload?.replacementSerials || "";
+  const amount = payload?.amount !== undefined && payload?.amount !== null ? payload.amount : "";
+  const paymentMethod = payload?.paymentMethod || "CASH";
+  const referenceNo = payload?.referenceNo || "";
+  const paymentInstructions = payload?.paymentInstructions || "";
 
   let statusTag = "";
   let auditAction = "";
   let auditDesc = "";
 
-  if (actionType === "PURCHASE") {
-    statusTag = `[BORROW_STATUS:PURCHASED] Babayaran nalang / converted to purchase by ${actor.fullName || actor.username} on ${new Date().toLocaleDateString("en-PH")}${remarks ? " - " + remarks : ""}`.trim();
-    auditAction = "STOCK_TRANSFER_BORROW_PURCHASED";
-    auditDesc = `Borrowed stock transfer ${existingTransfer.transferCode} converted to purchase (to be paid/settled)${remarks ? ": " + remarks : ""}`;
-  } else {
-    statusTag = `[BORROW_STATUS:RETURNED] Returned by ${actor.fullName || actor.username} on ${new Date().toLocaleDateString("en-PH")} (${condition})${remarks ? " - " + remarks : ""}`.trim();
+  const dateStr = new Date().toLocaleDateString("en-PH");
+  const actorName = actor.fullName || actor.username;
+
+  if (actionType === "INITIATE_RETURN") {
+    // Borrower initiates return with replacement stocks & serials
+    const serialsPart = replacementSerials
+      ? ` [RETURN_SERIALS:${Array.isArray(replacementSerials) ? replacementSerials.join(",") : replacementSerials}]`
+      : "";
+    const methodPart = ` [RETURN_METHOD:${fulfillmentMethod}]`;
+    const courierPart = courier || trackingNo ? ` [RETURN_COURIER:${courier || ""}${trackingNo ? " Ref: " + trackingNo : ""}]` : "";
+    const condPart = ` [RETURN_CONDITION:${condition}]`;
+    statusTag = `[BORROW_STATUS:RETURN_IN_TRANSIT] Return dispatched by ${actorName} on ${dateStr} (${fulfillmentMethod})${serialsPart}${methodPart}${courierPart}${condPart}${remarks ? " - " + remarks : ""}`.trim();
+    auditAction = "STOCK_TRANSFER_BORROW_RETURN_DISPATCHED";
+    auditDesc = `Borrowed stock transfer ${existingTransfer.transferCode} replacement dispatched out for delivery back to source branch (${fulfillmentMethod})${remarks ? ": " + remarks : ""}`;
+  } else if (actionType === "CONFIRM_RETURN" || actionType === "RETURN") {
+    // Lender confirms returned stocks received
+    statusTag = `[BORROW_STATUS:RETURNED] Nasoli na / confirmed received by ${actorName} on ${dateStr} (${condition})${remarks ? " - " + remarks : ""}`.trim();
     auditAction = "STOCK_TRANSFER_BORROW_RETURNED";
-    auditDesc = `Borrowed stock transfer ${existingTransfer.transferCode} returned (${condition})${remarks ? ": " + remarks : ""}`;
+    auditDesc = `Borrowed stock transfer ${existingTransfer.transferCode} confirmed returned / received (${condition})${remarks ? ": " + remarks : ""}`;
+  } else if (actionType === "INITIATE_PURCHASE") {
+    // Borrower requests conversion to purchase
+    statusTag = `[BORROW_STATUS:WAITING_AMOUNT] Babayaran nalang requested by ${actorName} on ${dateStr}. Awaiting billing amount from source branch.${remarks ? " - " + remarks : ""}`.trim();
+    auditAction = "STOCK_TRANSFER_BORROW_PURCHASE_REQUESTED";
+    auditDesc = `Borrowed stock transfer ${existingTransfer.transferCode} marked to be paid/purchased; awaiting billing from source branch`;
+  } else if (actionType === "SET_BILLING_AMOUNT") {
+    // Lender sets the billing amount & payment instructions
+    const amtTag = amount ? ` [BILLING_AMOUNT:${amount}]` : "";
+    const instrTag = paymentInstructions ? ` [PAYMENT_INSTRUCTIONS:${paymentInstructions}]` : "";
+    statusTag = `[BORROW_STATUS:WAITING_PAYMENT] Billing set to ₱${Number(amount || 0).toLocaleString()} by ${actorName} on ${dateStr}.${amtTag}${instrTag}${remarks ? " - " + remarks : ""}`.trim();
+    auditAction = "STOCK_TRANSFER_BORROW_BILLING_SET";
+    auditDesc = `Billing of ₱${Number(amount || 0).toLocaleString()} set for borrowed stock transfer ${existingTransfer.transferCode}`;
+  } else if (actionType === "SUBMIT_PAYMENT") {
+    // Borrower submits payment details
+    const amtTag = amount ? ` [PAID_AMOUNT:${amount}]` : "";
+    const methodTag = ` [PAID_METHOD:${paymentMethod}]`;
+    const refTag = referenceNo ? ` [PAID_REF:${referenceNo}]` : "";
+    statusTag = `[BORROW_STATUS:PAYMENT_SUBMITTED] Payment of ₱${Number(amount || 0).toLocaleString()} via ${paymentMethod} submitted by ${actorName} on ${dateStr}.${amtTag}${methodTag}${refTag}${remarks ? " - " + remarks : ""}`.trim();
+    auditAction = "STOCK_TRANSFER_BORROW_PAYMENT_SUBMITTED";
+    auditDesc = `Payment of ₱${Number(amount || 0).toLocaleString()} via ${paymentMethod} submitted for borrowed stock ${existingTransfer.transferCode}`;
+  } else if (actionType === "CONFIRM_PAYMENT" || actionType === "PURCHASE") {
+    // Lender confirms payment received -> COMPLETED / PURCHASED
+    const amtTag = amount ? ` [PAID_AMOUNT:${amount}]` : "";
+    const methodTag = paymentMethod ? ` [PAID_METHOD:${paymentMethod}]` : "";
+    statusTag = `[BORROW_STATUS:PURCHASED] Babayaran nalang - Payment received and confirmed by ${actorName} on ${dateStr}.${amtTag}${methodTag}${remarks ? " - " + remarks : ""}`.trim();
+    auditAction = "STOCK_TRANSFER_BORROW_PURCHASED";
+    auditDesc = `Payment confirmed for borrowed stock transfer ${existingTransfer.transferCode} (Converted to Purchase & Settled)`;
   }
 
-  const prevInternal = (existingTransfer.internalNotes || "").replace(/\[BORROW_STATUS:[\w]+\]/g, "").trim();
+  // Clean previous BORROW_STATUS and sub-tags when advancing status
+  const prevInternal = (existingTransfer.internalNotes || "")
+    .replace(/\[BORROW_STATUS:[\w]+\]/g, "")
+    .replace(/\[RETURN_SERIALS:[^\]]*\]/g, "")
+    .replace(/\[RETURN_METHOD:[^\]]*\]/g, "")
+    .replace(/\[RETURN_COURIER:[^\]]*\]/g, "")
+    .replace(/\[RETURN_CONDITION:[^\]]*\]/g, "")
+    .replace(/\[BILLING_AMOUNT:[^\]]*\]/g, "")
+    .replace(/\[PAYMENT_INSTRUCTIONS:[^\]]*\]/g, "")
+    .replace(/\[PAID_AMOUNT:[^\]]*\]/g, "")
+    .replace(/\[PAID_METHOD:[^\]]*\]/g, "")
+    .replace(/\[PAID_REF:[^\]]*\]/g, "")
+    .trim();
+
   const newInternal = `${prevInternal ? prevInternal + " | " : ""}${statusTag}`;
+
+  const updateData = {
+    internalNotes: newInternal,
+    updatedById: actor.id,
+  };
+
+  if ((actionType === "CONFIRM_PAYMENT" || actionType === "PURCHASE") && amount) {
+    updateData.amountPaid = toMoneyDecimal(amount);
+    updateData.paymentStatus = "PAID";
+  }
 
   const updatedTransfer = await prisma.stockTransfer.update({
     where: { id: existingTransfer.id },
-    data: {
-      internalNotes: newInternal,
-      updatedById: actor.id,
-    },
+    data: updateData,
     include: STOCK_TRANSFER_INCLUDE,
   });
+
+  if ((actionType === "CONFIRM_PAYMENT" || actionType === "PURCHASE") && amount) {
+    try {
+      await prisma.stockTransferSettlement.create({
+        data: {
+          stockTransferId: existingTransfer.id,
+          amount: toMoneyDecimal(amount),
+          paymentMethod: ["CASH", "GCASH", "BANK_TRANSFER", "CARD", "OTHER"].includes(paymentMethod)
+            ? paymentMethod
+            : "CASH",
+          referenceNo: referenceNo || null,
+          notes: remarks || `Borrowed stock payment confirmed by ${actorName}`,
+          recordedById: actor.id,
+          recordedByName: actorName,
+        },
+      });
+    } catch (_e) {
+      // ignore optional settlement table constraint
+    }
+  }
 
   await createAuditLog({
     actor,
@@ -4204,7 +4290,9 @@ const returnBorrowTransfer = async (stockTransferId, payload, actor) => {
     metadata: {
       transferCode: updatedTransfer.transferCode,
       actionType,
-      condition: actionType === "RETURN" ? condition : undefined,
+      amount: amount || undefined,
+      paymentMethod: paymentMethod || undefined,
+      condition: condition || undefined,
       remarks,
     },
   });
