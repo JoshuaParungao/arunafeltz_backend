@@ -1942,6 +1942,7 @@ const getTransferSourceItems = async (
           itemSerialId: serial.id,
           serialNumberSnapshot: serial.serialNumber,
         })),
+        skipDuplicates: true,
       });
     }
 
@@ -3251,16 +3252,20 @@ const updateStockTransferStatusById = async (stockTransferId, payload, actor) =>
             await tx.stockTransferSerial.deleteMany({
               where: {
                 stockTransferItemId: transferItem.id,
-                allocationId: null,
               },
             });
 
+            const uniqueValidSerials = Array.from(
+              new Map(validSerials.map((s) => [s.id, s])).values()
+            );
+
             await tx.stockTransferSerial.createMany({
-              data: validSerials.map((s) => ({
+              data: uniqueValidSerials.map((s) => ({
                 stockTransferItemId: transferItem.id,
                 itemSerialId: s.id,
                 serialNumberSnapshot: s.serialNumber,
               })),
+              skipDuplicates: true,
             });
           }
         }
@@ -3605,18 +3610,27 @@ const dispatchStockTransfer = async (stockTransferId, payload = {}, actor) => {
           await tx.stockTransferSerial.deleteMany({
             where: {
               stockTransferItemId: transferItem.id,
-              allocationId: null,
-              dispatchAllocationId: null,
             },
           });
 
+          const uniqueValidSerials = Array.from(
+            new Map(validSerials.map((s) => [s.id, s])).values()
+          );
+
           await tx.stockTransferSerial.createMany({
-            data: validSerials.map((s) => ({
+            data: uniqueValidSerials.map((s) => ({
               stockTransferItemId: transferItem.id,
               itemSerialId: s.id,
               serialNumberSnapshot: s.serialNumber,
             })),
+            skipDuplicates: true,
           });
+
+          transferItem.serials = uniqueValidSerials.map((s) => ({
+            stockTransferItemId: transferItem.id,
+            itemSerialId: s.id,
+            serialNumberSnapshot: s.serialNumber,
+          }));
         }
       }
     }
