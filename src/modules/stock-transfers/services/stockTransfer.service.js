@@ -3833,10 +3833,11 @@ const dispatchStockTransfer = async (stockTransferId, payload = {}, actor) => {
     }
 
     const dispatchedAt = new Date();
+    const nextFulfillmentStatus = payload.fulfillmentMethod === "PICKUP" ? "READY_FOR_PICKUP" : "IN_TRANSIT";
     await tx.stockTransfer.update({
       where: { id: existingTransfer.id },
       data: {
-        fulfillmentStatus: "IN_TRANSIT",
+        fulfillmentStatus: nextFulfillmentStatus,
         dispatchedAt,
         dispatchedById: actor.id,
         updatedById: actor.id,
@@ -3890,9 +3891,12 @@ const receiveStockTransfer = async (stockTransferId, payload = {}, actor) => {
     return existingTransfer;
   }
 
-  if (existingTransfer.fulfillmentStatus !== "IN_TRANSIT") {
+  if (
+    existingTransfer.fulfillmentStatus !== "IN_TRANSIT" &&
+    existingTransfer.fulfillmentStatus !== "READY_FOR_PICKUP"
+  ) {
     throw new AppError(
-      "Only dispatched stock transfers in transit can be received",
+      "Only dispatched stock transfers (in transit or ready for pickup) can be received or claimed",
       400,
       "INVALID_STATUS_TRANSITION"
     );
