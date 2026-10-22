@@ -2911,24 +2911,29 @@ const approveAndLockStockTransferPricing = async (stockTransferId, actor) => {
     }
 
     const priceLockedAt = new Date();
+    const isBorrow = `${stockTransfer.notes || ""} ${stockTransfer.internalNotes || ""}`.includes("[TRANSFER_TYPE:BORROW]");
 
     for (const transferItem of stockTransfer.items) {
-      if (
-        transferItem.agreedTransferUnitPrice === null ||
-        !transferItem.priceSetAt ||
-        !transferItem.priceSetById
-      ) {
-        throw new AppError(
-          "Every transfer line requires an agreed transfer unit price before approval",
-          400,
-          "AGREED_TRANSFER_PRICE_REQUIRED"
-        );
+      if (!isBorrow) {
+        if (
+          transferItem.agreedTransferUnitPrice === null ||
+          !transferItem.priceSetAt ||
+          !transferItem.priceSetById
+        ) {
+          throw new AppError(
+            "Every transfer line requires an agreed transfer unit price before approval",
+            400,
+            "AGREED_TRANSFER_PRICE_REQUIRED"
+          );
+        }
       }
 
-      const agreedPrice = normalizeTransferUnitPrice(
-        transferItem.agreedTransferUnitPrice,
-        "Agreed transfer unit price"
-      );
+      const agreedPrice = isBorrow && transferItem.agreedTransferUnitPrice === null
+        ? new Prisma.Decimal(0)
+        : normalizeTransferUnitPrice(
+            transferItem.agreedTransferUnitPrice,
+            "Agreed transfer unit price"
+          );
       const transferAmount = toMoneyDecimal(
         new Prisma.Decimal(transferItem.quantity).mul(agreedPrice)
       );
@@ -2958,6 +2963,11 @@ const approveAndLockStockTransferPricing = async (stockTransferId, actor) => {
         data: {
           destinationItemId: destinationItem.id,
           transferAmount: transferAmount.toFixed(2),
+          agreedTransferUnitPrice: isBorrow && transferItem.agreedTransferUnitPrice === null
+            ? "0.00"
+            : transferItem.agreedTransferUnitPrice,
+          priceSetAt: isBorrow && !transferItem.priceSetAt ? priceLockedAt : transferItem.priceSetAt,
+          priceSetById: isBorrow && !transferItem.priceSetById ? actor.id : transferItem.priceSetById,
           priceLockedAt,
         },
       });
@@ -3816,6 +3826,9 @@ const dispatchStockTransfer = async (stockTransferId, payload = {}, actor) => {
         dispatchedAt,
         dispatchedById: actor.id,
         updatedById: actor.id,
+        ...(payload.fulfillmentMethod ? { fulfillmentMethod: payload.fulfillmentMethod } : {}),
+        ...(payload.fulfillmentReference ? { fulfillmentReference: payload.fulfillmentReference } : {}),
+        ...(payload.notes ? { notes: payload.notes } : {}),
       },
     });
 

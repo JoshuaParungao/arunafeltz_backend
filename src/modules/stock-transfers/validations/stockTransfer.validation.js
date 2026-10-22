@@ -155,6 +155,9 @@ const dispatchStockTransferSchema = z.object({
     id: z.string().trim().min(1, "Stock Transfer ID is required"),
   }),
   body: z.object({
+    fulfillmentMethod: z.enum(["PICKUP", "DELIVERY"]).optional(),
+    fulfillmentReference: optionalString,
+    notes: optionalString,
     items: z
       .array(
         z.object({
