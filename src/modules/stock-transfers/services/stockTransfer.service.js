@@ -3838,6 +3838,10 @@ const dispatchStockTransfer = async (stockTransferId, payload = {}, actor) => {
 
     const dispatchedAt = new Date();
     const nextFulfillmentStatus = payload.fulfillmentMethod === "PICKUP" ? "READY_FOR_PICKUP" : "IN_TRANSIT";
+    let dispatchInternalNotes = existingTransfer.internalNotes || "";
+    if (payload.proofPhoto) {
+      dispatchInternalNotes = `${dispatchInternalNotes.replace(/\[DISPATCH_PROOF:[^\]]*\]/g, "").trim()} [DISPATCH_PROOF:${payload.proofPhoto}]`.trim();
+    }
     await tx.stockTransfer.update({
       where: { id: existingTransfer.id },
       data: {
@@ -3848,6 +3852,7 @@ const dispatchStockTransfer = async (stockTransferId, payload = {}, actor) => {
         ...(payload.fulfillmentMethod ? { fulfillmentMethod: payload.fulfillmentMethod } : {}),
         ...(payload.fulfillmentReference ? { fulfillmentReference: payload.fulfillmentReference } : {}),
         ...(payload.notes ? { notes: payload.notes } : {}),
+        ...(payload.proofPhoto ? { internalNotes: dispatchInternalNotes } : {}),
       },
     });
 
@@ -4125,6 +4130,13 @@ const receiveStockTransfer = async (stockTransferId, payload = {}, actor) => {
     }
 
     const receivedAt = new Date();
+    let receiveInternalNotes = existingTransfer.internalNotes || "";
+    if (payload.proofPhoto) {
+      const proofTag = existingTransfer.fulfillmentMethod === "PICKUP" || existingTransfer.fulfillmentStatus === "READY_FOR_PICKUP"
+        ? "RELEASE_PROOF"
+        : "RECEIVE_PROOF";
+      receiveInternalNotes = `${receiveInternalNotes.replace(new RegExp(`\\\[${proofTag}:[^\\\]]*\\\]`, "g"), "").trim()} [${proofTag}:${payload.proofPhoto}]`.trim();
+    }
     await tx.stockTransfer.update({
       where: { id: existingTransfer.id },
       data: {
@@ -4135,6 +4147,7 @@ const receiveStockTransfer = async (stockTransferId, payload = {}, actor) => {
         postedAt: receivedAt,
         postedById: actor.id,
         updatedById: actor.id,
+        ...(payload.proofPhoto ? { internalNotes: receiveInternalNotes } : {}),
       },
     });
 
@@ -4226,12 +4239,14 @@ const returnBorrowTransfer = async (stockTransferId, payload, actor) => {
     const methodPart = ` [RETURN_METHOD:${fulfillmentMethod}]`;
     const courierPart = courier || trackingNo ? ` [RETURN_COURIER:${courier || ""}${trackingNo ? " Ref: " + trackingNo : ""}]` : "";
     const condPart = ` [RETURN_CONDITION:${condition}]`;
-    statusTag = `[BORROW_STATUS:RETURN_IN_TRANSIT] Return dispatched by ${actorName} on ${dateStr} (${fulfillmentMethod})${serialsPart}${methodPart}${courierPart}${condPart}${remarks ? " - " + remarks : ""}`.trim();
+    const proofPart = payload?.proofPhoto ? ` [RETURN_DISPATCH_PROOF:${payload.proofPhoto}]` : "";
+    statusTag = `[BORROW_STATUS:RETURN_IN_TRANSIT] Return dispatched by ${actorName} on ${dateStr} (${fulfillmentMethod})${serialsPart}${methodPart}${courierPart}${condPart}${proofPart}${remarks ? " - " + remarks : ""}`.trim();
     auditAction = "STOCK_TRANSFER_BORROW_RETURN_DISPATCHED";
     auditDesc = `Borrowed stock transfer ${existingTransfer.transferCode} replacement dispatched out for delivery back to source branch (${fulfillmentMethod})${remarks ? ": " + remarks : ""}`;
   } else if (actionType === "CONFIRM_RETURN" || actionType === "RETURN") {
     // Lender confirms returned stocks received
-    statusTag = `[BORROW_STATUS:RETURNED] Nasoli na / confirmed received by ${actorName} on ${dateStr} (${condition})${remarks ? " - " + remarks : ""}`.trim();
+    const receiveProofPart = payload?.proofPhoto ? ` [RETURN_RECEIVE_PROOF:${payload.proofPhoto}]` : "";
+    statusTag = `[BORROW_STATUS:RETURNED] Nasoli na / confirmed received by ${actorName} on ${dateStr} (${condition})${receiveProofPart}${remarks ? " - " + remarks : ""}`.trim();
     auditAction = "STOCK_TRANSFER_BORROW_RETURNED";
     auditDesc = `Borrowed stock transfer ${existingTransfer.transferCode} confirmed returned / received (${condition})${remarks ? ": " + remarks : ""}`;
   } else if (actionType === "INITIATE_PURCHASE") {
@@ -4251,7 +4266,8 @@ const returnBorrowTransfer = async (stockTransferId, payload, actor) => {
     const amtTag = amount ? ` [PAID_AMOUNT:${amount}]` : "";
     const methodTag = ` [PAID_METHOD:${paymentMethod}]`;
     const refTag = referenceNo ? ` [PAID_REF:${referenceNo}]` : "";
-    statusTag = `[BORROW_STATUS:PAYMENT_SUBMITTED] Payment of ₱${Number(amount || 0).toLocaleString()} via ${paymentMethod} submitted by ${actorName} on ${dateStr}.${amtTag}${methodTag}${refTag}${remarks ? " - " + remarks : ""}`.trim();
+    const payProofTag = payload?.proofPhoto ? ` [PAYMENT_PROOF:${payload.proofPhoto}]` : "";
+    statusTag = `[BORROW_STATUS:PAYMENT_SUBMITTED] Payment of ₱${Number(amount || 0).toLocaleString()} via ${paymentMethod} submitted by ${actorName} on ${dateStr}.${amtTag}${methodTag}${refTag}${payProofTag}${remarks ? " - " + remarks : ""}`.trim();
     auditAction = "STOCK_TRANSFER_BORROW_PAYMENT_SUBMITTED";
     auditDesc = `Payment of ₱${Number(amount || 0).toLocaleString()} via ${paymentMethod} submitted for borrowed stock ${existingTransfer.transferCode}`;
   } else if (actionType === "CONFIRM_PAYMENT" || actionType === "PURCHASE") {
@@ -4275,6 +4291,8 @@ const returnBorrowTransfer = async (stockTransferId, payload, actor) => {
     .replace(/\[PAID_AMOUNT:[^\]]*\]/g, "")
     .replace(/\[PAID_METHOD:[^\]]*\]/g, "")
     .replace(/\[PAID_REF:[^\]]*\]/g, "")
+    .replace(/\[RETURN_DISPATCH_PROOF:[^\]]*\]/g, "")
+    .replace(/\[RETURN_RECEIVE_PROOF:[^\]]*\]/g, "")
     .trim();
 
   const newInternal = `${prevInternal ? prevInternal + " | " : ""}${statusTag}`;

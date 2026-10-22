@@ -158,6 +158,7 @@ const dispatchStockTransferSchema = z.object({
     fulfillmentMethod: z.enum(["PICKUP", "DELIVERY"]).optional(),
     fulfillmentReference: optionalString,
     notes: optionalString,
+    proofPhoto: optionalString,
     items: z
       .array(
         z.object({
@@ -183,6 +184,7 @@ const receiveStockTransferSchema = z.object({
   }),
   body: z.object({
     notes: optionalString,
+    proofPhoto: optionalString,
   }).optional().default({}),
 });
 
@@ -208,9 +210,10 @@ const returnBorrowTransferSchema = z.object({
     trackingNo: optionalString,
     replacementSerials: z.union([z.string(), z.array(z.string())]).optional(),
     amount: z.union([z.number(), z.string()]).optional(),
-    paymentMethod: z.enum(["CASH", "GCASH", "BANK_TRANSFER", "CARD", "OTHER"]).optional(),
+    paymentMethod: z.enum(["CASH", "GCASH", "BANK_TRANSFER", "CARD", "OTHER", "CHEQUE", "MOBILE_BANKING", "EWALLET"]).optional(),
     referenceNo: optionalString,
     paymentInstructions: optionalString,
+    proofPhoto: optionalString,
   }).optional().default({}),
 });
 
