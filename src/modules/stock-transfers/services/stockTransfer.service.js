@@ -2138,9 +2138,13 @@ const assertStockTransferReceiveAccess = (stockTransfer, actor) => {
     );
   }
 
-  if (stockTransfer.toBranchId !== actor.branchId) {
+  const isLinked =
+    stockTransfer.toBranchId === actor.branchId ||
+    stockTransfer.fromBranchId === actor.branchId;
+
+  if (!isLinked) {
     throw new AppError(
-      "Only the receiving branch can confirm receipt of this stock transfer",
+      "Only linked branches (source or destination) can confirm receipt or claim of this stock transfer",
       403,
       "BRANCH_ACCESS_DENIED"
     );
@@ -4146,7 +4150,7 @@ const receiveStockTransfer = async (stockTransferId, payload = {}, actor) => {
         action: "STOCK_TRANSFER_RECEIVED",
         entityType: "StockTransfer",
         entityId: existingTransfer.id,
-        description: `Stock transfer ${existingTransfer.transferCode} received and confirmed by destination branch`,
+        description: `Stock transfer ${existingTransfer.transferCode} receipt/claim confirmed by ${actor.fullName || actor.username} (${actor.branchId === existingTransfer.fromBranchId ? "Source Branch" : "Destination Branch"})`,
         metadata: {
           transferCode: existingTransfer.transferCode,
           fromBranchId: existingTransfer.fromBranchId,
