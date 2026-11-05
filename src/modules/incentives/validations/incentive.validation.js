@@ -193,6 +193,11 @@ const nullableRepairFee = z.preprocess(
     .optional()
 );
 
+const nullablePoolBasisAccountId = z.preprocess(
+  (value) => (value === "" || value === undefined ? null : value),
+  z.string().trim().min(1).nullable().optional()
+);
+
 const accountConfigBody = z
   .object({
     itemEnabled:
@@ -200,6 +205,9 @@ const accountConfigBody = z
 
     itemRatePercent:
       nullableAccountRate,
+
+    poolBasisAccountId:
+      nullablePoolBasisAccountId,
 
     soloSaleEnabled:
       z.boolean().optional().default(false),
@@ -455,6 +463,9 @@ const createProgramRuleVersionSchema =
               .optional(),
 
           eligiblePriceTiers,
+
+          poolBasisAccountId:
+            nullablePoolBasisAccountId,
 
           repairCostPercent:
             nullableRepairCostPercent,

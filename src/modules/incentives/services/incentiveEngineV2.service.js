@@ -656,6 +656,17 @@ const loadItemMaterializationInputs = async (tx, cycle, materializedAt) => {
   }
 
   const eligiblePriceTiers = math.normalizePriceTiers(rule.eligiblePriceTiers);
+  const poolBasisSetting = await tx.businessSetting.findUnique({
+    where: {
+      scopeKey: `BRANCH:${cycle.branchId}:incentive.item_pool_basis_account`,
+    },
+  });
+  const poolBasisAccountId =
+    poolBasisSetting?.isActive &&
+    poolBasisSetting?.value?.poolBasisAccountId
+      ? poolBasisSetting.value.poolBasisAccountId
+      : null;
+
   const saleItems =
     eligiblePriceTiers.length === 0
       ? []
@@ -665,6 +676,9 @@ const loadItemMaterializationInputs = async (tx, cycle, materializedAt) => {
             priceTier: { in: eligiblePriceTiers },
             sale: {
               branchId: cycle.branchId,
+              ...(poolBasisAccountId
+                ? { cashierId: poolBasisAccountId }
+                : {}),
               saleDate: {
                 gte: range.startInclusive,
                 lt: range.endExclusive,

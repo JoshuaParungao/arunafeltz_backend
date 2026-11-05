@@ -3025,7 +3025,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     },
   });
 
-  const [incentiveSetting, itemProgramRules] = await Promise.all([
+  const [incentiveSetting, itemProgramRules, poolBasisSettings] = await Promise.all([
     prisma.businessSetting.findUnique({
       where: { scopeKey: "GLOBAL:incentive.rules" },
     }),
@@ -3033,7 +3033,89 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       where: { programType: "ITEM_SALE" },
       orderBy: { effectiveFrom: "desc" },
     }),
+    prisma.businessSetting.findMany({
+      where: {
+        key: "incentive.item_pool_basis_account",
+        isActive: true,
+      },
+    }),
   ]);
+
+  const poolBasisAccountIdByBranch = new Map();
+  for (const setting of poolBasisSettings) {
+    const bId = setting.value?.branchId;
+    const accId = setting.value?.poolBasisAccountId;
+    if (bId && accId) {
+      poolBasisAccountIdByBranch.set(bId, accId);
+    }
+  }
+
+  const loadedUsersById = new Map(users.map((u) => [u.id, u]));
+  const missingBasisUserIds = Array.from(
+    new Set(
+      Array.from(poolBasisAccountIdByBranch.values()).filter(
+        (accId) => accId && !loadedUsersById.has(accId)
+      )
+    )
+  );
+
+  if (missingBasisUserIds.length > 0) {
+    const extraBasisUsers = await prisma.user.findMany({
+      where: { id: { in: missingBasisUserIds } },
+      select: {
+        id: true,
+        employeeCode: true,
+        username: true,
+        fullName: true,
+        role: true,
+        status: true,
+        branch: { select: { id: true, code: true, name: true } },
+        cashierSales: {
+          where: activityDate ? { saleDate: activityDate } : undefined,
+          select: {
+            status: true,
+            grandTotal: true,
+            returnRequests: {
+              where: { status: "COMPLETED" },
+              select: { totalRefundAmount: true },
+            },
+          },
+        },
+      },
+    });
+    for (const extraUser of extraBasisUsers) {
+      loadedUsersById.set(extraUser.id, extraUser);
+    }
+  }
+
+  const computeUserNetSalesRevenue = (u) => {
+    const revSales = (u?.cashierSales || []).filter((sale) =>
+      ["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(sale.status)
+    );
+    return revSales.reduce((sum, sale) => {
+      const refunds = (sale.returnRequests || []).reduce(
+        (requestSum, request) => requestSum + toNumber(request.totalRefundAmount),
+        0
+      );
+      return sum + Math.max(toNumber(sale.grandTotal) - refunds, 0);
+    }, 0);
+  };
+
+  const poolBasisByBranch = new Map();
+  for (const [bId, accId] of poolBasisAccountIdByBranch.entries()) {
+    const basisUser = loadedUsersById.get(accId);
+    if (basisUser && (!basisUser.branch?.id || basisUser.branch.id === bId)) {
+      const basisSalesRevenue = computeUserNetSalesRevenue(basisUser);
+      poolBasisByBranch.set(bId, {
+        id: basisUser.id,
+        employeeCode: basisUser.employeeCode,
+        username: basisUser.username,
+        fullName: basisUser.fullName,
+        role: basisUser.role,
+        salesRevenue: basisSalesRevenue,
+      });
+    }
+  }
 
   const eligibleTiersByBranch = new Map();
   for (const rule of itemProgramRules) {
@@ -3151,6 +3233,13 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
 
     const soloIncentiveAmount = Math.round(((eligibleSoloRevenue * soloIncentivePercent) / 100) * 100) / 100;
 
+    const branchPoolBasis = staff.branch?.id ? poolBasisByBranch.get(staff.branch.id) || null : null;
+    const poolBasisSalesRevenue = branchPoolBasis ? branchPoolBasis.salesRevenue : 0;
+    const itemPoolIncentiveAmount =
+      itemIncentivePercent > 0 && poolBasisSalesRevenue > 0
+        ? Math.round(((poolBasisSalesRevenue * itemIncentivePercent) / 100) * 100) / 100
+        : 0;
+
     let ordinaryServiceIncentiveTotal = 0;
     let boardServiceIncentiveTotal = 0;
     let serviceRevenue = 0;
@@ -3198,7 +3287,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     }
 
     const serviceIncentiveAmount = Math.round((ordinaryServiceIncentiveTotal + boardServiceIncentiveTotal) * 100) / 100;
-    const totalIncentiveAmount = Math.round((soloIncentiveAmount + serviceIncentiveAmount) * 100) / 100;
+    const totalIncentiveAmount = Math.round((soloIncentiveAmount + itemPoolIncentiveAmount + serviceIncentiveAmount) * 100) / 100;
 
     return {
       id: staff.id,
@@ -3215,6 +3304,11 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
       productRevenue,
       eligibleSoloRevenue,
       itemIncentivePercent,
+      itemPoolIncentiveAmount,
+      poolBasisAccountId: branchPoolBasis?.id || null,
+      poolBasisAccount: branchPoolBasis,
+      poolBasisSalesRevenue,
+      isPoolBasisAccount: Boolean(branchPoolBasis && branchPoolBasis.id === staff.id),
       soloIncentivePercent,
       soloIncentiveAmount,
       serviceIncentivePercent: techServiceIncentivePercent,
@@ -3230,6 +3324,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
         soloSaleRatePercent: userConfig.soloSaleRatePercent !== null ? Number(userConfig.soloSaleRatePercent) : null,
         itemEnabled: Boolean(userConfig.itemEnabled),
         itemRatePercent: userConfig.itemRatePercent !== null ? Number(userConfig.itemRatePercent) : null,
+        poolBasisAccountId: branchPoolBasis?.id || null,
         ordinaryRepairEnabled: Boolean(userConfig.ordinaryRepairEnabled),
         ordinaryRepairRatePercent: userConfig.ordinaryRepairRatePercent !== null ? Number(userConfig.ordinaryRepairRatePercent) : null,
         boardRepairEnabled: Boolean(userConfig.boardRepairEnabled),
@@ -3296,6 +3391,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     summary.salesRevenue += staff.salesRevenue;
     summary.productRevenue += staff.productRevenue;
     summary.totalSoloIncentiveAmount += staff.soloIncentiveAmount;
+    summary.totalItemPoolIncentiveAmount += staff.itemPoolIncentiveAmount;
     summary.totalServiceIncentiveAmount += staff.serviceIncentiveAmount;
     summary.totalIncentiveAmount += staff.totalIncentiveAmount;
     summary.completedServices += staff.completedServices;
@@ -3312,6 +3408,7 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
     salesRevenue: 0,
     productRevenue: 0,
     totalSoloIncentiveAmount: 0,
+    totalItemPoolIncentiveAmount: 0,
     totalServiceIncentiveAmount: 0,
     totalIncentiveAmount: 0,
     completedServices: 0,

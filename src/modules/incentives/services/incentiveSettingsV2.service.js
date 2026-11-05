@@ -309,6 +309,88 @@ const normalizeOptionalText = (value) => {
   return normalized || null;
 };
 
+const ITEM_POOL_BASIS_SETTING_KEY = "incentive.item_pool_basis_account";
+
+const itemPoolBasisScopeKey = (branchId) =>
+  `BRANCH:${branchId}:${ITEM_POOL_BASIS_SETTING_KEY}`;
+
+const POOL_BASIS_USER_SELECT = {
+  id: true,
+  employeeCode: true,
+  username: true,
+  fullName: true,
+  role: true,
+  status: true,
+  branchId: true,
+};
+
+const saveBranchPoolBasisAccountInTransaction = async (
+  tx,
+  actor,
+  branchId,
+  rawPoolBasisAccountId
+) => {
+  if (!branchId) return null;
+
+  const poolBasisAccountId = normalizeOptionalText(rawPoolBasisAccountId);
+  let basisUser = null;
+
+  if (poolBasisAccountId) {
+    basisUser = await tx.user.findUnique({
+      where: { id: poolBasisAccountId },
+      select: POOL_BASIS_USER_SELECT,
+    });
+
+    if (!basisUser) {
+      throw new AppError(
+        "Selected Pool Basis employee account was not found",
+        404,
+        "POOL_BASIS_ACCOUNT_NOT_FOUND"
+      );
+    }
+
+    if (basisUser.branchId && basisUser.branchId !== branchId) {
+      throw new AppError(
+        "Selected Pool Basis employee account must belong to the same branch",
+        400,
+        "POOL_BASIS_ACCOUNT_BRANCH_MISMATCH"
+      );
+    }
+  }
+
+  const scopeKey = itemPoolBasisScopeKey(branchId);
+  const valuePayload = {
+    poolBasisAccountId: basisUser ? basisUser.id : null,
+    updatedAt: new Date().toISOString(),
+    updatedById: actor?.id || null,
+  };
+
+  await tx.businessSetting.upsert({
+    where: { scopeKey },
+    update: {
+      value: valuePayload,
+      isActive: true,
+      updatedById: actor?.id || null,
+    },
+    create: {
+      scopeKey,
+      key: ITEM_POOL_BASIS_SETTING_KEY,
+      category: "BUSINESS_RULE",
+      valueType: "JSON",
+      value: valuePayload,
+      label: "Branch Item Sale Pool Basis Account",
+      description:
+        "Designated employee account whose sales serve as the basis for the Branch Item Sale Pool Incentive.",
+      isEditable: true,
+      isActive: true,
+      branchId,
+      updatedById: actor?.id || null,
+    },
+  });
+
+  return basisUser;
+};
+
 const rateDecimal = (value) =>
   new Prisma.Decimal(value).toDecimalPlaces(
     4,
@@ -755,6 +837,16 @@ const createAccountConfigVersionInTransaction = async (
       },
     });
 
+  let poolBasisAccount = null;
+  if (payload.poolBasisAccountId !== undefined) {
+    poolBasisAccount = await saveBranchPoolBasisAccountInTransaction(
+      tx,
+      actor,
+      account.branchId,
+      payload.poolBasisAccountId
+    );
+  }
+
   await createAuditLog(
     {
       actor,
@@ -875,6 +967,12 @@ const createAccountConfigVersionInTransaction = async (
 
     latestSavedVersion:
       savedConfig,
+
+    poolBasisAccountId:
+      poolBasisAccount?.id ?? undefined,
+
+    poolBasisAccount:
+      poolBasisAccount || undefined,
   };
 };
 
@@ -1175,7 +1273,8 @@ const formatProgramRuleVersion = (version) => {
 
 const buildProgramRuleConfiguration = (
   programType,
-  savedVersion
+  savedVersion,
+  poolBasisAccount = null
 ) => {
   assertProgramRuleType(programType);
 
@@ -1189,6 +1288,11 @@ const buildProgramRuleConfiguration = (
             ]
           : [],
 
+      poolBasisAccountId:
+        poolBasisAccount?.id || null,
+      poolBasisAccount:
+        poolBasisAccount || null,
+
       repairCostPercent: null,
       companySharePercent: null,
     };
@@ -1196,6 +1300,8 @@ const buildProgramRuleConfiguration = (
 
   return {
     eligiblePriceTiers: [],
+    poolBasisAccountId: null,
+    poolBasisAccount: null,
 
     repairCostPercent:
       savedVersion
@@ -1264,36 +1370,88 @@ const getProgramRules = async (
       (branch) => branch.id
     );
 
-  const versions =
+  const [versions, poolBasisSettings, activeUsers] =
     branchIds.length === 0
-      ? []
-      : await prisma
-          .incentiveProgramRuleVersion
-          .findMany({
+      ? [[], [], []]
+      : await Promise.all([
+          prisma
+            .incentiveProgramRuleVersion
+            .findMany({
+              where: {
+                branchId: {
+                  in: branchIds,
+                },
+              },
+
+              include: {
+                createdBy: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    role: true,
+                  },
+                },
+              },
+
+              orderBy: [
+                { branchId: "asc" },
+                { programType: "asc" },
+                { effectiveFrom: "desc" },
+                { createdAt: "desc" },
+                { id: "desc" },
+              ],
+            }),
+          prisma.businessSetting.findMany({
+            where: {
+              key: ITEM_POOL_BASIS_SETTING_KEY,
+              isActive: true,
+            },
+          }),
+          prisma.user.findMany({
             where: {
               branchId: {
                 in: branchIds,
               },
+              status: "ACTIVE",
             },
-
-            include: {
-              createdBy: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  role: true,
-                },
-              },
-            },
-
+            select: POOL_BASIS_USER_SELECT,
             orderBy: [
-              { branchId: "asc" },
-              { programType: "asc" },
-              { effectiveFrom: "desc" },
-              { createdAt: "desc" },
-              { id: "desc" },
+              { fullName: "asc" },
+              { id: "asc" },
             ],
-          });
+          }),
+        ]);
+
+  const poolBasisAccountIdByBranch =
+    new Map();
+  for (const setting of poolBasisSettings) {
+    const bId =
+      setting.value?.branchId;
+    const accId =
+      setting.value
+        ?.poolBasisAccountId;
+    if (bId && accId) {
+      poolBasisAccountIdByBranch.set(
+        bId,
+        accId
+      );
+    }
+  }
+
+  const usersByBranch = new Map();
+  const userById = new Map();
+  for (const u of activeUsers) {
+    userById.set(u.id, u);
+    if (!u.branchId) continue;
+    const list =
+      usersByBranch.get(u.branchId) ||
+      [];
+    list.push(u);
+    usersByBranch.set(
+      u.branchId,
+      list
+    );
+  }
 
   const latestByProgram =
     new Map();
@@ -1322,44 +1480,67 @@ const getProgramRules = async (
     },
 
     branches:
-      branches.map((branch) => ({
-        branch,
+      branches.map((branch) => {
+        const poolBasisAccountId =
+          poolBasisAccountIdByBranch.get(
+            branch.id
+          ) || null;
+        const poolBasisAccount =
+          poolBasisAccountId
+            ? userById.get(
+                poolBasisAccountId
+              ) || null
+            : null;
+        const branchUsers =
+          usersByBranch.get(
+            branch.id
+          ) || [];
 
-        programs:
-          PROGRAM_RULE_TYPES.map(
-            (programType) => {
-              const key =
-                `${branch.id}:${programType}`;
+        return {
+          branch,
+          branchUsers,
+          poolBasisAccountId:
+            poolBasisAccount?.id ||
+            null,
+          poolBasisAccount,
 
-              const rawVersion =
-                latestByProgram.get(key) ||
-                null;
+          programs:
+            PROGRAM_RULE_TYPES.map(
+              (programType) => {
+                const key =
+                  `${branch.id}:${programType}`;
 
-              const savedVersion =
-                formatProgramRuleVersion(
-                  rawVersion
-                );
+                const rawVersion =
+                  latestByProgram.get(key) ||
+                  null;
 
-              return {
-                programType,
+                const savedVersion =
+                  formatProgramRuleVersion(
+                    rawVersion
+                  );
 
-                configurationState:
-                  savedVersion
-                    ? "CONFIGURED"
-                    : "UNCONFIGURED",
+                return {
+                  programType,
 
-                configuration:
-                  buildProgramRuleConfiguration(
-                    programType,
+                  configurationState:
                     savedVersion
-                  ),
+                      ? "CONFIGURED"
+                      : "UNCONFIGURED",
 
-                latestSavedVersion:
-                  savedVersion,
-              };
-            }
-          ),
-      })),
+                  configuration:
+                    buildProgramRuleConfiguration(
+                      programType,
+                      savedVersion,
+                      poolBasisAccount
+                    ),
+
+                  latestSavedVersion:
+                    savedVersion,
+                };
+              }
+            ),
+        };
+      }),
   };
 };
 
@@ -1524,6 +1705,52 @@ const createProgramRuleVersionInTransaction =
         version
       );
 
+    let poolBasisAccount = null;
+    if (programType === "ITEM_SALE") {
+      if (
+        payload.poolBasisAccountId !==
+        undefined
+      ) {
+        poolBasisAccount =
+          await saveBranchPoolBasisAccountInTransaction(
+            tx,
+            actor,
+            branch.id,
+            payload.poolBasisAccountId
+          );
+      } else {
+        const existingBasisSetting =
+          await tx.businessSetting.findUnique(
+            {
+              where: {
+                scopeKey:
+                  itemPoolBasisScopeKey(
+                    branch.id
+                  ),
+              },
+            }
+          );
+        const existingBasisAccountId =
+          existingBasisSetting
+            ?.isActive
+            ? existingBasisSetting
+                .value
+                ?.poolBasisAccountId ||
+              null
+            : null;
+        if (existingBasisAccountId) {
+          poolBasisAccount =
+            await tx.user.findUnique({
+              where: {
+                id: existingBasisAccountId,
+              },
+              select:
+                POOL_BASIS_USER_SELECT,
+            });
+        }
+      }
+    }
+
     await createAuditLog(
       {
         actor,
@@ -1564,6 +1791,10 @@ const createProgramRuleVersionInTransaction =
             version
               .eligiblePriceTiers,
 
+          poolBasisAccountId:
+            poolBasisAccount?.id ||
+            null,
+
           repairCostPercent:
             version
               .repairCostPercent ===
@@ -1591,7 +1822,8 @@ const createProgramRuleVersionInTransaction =
       configuration:
         buildProgramRuleConfiguration(
           programType,
-          savedVersion
+          savedVersion,
+          poolBasisAccount
         ),
 
       latestSavedVersion:
