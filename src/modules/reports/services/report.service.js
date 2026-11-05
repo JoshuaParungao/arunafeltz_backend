@@ -3043,7 +3043,12 @@ const getStaffPerformanceSummary = async (actor, query = {}) => {
 
   const poolBasisAccountIdByBranch = new Map();
   for (const setting of poolBasisSettings) {
-    const bId = setting.value?.branchId;
+    const bId =
+      setting.branchId ||
+      setting.value?.branchId ||
+      (typeof setting.scopeKey === "string" && setting.scopeKey.startsWith("BRANCH:")
+        ? setting.scopeKey.split(":")[1]
+        : null);
     const accId = setting.value?.poolBasisAccountId;
     if (bId && accId) {
       poolBasisAccountIdByBranch.set(bId, accId);

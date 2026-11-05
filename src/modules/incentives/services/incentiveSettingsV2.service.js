@@ -6,6 +6,9 @@ const { createAuditLog } = require("../../../utils/auditLogger");
 const scheduleMath = require("./incentiveScheduleMath.service");
 
 const CONFIGURABLE_USER_ROLES = new Set([
+  "SUPER_OWNER",
+  "BRANCH_OWNER",
+  "ADMIN",
   "CASHIER",
   "TECHNICIAN",
 ]);
@@ -82,6 +85,27 @@ const resolveManageAccess = (actor) => {
 };
 
 const resolveEffectiveClassification = (account) => {
+  const salesClassifications = new Set([
+    "SALES_AGENT",
+    "SENIOR_SALES_AGENT",
+  ]);
+
+  if (account.role === "TECHNICIAN") {
+    return TECHNICAL_CLASSIFICATIONS.has(
+      account.incentiveClassification
+    )
+      ? account.incentiveClassification
+      : "TECHNICIAN";
+  }
+
+  if (account.role === "CASHIER") {
+    return salesClassifications.has(
+      account.incentiveClassification
+    )
+      ? account.incentiveClassification
+      : "SALES_AGENT";
+  }
+
   if (
     account.incentiveClassification &&
     account.incentiveClassification !== "NONE"
@@ -89,11 +113,7 @@ const resolveEffectiveClassification = (account) => {
     return account.incentiveClassification;
   }
 
-  // Legacy-safe fallback for existing staff rows.
-  if (account.role === "CASHIER") return "SALES_AGENT";
-  if (account.role === "TECHNICIAN") return "TECHNICIAN";
-
-  return "NONE";
+  return "SALES_AGENT";
 };
 
 const getEligibility = () => ({
@@ -360,6 +380,7 @@ const saveBranchPoolBasisAccountInTransaction = async (
 
   const scopeKey = itemPoolBasisScopeKey(branchId);
   const valuePayload = {
+    branchId,
     poolBasisAccountId: basisUser ? basisUser.id : null,
     updatedAt: new Date().toISOString(),
     updatedById: actor?.id || null,
@@ -368,6 +389,7 @@ const saveBranchPoolBasisAccountInTransaction = async (
   await tx.businessSetting.upsert({
     where: { scopeKey },
     update: {
+      branchId,
       value: valuePayload,
       isActive: true,
       updatedById: actor?.id || null,
@@ -1426,7 +1448,12 @@ const getProgramRules = async (
     new Map();
   for (const setting of poolBasisSettings) {
     const bId =
-      setting.value?.branchId;
+      setting.branchId ||
+      setting.value?.branchId ||
+      (typeof setting.scopeKey === "string" &&
+      setting.scopeKey.startsWith("BRANCH:")
+        ? setting.scopeKey.split(":")[1]
+        : null);
     const accId =
       setting.value
         ?.poolBasisAccountId;
