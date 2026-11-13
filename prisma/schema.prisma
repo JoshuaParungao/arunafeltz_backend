@@ -858,6 +858,7 @@ model Supplier {
   purchaseOrders            PurchaseOrder[]
   purchaseReceivings        PurchaseReceiving[]
   purchaseReceivingPayments PurchaseReceivingPayment[]
+  supplierReturns           SupplierReturn[]
 
   @@unique([branchId, supplierCode])
   @@index([branchId])
@@ -1028,7 +1029,8 @@ model ReturnRequest {
   cancelledById String?
   cancelledBy   User?   @relation("ReturnRequestCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
 
-  items ReturnItem[]
+  items               ReturnItem[]
+  supplierReturnItems SupplierReturnItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1078,6 +1080,187 @@ model ReturnItem {
   @@index([saleItemId])
   @@index([itemId])
   @@index([serialId])
+}
+
+enum SupplierReturnStatus {
+  DRAFT
+  APPROVED
+  OUT_TO_SUPPLIER
+  PARTIALLY_RESOLVED
+  RESOLVED
+  CANCELLED
+}
+
+enum SupplierReturnSourceType {
+  STORE_DEFECT
+  CUSTOMER_WARRANTY
+  CUSTOMER_RETURN
+  MIXED
+}
+
+enum SupplierReturnItemSourceType {
+  STORE_DEFECT
+  CUSTOMER_WARRANTY
+  CUSTOMER_RETURN
+}
+
+enum SupplierReturnResolutionType {
+  PENDING
+  REPLACEMENT
+  REPAIRED
+  CREDIT_MEMO
+  REFUND
+  RETURN_TO_CUSTOMER_DEFECTIVE
+  SCRAP_SHRINKAGE
+  MIXED
+}
+
+enum SupplierReturnItemResolutionStatus {
+  PENDING
+  REPLACED
+  REPAIRED
+  CREDIT_MEMO
+  REFUND
+  RETURNED_DEFECTIVE
+  SCRAPPED
+}
+
+model SupplierReturn {
+  id String @id @default(cuid())
+
+  returnCode String
+  status     SupplierReturnStatus     @default(DRAFT)
+  sourceType SupplierReturnSourceType @default(STORE_DEFECT)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  supplierRmaNumber       String?
+  supplierNameSnapshot    String?
+  supplierContactSnapshot String?
+
+  driverName     String?
+  driverContact  String?
+  vehiclePlate   String?
+  courierName    String?
+  trackingNumber String?
+
+  dispatchDate           DateTime?
+  expectedResolutionDate DateTime?
+  resolvedDate           DateTime?
+
+  resolutionType   SupplierReturnResolutionType @default(PENDING)
+  creditMemoNumber String?
+  creditMemoAmount Decimal                      @default(0) @db.Decimal(12, 2)
+  refundAmount     Decimal                      @default(0) @db.Decimal(12, 2)
+
+  notes              String?
+  internalNotes      String?
+  resolutionNotes    String?
+  rejectionReason    String?
+  cancellationReason String?
+
+  subtotalCost Decimal @default(0) @db.Decimal(12, 2)
+  totalItems   Int     @default(0)
+
+  createdById String?
+  createdBy   User?   @relation("SupplierReturnCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("SupplierReturnUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  approvedById String?
+  approvedBy   User?   @relation("SupplierReturnApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  dispatchedById String?
+  dispatchedBy   User?   @relation("SupplierReturnDispatchedBy", fields: [dispatchedById], references: [id], onDelete: SetNull)
+
+  resolvedById String?
+  resolvedBy   User?   @relation("SupplierReturnResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  cancelledById String?
+  cancelledBy   User?   @relation("SupplierReturnCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  approvedAt   DateTime?
+  dispatchedAt DateTime?
+  resolvedAt   DateTime?
+  cancelledAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items          SupplierReturnItem[]
+  warrantyClaims WarrantyClaim[]
+
+  @@unique([branchId, returnCode])
+  @@index([branchId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([sourceType])
+  @@index([resolutionType])
+  @@index([dispatchDate])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([approvedById])
+  @@index([dispatchedById])
+  @@index([resolvedById])
+  @@index([cancelledById])
+}
+
+model SupplierReturnItem {
+  id String @id @default(cuid())
+
+  supplierReturnId String
+  supplierReturn   SupplierReturn @relation(fields: [supplierReturnId], references: [id], onDelete: Cascade)
+
+  lineNo Int
+
+  itemId String
+  item   Item   @relation("SupplierReturnItemToItem", fields: [itemId], references: [id], onDelete: Restrict)
+
+  itemSerialId String?
+  itemSerial   ItemSerial? @relation("SupplierReturnItemSerial", fields: [itemSerialId], references: [id], onDelete: SetNull)
+
+  serialNumberSnapshot String?
+  quantity             Decimal @default(1) @db.Decimal(12, 2)
+  unitCost             Decimal @default(0) @db.Decimal(12, 2)
+  totalCost            Decimal @default(0) @db.Decimal(12, 2)
+
+  defectReason   String
+  defectCategory String?
+
+  sourceType SupplierReturnItemSourceType @default(STORE_DEFECT)
+
+  warrantyClaimId String?
+  warrantyClaim   WarrantyClaim? @relation(fields: [warrantyClaimId], references: [id], onDelete: SetNull)
+
+  returnRequestId String?
+  returnRequest   ReturnRequest? @relation(fields: [returnRequestId], references: [id], onDelete: SetNull)
+
+  resolutionStatus        SupplierReturnItemResolutionStatus @default(PENDING)
+  resolutionNotes         String?
+  replacementItemId       String?
+  replacementItem         Item?                              @relation("SupplierReturnReplacementItem", fields: [replacementItemId], references: [id], onDelete: SetNull)
+  replacementSerialId     String?
+  replacementSerial       ItemSerial?                        @relation("SupplierReturnReplacementSerial", fields: [replacementSerialId], references: [id], onDelete: SetNull)
+  replacementSerialNumber String?
+  repairedAt              DateTime?
+  replacedAt              DateTime?
+  resolvedAt              DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([supplierReturnId])
+  @@index([itemId])
+  @@index([itemSerialId])
+  @@index([warrantyClaimId])
+  @@index([returnRequestId])
+  @@index([resolutionStatus])
+  @@index([sourceType])
 }
 
 enum WarrantyClaimStatus {
@@ -1132,6 +1315,9 @@ model WarrantyClaim {
   saleItemId String?
   saleItem   SaleItem? @relation(fields: [saleItemId], references: [id], onDelete: SetNull)
 
+  supplierReturnId String?
+  supplierReturn   SupplierReturn? @relation(fields: [supplierReturnId], references: [id], onDelete: SetNull)
+
   createdById String?
   createdBy   User?   @relation("WarrantyClaimCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
@@ -1144,8 +1330,9 @@ model WarrantyClaim {
   releasedById String?
   releasedBy   User?   @relation("WarrantyClaimReleasedBy", fields: [releasedById], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  supplierReturnItems SupplierReturnItem[]
 
   @@unique([branchId, claimCode])
   @@index([branchId])
@@ -1154,6 +1341,7 @@ model WarrantyClaim {
   @@index([serialId])
   @@index([saleId])
   @@index([saleItemId])
+  @@index([supplierReturnId])
   @@index([status])
   @@index([receivedAt])
   @@index([createdById])
@@ -1354,6 +1542,7 @@ model Branch {
   purchaseOrders                   PurchaseOrder[]
   purchaseReceivings               PurchaseReceiving[]
   purchaseReceivingPayments        PurchaseReceivingPayment[]
+  supplierReturns                  SupplierReturn[]
   stockTransfersFrom               StockTransfer[]                   @relation("StockTransferFromBranch")
   stockTransfersTo                 StockTransfer[]                   @relation("StockTransferToBranch")
   incentives                       Incentive[]
@@ -1502,6 +1691,12 @@ model User {
   createdIncentiveItemCycleRevisions    IncentiveItemCycleRevision[]      @relation("IncentiveItemCycleRevisionCreatedBy")
   reversedIncentiveItemCycleRevisions   IncentiveItemCycleRevision[]      @relation("IncentiveItemCycleRevisionReversedBy")
   incentiveItemRecipientSnapshots       IncentiveItemRecipientSnapshot[]  @relation("IncentiveItemRecipientSnapshotStaff")
+  createdSupplierReturns                SupplierReturn[]                  @relation("SupplierReturnCreatedBy")
+  updatedSupplierReturns                SupplierReturn[]                  @relation("SupplierReturnUpdatedBy")
+  approvedSupplierReturns               SupplierReturn[]                  @relation("SupplierReturnApprovedBy")
+  dispatchedSupplierReturns             SupplierReturn[]                  @relation("SupplierReturnDispatchedBy")
+  resolvedSupplierReturns               SupplierReturn[]                  @relation("SupplierReturnResolvedBy")
+  cancelledSupplierReturns              SupplierReturn[]                  @relation("SupplierReturnCancelledBy")
 
   @@index([role])
   @@index([status])
@@ -1731,8 +1926,10 @@ model Item {
   deliveryReceiptItems     DeliveryReceiptItem[]
   purchaseOrderItems       PurchaseOrderItem[]
   purchaseReceivingItems   PurchaseReceivingItem[]
-  stockTransferItems       StockTransferItem[]     @relation("StockTransferSourceItem")
-  destinationTransferItems StockTransferItem[]     @relation("StockTransferDestinationItem")
+  stockTransferItems                 StockTransferItem[]     @relation("StockTransferSourceItem")
+  destinationTransferItems           StockTransferItem[]     @relation("StockTransferDestinationItem")
+  supplierReturnItems                SupplierReturnItem[]    @relation("SupplierReturnItemToItem")
+  replacementForSupplierReturnItems  SupplierReturnItem[]    @relation("SupplierReturnReplacementItem")
 
   @@unique([branchId, itemCode])
   @@index([branchId])
@@ -1888,8 +2085,10 @@ model ItemSerial {
   updatedAt            DateTime              @updatedAt
   saleItems            SaleItem[]
   warrantyClaims       WarrantyClaim[]
-  returnItems          ReturnItem[]
-  stockTransferSerials StockTransferSerial[]
+  returnItems                        ReturnItem[]
+  stockTransferSerials               StockTransferSerial[]
+  supplierReturnItems                SupplierReturnItem[]  @relation("SupplierReturnItemSerial")
+  replacementForSupplierReturnItems  SupplierReturnItem[]  @relation("SupplierReturnReplacementSerial")
 
   @@unique([branchId, itemId, serialNumber])
   @@index([branchId])
