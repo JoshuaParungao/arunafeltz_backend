@@ -1220,6 +1220,10 @@ const resetTransactionalData = async (actor) => {
         await tx.incentiveItemCycleRevision.deleteMany({});
         await tx.incentiveCycle.deleteMany({});
 
+        currentStep = "SUPPLIER_RETURNS";
+        await tx.supplierReturnItem.deleteMany({});
+        await tx.supplierReturn.deleteMany({});
+
         currentStep = "WARRANTY";
         await tx.warrantyClaim.deleteMany({});
 
