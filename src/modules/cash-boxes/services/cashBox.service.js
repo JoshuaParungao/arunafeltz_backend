@@ -1,8 +1,8 @@
 const prisma = require("../../../config/prisma");
 const { createAuditLog } = require("../../../utils/auditLogger");
 
-const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "ADMIN"]);
-const CASH_CUSTODIAN_MANAGER_ROLES = new Set(["SUPER_OWNER", "ADMIN"]);
+const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
+const CASH_CUSTODIAN_MANAGER_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
 const CASH_CUSTODIAN_ELIGIBLE_ROLES = new Set(["CASHIER", "TECHNICIAN"]);
 
 const CASH_CUSTODIAN_ASSIGNMENT_INCLUDE = {
@@ -54,6 +54,19 @@ const ensureOwnerAdmin = (actor) => {
     error.statusCode = 403;
     throw error;
   }
+};
+
+const ensureCashManagerOrCustodian = async (actor, client = prisma) => {
+  if (actor && OWNER_ADMIN_ROLES.has(actor.role)) {
+    return;
+  }
+  const isAssigned = await hasActiveCashCustodianAssignment(actor, client);
+  if (isAssigned) {
+    return;
+  }
+  const error = new Error("CASH_BOX_FORBIDDEN");
+  error.statusCode = 403;
+  throw error;
 };
 
 const ensureCashCustodianManager = (actor) => {
@@ -526,6 +539,32 @@ const getCashBoxes = async (actor, query = {}) => {
 
   const { page, limit, skip } = parsePagination(query);
   const branchId = resolveBranchFilter(actor, query.branchId);
+
+  // Auto-provision primary cash box for branch if none exists
+  const targetBranchId = branchId || actor.branchId;
+  if (targetBranchId) {
+    const existingCount = await prisma.cashBox.count({
+      where: { branchId: targetBranchId },
+    });
+    if (existingCount === 0) {
+      const branch = await prisma.branch.findUnique({
+        where: { id: targetBranchId },
+      });
+      if (branch) {
+        await prisma.cashBox.create({
+          data: {
+            branchId: branch.id,
+            boxCode: `CASHBOX-${branch.code}`,
+            name: `${branch.name || "Branch"} Main Cash Register`,
+            status: "ACTIVE",
+            currentBalance: 0,
+            remarks: "Default Primary Cash Register",
+            createdById: actor.id,
+          },
+        }).catch(() => null);
+      }
+    }
+  }
 
   const where = {};
 
@@ -1088,14 +1127,13 @@ const receiveCashHandover = async (actor, handoverId, payload = {}) => {
 };
 
 const createCashTransaction = async (actor, cashBoxId, payload) => {
-  ensureOwnerAdmin(actor);
+  await ensureCashManagerOrCustodian(actor);
 
   return prisma.$transaction(async (tx) => {
-    await lockRow(tx, "CashBox", cashBoxId);
-
-    const cashBox = await tx.cashBox.findUnique({
+    let targetCashBoxId = cashBoxId;
+    let cashBox = await tx.cashBox.findUnique({
       where: {
-        id: cashBoxId,
+        id: targetCashBoxId,
       },
       include: {
         branch: {
@@ -1108,11 +1146,43 @@ const createCashTransaction = async (actor, cashBoxId, payload) => {
       },
     });
 
+    if (!cashBox && (targetCashBoxId === "default" || actor.branchId)) {
+      const targetBranchId = actor.branchId;
+      if (targetBranchId) {
+        const branch = await tx.branch.findUnique({
+          where: { id: targetBranchId },
+        });
+        if (branch) {
+          cashBox = await tx.cashBox.findFirst({
+            where: { branchId: branch.id, status: "ACTIVE" },
+            include: { branch: { select: { id: true, code: true, name: true } } },
+          });
+          if (!cashBox) {
+            cashBox = await tx.cashBox.create({
+              data: {
+                branchId: branch.id,
+                boxCode: `CASHBOX-${branch.code}`,
+                name: `${branch.name || "Branch"} Main Cash Register`,
+                status: "ACTIVE",
+                currentBalance: 0,
+                remarks: "Default Primary Cash Register",
+                createdById: actor.id,
+              },
+              include: { branch: { select: { id: true, code: true, name: true } } },
+            });
+          }
+          targetCashBoxId = cashBox.id;
+        }
+      }
+    }
+
     if (!cashBox) {
       const error = new Error("CASH_BOX_NOT_FOUND");
       error.statusCode = 404;
       throw error;
     }
+
+    await lockRow(tx, "CashBox", cashBox.id);
 
     if (!isSuperOwner(actor) && cashBox.branchId !== actor.branchId) {
       const error = new Error("CASH_BOX_NOT_FOUND");
