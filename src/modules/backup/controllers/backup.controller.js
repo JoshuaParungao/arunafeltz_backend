@@ -2,7 +2,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { generateDatabaseSnapshot, restoreDatabaseSnapshot } = require("../services/backup.service");
-const { listScheduledBackups, getScheduledBackupFilePath } = require("../services/backupScheduler.service");
+const {
+  listScheduledBackups,
+  getScheduledBackupFilePath,
+  runScheduledBackup,
+} = require("../services/backupScheduler.service");
 const { restoreDatabaseSchema } = require("../validations/backup.validation");
 const { sendSuccess } = require("../../../utils/apiResponse");
 const AppError = require("../../../utils/appError");
@@ -37,6 +41,26 @@ const getScheduledBackups = async (req, res, next) => {
       message: "Scheduled backups retrieved successfully",
       data: backups,
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const triggerScheduledBackup = async (req, res, next) => {
+  try {
+    const created = await runScheduledBackup("MANUAL", req.user);
+    const backups = listScheduledBackups();
+    return sendSuccess(
+      res,
+      {
+        message: "Backup snapshot captured and saved to server archive successfully",
+        data: {
+          created,
+          backups,
+        },
+      },
+      201
+    );
   } catch (error) {
     return next(error);
   }
@@ -81,6 +105,7 @@ const restoreBackup = async (req, res, next) => {
 module.exports = {
   exportBackup,
   getScheduledBackups,
+  triggerScheduledBackup,
   downloadScheduledBackup,
   restoreBackup,
 };

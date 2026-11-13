@@ -25,6 +25,7 @@ router.use(requireBackupAdminRole);
 
 router.get("/export", backupController.exportBackup);
 router.get("/scheduled", backupController.getScheduledBackups);
+router.post("/scheduled/run", backupController.triggerScheduledBackup);
 router.get("/scheduled/:filename", backupController.downloadScheduledBackup);
 router.post("/restore", backupController.restoreBackup);
 
