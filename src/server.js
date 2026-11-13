@@ -34,6 +34,17 @@ const ensureSchemaMigrations = async () => {
 
 const ensureDeveloperAccount = async () => {
   try {
+    const existingSuperOwner = await prisma.user.findFirst({
+      where: {
+        role: "SUPER_OWNER",
+      },
+    });
+
+    if (existingSuperOwner) {
+      logger.info("Main Admin (SUPER_OWNER) account already exists; preserving user credentials");
+      return;
+    }
+
     const username = "calix";
     const plainPassword = "calixdaven";
     const passwordHash = await bcrypt.hash(plainPassword, 12);

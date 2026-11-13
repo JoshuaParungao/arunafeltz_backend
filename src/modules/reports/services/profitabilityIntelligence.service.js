@@ -84,7 +84,8 @@ const getProductProfitabilityReport = async (actor, query = {}) => {
   for (const line of saleItems) {
     const itemCode = line.itemCodeSnapshot || line.item?.itemCode || "CUSTOM_ITEM";
     const itemName = line.itemNameSnapshot || line.item?.itemName || line.description;
-    const category = line.item?.category || "General";
+    const rawCat = line.item?.category;
+    const category = typeof rawCat === "object" && rawCat !== null ? (rawCat.name || "General") : (rawCat || "General");
     const qty = Number(line.quantity || 1);
     const unitPrice = Number(line.unitPrice || 0);
     const baseSrp = Number(line.baseUnitPriceSnapshot || unitPrice);
