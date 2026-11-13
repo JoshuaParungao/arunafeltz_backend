@@ -17,12 +17,14 @@ const validate = (schema) => {
 
     if (!result.success) {
       const details = formatZodIssues(result.error.issues);
+      const detailMsg = details.map((d) => `${d.path}: ${d.message}`).join("; ");
 
       return next(
         new AppError(
-          "Validation failed",
+          detailMsg ? `Validation failed: ${detailMsg}` : "Validation failed",
           400,
-          "VALIDATION_ERROR"
+          "VALIDATION_ERROR",
+          details
         )
       );
     }

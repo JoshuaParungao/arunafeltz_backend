@@ -20,6 +20,14 @@ const optionalMarkupPercent = z.coerce
   .lt(100, "Mark up percentage must be less than 100")
   .optional();
 
+const optionalNullableId = z
+  .string()
+  .trim()
+  .min(1)
+  .optional()
+  .nullable()
+  .or(z.literal(""));
+
 const installmentTermValues = [
   "CASH_PROMO",
   "STRAIGHT",
@@ -43,14 +51,16 @@ const receivableProviderValues = [
 ];
 
 const saleItemSchema = z.object({
-  itemId: z.string().trim().min(1).optional(),
-  description: z.string().trim().min(1).optional(),
+  itemId: optionalNullableId,
+  description: optionalString,
   priceTier: z.coerce.number().int().min(1).max(5).optional(),
   markupPercent: optionalMarkupPercent,
   quantity: positiveNumber,
   unitPrice: nonNegativeNumber.optional(),
-  batchId: z.string().trim().min(1).optional(),
-  serialId: z.string().trim().min(1).optional(),
+  discountAmount: nonNegativeNumber.optional().default(0),
+  batchId: optionalNullableId,
+  batchCode: optionalString,
+  serialId: optionalNullableId,
   serialNumber: optionalString,
   warrantyType: optionalString,
   warrantyDuration: optionalString,
@@ -59,7 +69,18 @@ const saleItemSchema = z.object({
 });
 
 const salePaymentSchema = z.object({
-  paymentMethod: z.enum(["CASH", "GCASH", "BANK_TRANSFER", "OTHER"]),
+  paymentMethod: z.enum([
+    "CASH",
+    "GCASH",
+    "BANK_TRANSFER",
+    "CARD",
+    "CREDIT",
+    "CREDIT_CARD",
+    "DEBIT_CARD",
+    "PAYMAYA",
+    "MAYA",
+    "OTHER",
+  ]),
   amount: positiveNumber,
   referenceNo: optionalString,
   remarks: optionalString,
@@ -89,11 +110,11 @@ const receivableSchema = z
 const createSaleSchema = z.object({
   body: z
     .object({
-      branchId: z.string().trim().min(1).optional(),
-      cashierId: z.string().trim().min(1).optional(),
-      idempotencyKey: z.string().uuid().optional(),
-      customerId: z.string().trim().min(1).optional(),
-      quotationId: z.string().trim().min(1).optional(),
+      branchId: optionalNullableId,
+      cashierId: optionalNullableId,
+      idempotencyKey: z.string().trim().min(1).max(128).optional().or(z.literal("")),
+      customerId: optionalNullableId,
+      quotationId: optionalNullableId,
       serviceCharge: nonNegativeNumber.optional().default(0),
       remarks: optionalString,
       items: z.array(saleItemSchema).min(1, "At least one sale item is required"),

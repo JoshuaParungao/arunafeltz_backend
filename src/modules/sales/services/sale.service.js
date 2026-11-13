@@ -1181,8 +1181,15 @@ const buildSalePayments = (actor, payments = []) => {
     const amount = toMoney(payment.amount);
     amountPaid += amount;
 
+    let normalizedMethod = payment.paymentMethod;
+    if (normalizedMethod === "CREDIT_CARD" || normalizedMethod === "DEBIT_CARD") {
+      normalizedMethod = "CARD";
+    } else if (normalizedMethod === "PAYMAYA" || normalizedMethod === "MAYA") {
+      normalizedMethod = "GCASH";
+    }
+
     return {
-      paymentMethod: payment.paymentMethod,
+      paymentMethod: normalizedMethod,
       amount: toMoneyString(amount),
       referenceNo: payment.referenceNo || null,
       remarks: payment.remarks || null,
