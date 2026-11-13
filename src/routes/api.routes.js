@@ -28,6 +28,20 @@ const backupRoutes = require("../modules/backup/routes/backup.routes");
 const omnisearchRoutes = require("../modules/omnisearch/routes/omnisearch.routes");
 
 const router = express.Router();
+const { sendSuccess } = require("../utils/apiResponse");
+
+router.get("/", (req, res) => {
+  return sendSuccess(res, {
+    message: "Arunafeltz Cloud POS Backend API is online and operational",
+    data: {
+      service: "arunafeltz-backend",
+      status: "online",
+      version: "1.0.0",
+      healthCheck: "/api/health",
+      frontend: "https://arunafeltzcomputerpos.cloud/",
+    },
+  });
+});
 
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
