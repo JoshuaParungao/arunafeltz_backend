@@ -1,16 +1,9 @@
 const inventoryService = require("../services/inventory.service");
+const { sendSuccess } = require("../../../utils/apiResponse");
 const {
   sanitizeBatchesCostForActor,
   sanitizeMovementsCostForActor,
 } = require("../utils/inventoryVisibilityPolicy");
-
-const sendSuccess = (res, message, data) => {
-  return res.status(200).json({
-    success: true,
-    message,
-    data,
-  });
-};
 
 const handleInventoryQueryError = (error, res, next) => {
   const knownErrors = {
