@@ -1,12 +1,25 @@
 const sendSuccess = (
   res,
-  {
-    statusCode = 200,
-    message = "Request successful",
-    data = null,
-    meta = undefined,
-  } = {}
+  optionsOrMessage = {},
+  dataIfPositional = null,
+  metaIfPositional = undefined
 ) => {
+  let statusCode = 200;
+  let message = "Request successful";
+  let data = null;
+  let meta = undefined;
+
+  if (typeof optionsOrMessage === "string") {
+    message = optionsOrMessage;
+    data = dataIfPositional !== undefined ? dataIfPositional : null;
+    meta = metaIfPositional;
+  } else if (optionsOrMessage && typeof optionsOrMessage === "object") {
+    statusCode = optionsOrMessage.statusCode ?? 200;
+    message = optionsOrMessage.message ?? "Request successful";
+    data = optionsOrMessage.data ?? null;
+    meta = optionsOrMessage.meta ?? undefined;
+  }
+
   const response = {
     success: true,
     message,
