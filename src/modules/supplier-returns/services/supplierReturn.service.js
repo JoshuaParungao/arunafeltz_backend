@@ -208,7 +208,17 @@ const generateSupplierReturnCode = async (tx, branchCode, branchId) => {
 const getEligibleDefects = async (actor, query = {}) => {
   ensureCanAccessSupplierReturns(actor);
 
-  const targetBranchId = isSuperOwner(actor) && query.branchId ? query.branchId : actor.branchId;
+  let targetBranchId = isSuperOwner(actor) && query.branchId ? query.branchId : actor.branchId;
+  if (!targetBranchId) {
+    const firstBranch = await prisma.branch.findFirst({
+      where: { status: "ACTIVE" },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+    targetBranchId = firstBranch?.id || null;
+  }
+
+  const targetSupplierId = query.supplierId ? query.supplierId.trim() : null;
 
   // 1. Pending Warranty Claims in this branch (IN or CHECKING, not yet sent to supplier)
   const warrantyWhere = {
@@ -329,6 +339,14 @@ const getEligibleDefects = async (actor, query = {}) => {
           isSerialized: true,
         },
       },
+      batch: {
+        select: {
+          id: true,
+          batchCode: true,
+          supplierName: true,
+          referenceNo: true,
+        },
+      },
     },
     orderBy: {
       updatedAt: "desc",
@@ -336,8 +354,83 @@ const getEligibleDefects = async (actor, query = {}) => {
     take: 50,
   });
 
-  return {
-    customerWarrantyClaims: warrantyClaims.map((wc) => ({
+  // Trace supplier origins for all serials via PurchaseReceivingSerial & Batches
+  const allSerialNumbers = [
+    ...damagedSerials.map((s) => s.serialNumber),
+    ...warrantyClaims.map((wc) => wc.serial?.serialNumber).filter(Boolean),
+    ...returnRequests.flatMap((rr) => rr.items.map((it) => it.serial?.serialNumber).filter(Boolean)),
+  ];
+
+  const prSerials = allSerialNumbers.length > 0
+    ? await prisma.purchaseReceivingSerial.findMany({
+        where: {
+          purchaseReceivingItem: {
+            purchaseReceiving: {
+              branchId: targetBranchId,
+            },
+          },
+          serialNumber: {
+            in: allSerialNumbers,
+          },
+        },
+        select: {
+          serialNumber: true,
+          purchaseReceivingItem: {
+            select: {
+              itemId: true,
+              purchaseReceiving: {
+                select: {
+                  supplierId: true,
+                  supplierNameSnapshot: true,
+                  supplier: {
+                    select: {
+                      id: true,
+                      name: true,
+                      supplierCode: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })
+    : [];
+
+  const branchSuppliers = await prisma.supplier.findMany({
+    where: {
+      OR: [
+        { branchId: targetBranchId },
+        { branchId: null },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      supplierCode: true,
+    },
+  });
+
+  const supplierByName = new Map();
+  branchSuppliers.forEach((sup) => {
+    supplierByName.set(sup.name.toLowerCase().trim(), sup);
+  });
+
+  const serialSupplierMap = new Map();
+  prSerials.forEach((prs) => {
+    const rec = prs.purchaseReceivingItem?.purchaseReceiving;
+    if (rec?.supplierId) {
+      serialSupplierMap.set(prs.serialNumber, {
+        supplierId: rec.supplierId,
+        supplierName: rec.supplier?.name || rec.supplierNameSnapshot,
+        supplierCode: rec.supplier?.supplierCode,
+      });
+    }
+  });
+
+  const resolvedWarrantyClaims = warrantyClaims.map((wc) => {
+    const sup = wc.serial?.serialNumber ? serialSupplierMap.get(wc.serial.serialNumber) : null;
+    return {
       id: wc.id,
       code: wc.claimCode,
       sourceType: "CUSTOMER_WARRANTY",
@@ -351,12 +444,19 @@ const getEligibleDefects = async (actor, query = {}) => {
       serialId: wc.serialId,
       serialNumber: wc.serial?.serialNumber,
       defectReason: wc.issueDescription || wc.customerComplaint || "Customer warranty claim defect",
+      supplierId: sup?.supplierId || null,
+      supplierName: sup?.supplierName || null,
+      supplierCode: sup?.supplierCode || null,
       customerName: wc.customer?.fullName,
       customerPhone: wc.customer?.mobileNumber,
       receivedAt: wc.receivedAt,
-    })),
-    customerReturns: returnRequests.flatMap((rr) =>
-      rr.items.map((it) => ({
+    };
+  });
+
+  const resolvedCustomerReturns = returnRequests.flatMap((rr) =>
+    rr.items.map((it) => {
+      const sup = it.serial?.serialNumber ? serialSupplierMap.get(it.serial.serialNumber) : null;
+      return {
         id: it.id,
         returnRequestId: rr.id,
         code: rr.returnCode,
@@ -371,11 +471,35 @@ const getEligibleDefects = async (actor, query = {}) => {
         serialId: it.serialId,
         serialNumber: it.serial?.serialNumber,
         defectReason: it.reason || rr.reason || "Returned defective by customer",
+        supplierId: sup?.supplierId || null,
+        supplierName: sup?.supplierName || null,
+        supplierCode: sup?.supplierCode || null,
         customerName: rr.customer?.fullName,
         completedAt: rr.completedAt,
-      }))
-    ),
-    storeDefects: damagedSerials.map((s) => ({
+      };
+    })
+  );
+
+  const resolvedStoreDefects = damagedSerials.map((s) => {
+    let sup = serialSupplierMap.get(s.serialNumber);
+    if (!sup && s.batch?.supplierName) {
+      const match = supplierByName.get(s.batch.supplierName.toLowerCase().trim());
+      if (match) {
+        sup = {
+          supplierId: match.id,
+          supplierName: match.name,
+          supplierCode: match.supplierCode,
+        };
+      } else {
+        sup = {
+          supplierId: null,
+          supplierName: s.batch.supplierName,
+          supplierCode: null,
+        };
+      }
+    }
+
+    return {
       id: s.id,
       sourceType: "STORE_DEFECT",
       itemId: s.itemId,
@@ -388,8 +512,24 @@ const getEligibleDefects = async (actor, query = {}) => {
       serialId: s.id,
       serialNumber: s.serialNumber,
       defectReason: s.remarks || "Damaged / Defective store stock",
+      supplierId: sup?.supplierId || null,
+      supplierName: sup?.supplierName || null,
+      supplierCode: sup?.supplierCode || null,
+      batchCode: s.batch?.batchCode || null,
       updatedAt: s.updatedAt,
-    })),
+    };
+  });
+
+  return {
+    customerWarrantyClaims: targetSupplierId
+      ? resolvedWarrantyClaims.filter((wc) => wc.supplierId === targetSupplierId)
+      : resolvedWarrantyClaims,
+    customerReturns: targetSupplierId
+      ? resolvedCustomerReturns.filter((cr) => cr.supplierId === targetSupplierId)
+      : resolvedCustomerReturns,
+    storeDefects: targetSupplierId
+      ? resolvedStoreDefects.filter((sd) => sd.supplierId === targetSupplierId)
+      : resolvedStoreDefects,
   };
 };
 
@@ -586,6 +726,39 @@ const createSupplierReturn = async (actor, payload) => {
           throw error;
         }
         serialNumberSnapshot = serial.serialNumber;
+
+        // Origin validation: Ensure serial is not being returned to a different supplier
+        const prSerial = await tx.purchaseReceivingSerial.findFirst({
+          where: {
+            serialNumber: serial.serialNumber,
+            purchaseReceivingItem: {
+              purchaseReceiving: {
+                branchId: branch.id,
+              },
+            },
+          },
+          include: {
+            purchaseReceivingItem: {
+              include: {
+                purchaseReceiving: {
+                  include: {
+                    supplier: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const originalSupplierId = prSerial?.purchaseReceivingItem?.purchaseReceiving?.supplierId;
+        const originalSupplierName = prSerial?.purchaseReceivingItem?.purchaseReceiving?.supplier?.name;
+        if (originalSupplierId && originalSupplierId !== supplier.id) {
+          const error = new Error(
+            `Serial "${serial.serialNumber}" was supplied by "${originalSupplierName}" and cannot be returned to "${supplier.name}".`
+          );
+          error.statusCode = 400;
+          throw error;
+        }
       }
 
       const quantity = Math.max(1, Number(itemInput.quantity) || 1);
