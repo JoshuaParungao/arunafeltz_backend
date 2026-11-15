@@ -202,6 +202,8 @@ const returnBorrowTransferSchema = z.object({
       "SET_BILLING_AMOUNT",
       "SUBMIT_PAYMENT",
       "CONFIRM_PAYMENT",
+      "MARK_REPLACED",
+      "MARK_PAID",
     ]).optional().default("RETURN"),
     condition: optionalString,
     remarks: optionalString,
