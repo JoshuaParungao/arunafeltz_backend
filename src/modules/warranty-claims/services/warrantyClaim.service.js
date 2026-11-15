@@ -876,6 +876,23 @@ const releaseWarrantyClaim = async (actor, warrantyClaimId, payload) => {
       throw error;
     }
 
+    // Safety guard: Ensure customer has returned any borrowed Service Loaner Unit first!
+    if (warrantyClaim.remarks && warrantyClaim.remarks.includes("[LOANER_DATA]:")) {
+      try {
+        const jsonStr = warrantyClaim.remarks.split("[LOANER_DATA]:")[1]?.split("[/LOANER_DATA]")[0];
+        if (jsonStr) {
+          const loanerData = JSON.parse(jsonStr);
+          if (loanerData?.status === "ON_LOAN") {
+            const error = new Error("Cannot release claim: Customer still has an active Service Loaner Unit. Please accept the loaner return first.");
+            error.statusCode = 400;
+            throw error;
+          }
+        }
+      } catch (err) {
+        if (err.statusCode) throw err;
+      }
+    }
+
     const updateResult = await tx.warrantyClaim.updateMany({
       where: {
         id: warrantyClaim.id,
