@@ -458,6 +458,8 @@ const getInventorySerials = async (actor, query) => {
           select: {
             id: true,
             batchCode: true,
+            supplierName: true,
+            referenceNo: true,
           },
         },
         saleItems: {
@@ -1556,6 +1558,8 @@ const getInventoryMovements = async (actor, query) => {
           select: {
             id: true,
             batchCode: true,
+            supplierName: true,
+            referenceNo: true,
           },
         },
         serial: {
