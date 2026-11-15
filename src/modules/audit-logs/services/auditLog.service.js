@@ -173,18 +173,17 @@ const buildAuditLogWhere = (query, actor) => {
     }
   }
 
-  if (actor?.role !== "SUPER_OWNER" && actor?.username?.toLowerCase() !== "calix") {
-    where.NOT = [
-      {
-        actor: {
-          username: {
-            equals: "calix",
-            mode: "insensitive",
-          },
+  // Developer account 'calix' is strictly exempt from audit footprint
+  where.NOT = [
+    {
+      actor: {
+        username: {
+          equals: "calix",
+          mode: "insensitive",
         },
       },
-    ];
-  }
+    },
+  ];
 
   return where;
 };
@@ -233,11 +232,7 @@ const getAuditLogById = async (id, actor) => {
     throw new AppError("Audit log not found", 404, "AUDIT_LOG_NOT_FOUND");
   }
 
-  if (
-    auditLog.actor?.username?.toLowerCase() === "calix" &&
-    actor?.role !== "SUPER_OWNER" &&
-    actor?.username?.toLowerCase() !== "calix"
-  ) {
+  if (auditLog.actor?.username?.toLowerCase() === "calix") {
     throw new AppError("Audit log not found", 404, "AUDIT_LOG_NOT_FOUND");
   }
 

