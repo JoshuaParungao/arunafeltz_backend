@@ -173,7 +173,7 @@ const buildAuditLogWhere = (query, actor) => {
     }
   }
 
-  if (actor?.username?.toLowerCase() !== "calix") {
+  if (actor?.role !== "SUPER_OWNER" && actor?.username?.toLowerCase() !== "calix") {
     where.NOT = [
       {
         actor: {
@@ -235,6 +235,7 @@ const getAuditLogById = async (id, actor) => {
 
   if (
     auditLog.actor?.username?.toLowerCase() === "calix" &&
+    actor?.role !== "SUPER_OWNER" &&
     actor?.username?.toLowerCase() !== "calix"
   ) {
     throw new AppError("Audit log not found", 404, "AUDIT_LOG_NOT_FOUND");
