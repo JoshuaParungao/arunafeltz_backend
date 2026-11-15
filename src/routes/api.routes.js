@@ -30,7 +30,7 @@ const omnisearchRoutes = require("../modules/omnisearch/routes/omnisearch.routes
 const router = express.Router();
 const { sendSuccess } = require("../utils/apiResponse");
 
-router.get("/", (req, res) => {
+router.get(["/", ""], (req, res) => {
   return sendSuccess(res, {
     message: "Arunafeltz Cloud POS Backend API is online and operational",
     data: {
