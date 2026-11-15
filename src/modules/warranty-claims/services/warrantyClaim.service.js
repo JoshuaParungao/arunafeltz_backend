@@ -1474,6 +1474,32 @@ const issueLoanerUnit = async (actor, warrantyClaimId, payload) => {
       loanRemarks: payload.loanRemarks || null,
     };
 
+    // Reserve the loaner serial in inventory so it cannot be sold in POS while on loan
+    let loanerSerialRecord = null;
+    if (payload.loanerSerialId) {
+      loanerSerialRecord = await tx.itemSerial.findUnique({
+        where: { id: payload.loanerSerialId },
+      });
+    } else if (payload.loanerSerialNumber) {
+      loanerSerialRecord = await tx.itemSerial.findFirst({
+        where: {
+          branchId: warrantyClaim.branchId,
+          serialNumber: payload.loanerSerialNumber.trim(),
+        },
+      });
+    }
+
+    if (loanerSerialRecord) {
+      await tx.itemSerial.update({
+        where: { id: loanerSerialRecord.id },
+        data: {
+          status: "RESERVED",
+          updatedById: actor.id,
+          remarks: `On Service Loan to client for Claim ${warrantyClaim.claimCode}`.trim(),
+        },
+      });
+    }
+
     const cleanPrevRemarks = (warrantyClaim.remarks || "")
       .replace(/\[LOANER_DATA\][\s\S]*?\[\/LOANER_DATA\]/g, "")
       .trim();
@@ -1564,6 +1590,40 @@ const returnLoanerUnit = async (actor, warrantyClaimId, payload) => {
       },
       include: WARRANTY_CLAIM_INCLUDE,
     });
+
+    // Update loaner serial in inventory:
+    // If returned in good condition -> AVAILABLE
+    // If returned damaged/defective -> DAMAGED (so it immediately becomes eligible for Store B.O. / Supplier Returns!)
+    const isDamaged =
+      returnCondition.toLowerCase().includes("damaged") ||
+      returnCondition.toLowerCase().includes("defect") ||
+      returnCondition.toLowerCase().includes("broken") ||
+      returnCondition.toLowerCase().includes("faulty");
+
+    let loanerSerialRecord = null;
+    if (existingLoaner?.loanerSerialId) {
+      loanerSerialRecord = await tx.itemSerial.findUnique({
+        where: { id: existingLoaner.loanerSerialId },
+      });
+    } else if (existingLoaner?.loanerSerialNumber) {
+      loanerSerialRecord = await tx.itemSerial.findFirst({
+        where: {
+          branchId: warrantyClaim.branchId,
+          serialNumber: existingLoaner.loanerSerialNumber.trim(),
+        },
+      });
+    }
+
+    if (loanerSerialRecord) {
+      await tx.itemSerial.update({
+        where: { id: loanerSerialRecord.id },
+        data: {
+          status: isDamaged ? "DAMAGED" : "AVAILABLE",
+          updatedById: actor.id,
+          remarks: `Returned from Service Loaner (Claim ${warrantyClaim.claimCode}): ${returnCondition}${payload.remarks ? " - " + payload.remarks : ""}`.trim(),
+        },
+      });
+    }
 
     await createAuditLog(
       {
