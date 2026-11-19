@@ -67,6 +67,15 @@ const disableUser = asyncHandler(async (req, res) => {
   });
 });
 
+const enableUser = asyncHandler(async (req, res) => {
+  const user = await userService.enableUser(req.params.id, req.user);
+
+  return sendSuccess(res, {
+    message: "User enabled successfully",
+    data: user,
+  });
+});
+
 module.exports = {
   createUser,
   listUsers,
@@ -75,4 +84,5 @@ module.exports = {
   approveUser,
   rejectUser,
   disableUser,
+  enableUser,
 };

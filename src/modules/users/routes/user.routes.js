@@ -70,4 +70,12 @@ router.patch(
   userController.disableUser
 );
 
+router.patch(
+  "/:id/enable",
+  protect,
+  requirePermission(PERMISSIONS.DISABLE_USERS),
+  validate(userIdParamSchema),
+  userController.enableUser
+);
+
 module.exports = router;

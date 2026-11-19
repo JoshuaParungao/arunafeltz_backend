@@ -633,6 +633,16 @@ const transitionUser = async (id, actor, action) =>
         rejectedAt: new Date(),
         disabledAt: null,
       });
+    } else if (action === "ENABLE") {
+      if (existingUser.status !== "DISABLED") {
+        throw new AppError("Only disabled users can be enabled", 400, "USER_NOT_DISABLED");
+      }
+
+      nextStatus = "ACTIVE";
+      Object.assign(transitionData, {
+        status: nextStatus,
+        disabledAt: null,
+      });
     } else {
       if (existingUser.status === "DISABLED") {
         throw new AppError("User is already disabled", 400, "USER_ALREADY_DISABLED");
@@ -655,6 +665,7 @@ const transitionUser = async (id, actor, action) =>
       APPROVE: "APPROVED",
       REJECT: "REJECTED",
       DISABLE: "DISABLED",
+      ENABLE: "ENABLED",
     }[action];
 
     await createAuditLog(
@@ -683,6 +694,7 @@ const transitionUser = async (id, actor, action) =>
 const approveUser = (id, actor) => transitionUser(id, actor, "APPROVE");
 const rejectUser = (id, actor) => transitionUser(id, actor, "REJECT");
 const disableUser = (id, actor) => transitionUser(id, actor, "DISABLE");
+const enableUser = (id, actor) => transitionUser(id, actor, "ENABLE");
 
 module.exports = {
   SAFE_USER_SELECT,
@@ -693,4 +705,5 @@ module.exports = {
   approveUser,
   rejectUser,
   disableUser,
+  enableUser,
 };
