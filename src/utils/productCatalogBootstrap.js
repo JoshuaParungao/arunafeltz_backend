@@ -2,12 +2,44 @@ const prisma = require("../config/prisma");
 const logger = require("./logger");
 const initialProducts = require("../data/initialProducts.json");
 
+const syncItemSerializationAndWarranty = async () => {
+  logger.info("Syncing item serialization and warranty flags across all branches...");
+  const serializedCodes = initialProducts.filter((p) => p.isSerialized).map((p) => p.itemCode);
+  const nonSerializedCodes = initialProducts.filter((p) => !p.isSerialized).map((p) => p.itemCode);
+
+  const updatedSerialized = await prisma.item.updateMany({
+    where: { itemCode: { in: serializedCodes } },
+    data: {
+      isSerialized: true,
+      hasWarranty: true,
+      description: "[WARRANTY: 1 YEAR WARRANTY]",
+    },
+  });
+
+  const updatedNonSerialized = await prisma.item.updateMany({
+    where: { itemCode: { in: nonSerializedCodes } },
+    data: {
+      isSerialized: false,
+    },
+  });
+
+  logger.info(
+    `Serialization sync completed: ${updatedSerialized.count} items marked serialized/warranty, ${updatedNonSerialized.count} items marked non-serialized`
+  );
+
+  return {
+    serializedUpdated: updatedSerialized.count,
+    nonSerializedUpdated: updatedNonSerialized.count,
+  };
+};
+
 const ensureProductCatalog = async (force = false) => {
   try {
     const currentCount = await prisma.item.count();
     if (currentCount > 0 && !force) {
-      logger.info(`Product catalog already populated (${currentCount} items)`);
-      return { skipped: true, currentCount };
+      logger.info(`Product catalog already populated (${currentCount} items). Running serialization sync.`);
+      const syncResult = await syncItemSerializationAndWarranty();
+      return { skipped: true, currentCount, syncResult };
     }
 
     logger.info("Initializing product catalog from real dataset...");
@@ -172,6 +204,9 @@ const ensureProductCatalog = async (force = false) => {
       const price4 = p.price4;
       const price5 = p.price5;
       const availableQty = p.available;
+      const isSerialized = Boolean(p.isSerialized);
+      const hasWarranty = Boolean(p.hasWarranty);
+      const description = p.description || null;
 
       const mainCatId = branchCategoryMap.get(`${mainBranch.id}:${catName}:${subcatName}`);
 
@@ -179,6 +214,9 @@ const ensureProductCatalog = async (force = false) => {
         data: {
           itemCode,
           itemName,
+          description,
+          isSerialized,
+          hasWarranty,
           costPrice,
           price1,
           price2,
@@ -247,6 +285,9 @@ const ensureProductCatalog = async (force = false) => {
           data: {
             itemCode,
             itemName,
+            description,
+            isSerialized,
+            hasWarranty,
             costPrice,
             price1,
             price2,
@@ -267,7 +308,9 @@ const ensureProductCatalog = async (force = false) => {
     }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    logger.info(`Product catalog bootstrap completed in ${duration}s. Items: ${initialProducts.length}, Batches: ${batchCount}, Total Units: ${totalStockUnits}`);
+    logger.info(
+      `Product catalog bootstrap completed in ${duration}s. Items: ${initialProducts.length}, Batches: ${batchCount}, Total Units: ${totalStockUnits}`
+    );
     return {
       success: true,
       items: initialProducts.length,
@@ -281,4 +324,4 @@ const ensureProductCatalog = async (force = false) => {
   }
 };
 
-module.exports = { ensureProductCatalog };
+module.exports = { ensureProductCatalog, syncItemSerializationAndWarranty };
