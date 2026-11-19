@@ -152,6 +152,7 @@ enum SalePaymentMethod {
   CARD
   CREDIT
   OTHER
+  CHEQUE
 }
 
 enum SalePaymentStatus {
@@ -219,6 +220,7 @@ enum ServicePaymentMethod {
   BANK_TRANSFER
   CARD
   OTHER
+  CHEQUE
 }
 
 enum ServicePaymentStatus {
@@ -281,6 +283,7 @@ enum StockTransferPaymentMethod {
   BANK_TRANSFER
   CARD
   OTHER
+  CHEQUE
 }
 
 enum StockTransferSettlementStatus {

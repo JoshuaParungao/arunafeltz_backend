@@ -80,6 +80,7 @@ const salePaymentSchema = z.object({
     "PAYMAYA",
     "MAYA",
     "OTHER",
+    "CHEQUE",
   ]),
   amount: positiveNumber,
   referenceNo: optionalString,

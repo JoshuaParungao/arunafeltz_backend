@@ -1,0 +1,4 @@
+-- AlterEnum
+ALTER TYPE "SalePaymentMethod" ADD VALUE IF NOT EXISTS 'CHEQUE';
+ALTER TYPE "ServicePaymentMethod" ADD VALUE IF NOT EXISTS 'CHEQUE';
+ALTER TYPE "StockTransferPaymentMethod" ADD VALUE IF NOT EXISTS 'CHEQUE';

@@ -1186,6 +1186,8 @@ const buildSalePayments = (actor, payments = []) => {
       normalizedMethod = "CARD";
     } else if (normalizedMethod === "PAYMAYA" || normalizedMethod === "MAYA") {
       normalizedMethod = "GCASH";
+    } else if (normalizedMethod === "CHECK") {
+      normalizedMethod = "CHEQUE";
     }
 
     return {
@@ -1293,6 +1295,85 @@ const createSale = async (actor, payload, database = prisma) => {
       salePayload.payments
     );
     const hasReceivable = Boolean(salePayload.receivable);
+
+    const paymentMethodsSetting = await tx.businessSetting.findUnique({
+      where: { scopeKey: "GLOBAL:payment.methods" },
+    });
+    if (paymentMethodsSetting?.value && typeof paymentMethodsSetting.value === "object") {
+      const pmRules = paymentMethodsSetting.value;
+      const reqFields = pmRules.requiredFields || {};
+
+      if (hasReceivable && pmRules.creditInstallment === false) {
+        const error = new Error("PAYMENT_METHOD_CREDIT_DISABLED");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (salePayments.length > 1 && pmRules.mixedPayment === false) {
+        const error = new Error("PAYMENT_METHOD_MIXED_DISABLED");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      for (const p of salePayments) {
+        const m = p.paymentMethod;
+        if (m === "CASH" && pmRules.cash === false) {
+          const error = new Error("PAYMENT_METHOD_CASH_DISABLED");
+          error.statusCode = 400;
+          throw error;
+        }
+        if (m === "GCASH" && pmRules.gcash === false) {
+          const error = new Error("PAYMENT_METHOD_GCASH_DISABLED");
+          error.statusCode = 400;
+          throw error;
+        }
+        if (m === "BANK_TRANSFER" && pmRules.bankTransfer === false) {
+          const error = new Error("PAYMENT_METHOD_BANK_TRANSFER_DISABLED");
+          error.statusCode = 400;
+          throw error;
+        }
+        if (m === "CARD" && pmRules.cardTerminal === false) {
+          const error = new Error("PAYMENT_METHOD_CARD_DISABLED");
+          error.statusCode = 400;
+          throw error;
+        }
+        if (m === "CHEQUE" && pmRules.cheque === false) {
+          const error = new Error("PAYMENT_METHOD_CHEQUE_DISABLED");
+          error.statusCode = 400;
+          throw error;
+        }
+
+        if (reqFields.chequeNumber && m === "CHEQUE" && !p.referenceNo) {
+          const error = new Error("CHEQUE_NUMBER_REQUIRED");
+          error.statusCode = 400;
+          throw error;
+        }
+        if (reqFields.cardApprovalCode && m === "CARD" && !p.referenceNo) {
+          const error = new Error("CARD_APPROVAL_CODE_REQUIRED");
+          error.statusCode = 400;
+          throw error;
+        }
+        if (reqFields.referenceNumber && (m === "GCASH" || m === "BANK_TRANSFER" || m === "OTHER") && !p.referenceNo) {
+          const error = new Error("PAYMENT_REFERENCE_REQUIRED");
+          error.statusCode = 400;
+          throw error;
+        }
+        if (reqFields.bankName && (m === "CHEQUE" || m === "BANK_TRANSFER" || m === "CARD")) {
+          const hasBankInRemarks = p.remarks && /bank/i.test(p.remarks);
+          const hasBankInRef = p.referenceNo && /bank/i.test(p.referenceNo);
+          if (!hasBankInRemarks && !hasBankInRef && !p.remarks) {
+            const error = new Error("BANK_NAME_REQUIRED");
+            error.statusCode = 400;
+            throw error;
+          }
+        }
+        if (reqFields.remarks && !p.remarks) {
+          const error = new Error("PAYMENT_REMARKS_REQUIRED");
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+    }
 
     if (hasReceivable && amountPaid > grandTotal) {
       const error = new Error("RECEIVABLE_INITIAL_SETTLEMENT_EXCEEDS_TOTAL");

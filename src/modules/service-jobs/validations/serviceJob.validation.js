@@ -19,6 +19,8 @@ const immediatePaymentMethod = z.enum([
   "CASH",
   "GCASH",
   "BANK_TRANSFER",
+  "CARD",
+  "CHEQUE",
   "OTHER",
 ]);
 const receivableProvider = z.enum([

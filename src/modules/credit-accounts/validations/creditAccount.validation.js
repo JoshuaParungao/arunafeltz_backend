@@ -28,6 +28,8 @@ const collectionPaymentMethodValues = [
   "CASH",
   "GCASH",
   "BANK_TRANSFER",
+  "CARD",
+  "CHEQUE",
   "OTHER",
 ];
 

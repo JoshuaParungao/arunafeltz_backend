@@ -131,6 +131,15 @@ const resetTransactions = asyncHandler(async (req, res) => {
   });
 });
 
+const getPaymentMethodSettings = asyncHandler(async (req, res) => {
+  const paymentMethods = await settingService.getPaymentMethodSettings();
+
+  return sendSuccess(res, {
+    message: "Payment methods retrieved successfully",
+    data: paymentMethods,
+  });
+});
+
 module.exports = {
   listSettings,
   getSettingByScopeKey,
@@ -140,6 +149,7 @@ module.exports = {
   computeQuotationTest,
   getInstallmentBasisSettings,
   computeInstallmentTest,
+  getPaymentMethodSettings,
   getWarrantyRuleSettings,
   computeWarrantyTest,
   getCashBoxRuleSettings,

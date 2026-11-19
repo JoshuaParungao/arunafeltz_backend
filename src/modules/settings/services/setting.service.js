@@ -1377,6 +1377,42 @@ const resetTransactionalData = async (actor) => {
   }
 };
 
+const getPaymentMethodSettings = async () => {
+  const setting = await prisma.businessSetting.findUnique({
+    where: { scopeKey: "GLOBAL:payment.methods" },
+  });
+
+  const defaultValue = {
+    cash: true,
+    gcash: true,
+    bankTransfer: true,
+    cardTerminal: true,
+    cheque: true,
+    creditInstallment: true,
+    mixedPayment: true,
+    requiredFields: {
+      referenceNumber: true,
+      cardApprovalCode: true,
+      chequeNumber: true,
+      bankName: true,
+      remarks: false,
+    },
+  };
+
+  if (!setting || !setting.value || typeof setting.value !== "object") {
+    return defaultValue;
+  }
+
+  return {
+    ...defaultValue,
+    ...setting.value,
+    requiredFields: {
+      ...defaultValue.requiredFields,
+      ...(setting.value.requiredFields || {}),
+    },
+  };
+};
+
 module.exports = {
   listSettings,
   getSettingByScopeKey,
@@ -1386,6 +1422,7 @@ module.exports = {
   computeQuotationTest,
   getInstallmentBasisSettings,
   computeInstallmentTest,
+  getPaymentMethodSettings,
   getWarrantyRuleSettings,
   computeWarrantyTest,
   getCashBoxRuleSettings,
