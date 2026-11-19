@@ -8,6 +8,7 @@ const RECEIVABLE_PROVIDERS = Object.freeze([
   "KYRO",
   "OTHER_FINANCING",
   "IN_HOUSE_INSTALLMENT",
+  "CHEQUE",
 ]);
 
 const SETTLED_PAYMENT_METHODS = new Set([

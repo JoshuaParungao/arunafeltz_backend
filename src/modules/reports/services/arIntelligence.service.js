@@ -403,6 +403,7 @@ const getProviderPerformanceReport = async (actor, query = {}) => {
     "CREDIT_CARD",
     "DEBIT_CARD",
     "OTHER_FINANCING",
+    "CHEQUE",
   ];
 
   ALL_PROVIDERS.forEach((p) => {

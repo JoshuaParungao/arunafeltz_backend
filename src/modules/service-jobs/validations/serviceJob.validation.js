@@ -32,6 +32,7 @@ const receivableProvider = z.enum([
   "KYRO",
   "OTHER_FINANCING",
   "IN_HOUSE_INSTALLMENT",
+  "CHEQUE",
 ]);
 const installmentTerm = z.enum([
   "CASH_PROMO",

@@ -1309,6 +1309,19 @@ const createSale = async (actor, payload, database = prisma) => {
         throw error;
       }
 
+      if (salePayload.receivable?.provider === "CHEQUE") {
+        if (pmRules.cheque === false) {
+          const error = new Error("PAYMENT_METHOD_CHEQUE_DISABLED");
+          error.statusCode = 400;
+          throw error;
+        }
+        if (reqFields.chequeNumber && !salePayload.receivable.providerReferenceNo) {
+          const error = new Error("CHEQUE_NUMBER_REQUIRED");
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+
       if (salePayments.length > 1 && pmRules.mixedPayment === false) {
         const error = new Error("PAYMENT_METHOD_MIXED_DISABLED");
         error.statusCode = 400;
