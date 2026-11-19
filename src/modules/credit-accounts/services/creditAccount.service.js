@@ -29,6 +29,8 @@ const COLLECTION_PAYMENT_METHODS = new Set([
   "CASH",
   "GCASH",
   "BANK_TRANSFER",
+  "CARD",
+  "CHEQUE",
   "OTHER",
 ]);
 
