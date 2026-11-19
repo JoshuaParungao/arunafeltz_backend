@@ -11,6 +11,7 @@ const {
   assertIdempotencyMatch,
   createIdempotencyFingerprint,
 } = require("../../../utils/idempotency");
+const { DEVELOPER_PRISMA_NOT_FILTER } = require("../../../constants/roles");
 
 const SERVICE_REPAIR_TYPES = new Set([
   "ORDINARY_REPAIR",
@@ -1626,6 +1627,7 @@ const getServiceTechnicians = async (actor, query = {}) => {
   const branchId = isSuperOwner(actor) ? query.branchId : actor.branchId;
   const where = {
     status: "ACTIVE",
+    NOT: DEVELOPER_PRISMA_NOT_FILTER,
     ...(branchId
       ? {
           OR: [

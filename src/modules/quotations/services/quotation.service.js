@@ -1,6 +1,6 @@
 const prisma = require("../../../config/prisma");
 
-const { BRANCH_SCOPED_ROLES } = require("../../../constants/roles");
+const { BRANCH_SCOPED_ROLES, DEVELOPER_PRISMA_NOT_FILTER } = require("../../../constants/roles");
 const { createAuditLog } = require("../../../utils/auditLogger");
 const logger = require("../../../utils/logger");
 
@@ -185,6 +185,7 @@ const getEligibleServiceStaff = async (actor, query = {}) => {
       role: {
         in: BRANCH_SCOPED_ROLES,
       },
+      NOT: DEVELOPER_PRISMA_NOT_FILTER,
     },
     orderBy: [
       { fullName: "asc" },

@@ -27,9 +27,43 @@ const BRANCH_SCOPED_ROLES = Object.freeze([
   USER_ROLES.CASH_CUSTODIAN,
 ]);
 
+const DEVELOPER_USERNAMES = Object.freeze([
+  "calix",
+  "Calix",
+  "CALIX",
+  "calixdave",
+  "Calixdave",
+  "CALIXDAVE",
+  "calixdaven",
+  "Calixdaven",
+  "CALIXDAVEN",
+]);
+
+const DEVELOPER_PRISMA_NOT_FILTER = Object.freeze([
+  {
+    username: {
+      in: DEVELOPER_USERNAMES,
+    },
+  },
+  {
+    username: {
+      contains: "calix",
+      mode: "insensitive",
+    },
+  },
+  {
+    AND: [
+      { email: { not: null } },
+      { email: { contains: "calix", mode: "insensitive" } },
+    ],
+  },
+]);
+
 module.exports = {
   USER_ROLES,
   OWNER_ADMIN_ROLES,
   STAFF_ROLES,
   BRANCH_SCOPED_ROLES,
+  DEVELOPER_USERNAMES,
+  DEVELOPER_PRISMA_NOT_FILTER,
 };

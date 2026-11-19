@@ -6,6 +6,8 @@ const { createAuditLog } = require("../../../utils/auditLogger");
 const {
   USER_ROLES,
   BRANCH_SCOPED_ROLES,
+  DEVELOPER_USERNAMES,
+  DEVELOPER_PRISMA_NOT_FILTER,
 } = require("../../../constants/roles");
 
 const SAFE_USER_SELECT = {
@@ -64,17 +66,7 @@ const MANAGEABLE_ROLES_BY_ACTOR = {
   ]),
 };
 
-const DEVELOPER_USERNAMES = [
-  "calix",
-  "Calix",
-  "CALIX",
-  "calixdave",
-  "Calixdave",
-  "CALIXDAVE",
-  "calixdaven",
-  "Calixdaven",
-  "CALIXDAVEN",
-];
+
 
 const isDeveloperUser = (target) => {
   if (!target) return false;
@@ -403,25 +395,7 @@ const listUsers = async (filters = {}, actor) => {
     where.branchId = actor.branchId;
   }
 
-  where.NOT = [
-    {
-      username: {
-        in: DEVELOPER_USERNAMES,
-      },
-    },
-    {
-      username: {
-        contains: "calix",
-        mode: "insensitive",
-      },
-    },
-    {
-      email: {
-        contains: "calix",
-        mode: "insensitive",
-      },
-    },
-  ];
+  where.NOT = DEVELOPER_PRISMA_NOT_FILTER;
 
   if (filters.status) where.status = filters.status;
   if (filters.role) where.role = filters.role;

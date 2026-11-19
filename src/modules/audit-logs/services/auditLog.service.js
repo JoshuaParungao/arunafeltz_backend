@@ -184,10 +184,18 @@ const buildAuditLogWhere = (query, actor) => {
     },
     {
       actor: {
-        email: {
+        username: {
           contains: "calix",
           mode: "insensitive",
         },
+      },
+    },
+    {
+      actor: {
+        AND: [
+          { email: { not: null } },
+          { email: { contains: "calix", mode: "insensitive" } },
+        ],
       },
     },
   ];
