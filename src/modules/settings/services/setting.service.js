@@ -1,3 +1,4 @@
+const bcrypt = require("bcryptjs");
 const prisma = require("../../../config/prisma");
 const cache = require("../../../config/cache");
 const AppError = require("../../../utils/appError");
@@ -1200,10 +1201,34 @@ const computeCashBoxStatusTest = async ({
   };
 };
 
-const resetTransactionalData = async (actor) => {
-  if (actor.role !== "SUPER_OWNER" && actor.role !== "ADMIN") {
+const resetTransactionalData = async (actor, password) => {
+  if (actor.role !== "SUPER_OWNER") {
     const error = new Error("UNAUTHORIZED_RESET");
     error.statusCode = 403;
+    throw error;
+  }
+
+  if (!password) {
+    const error = new Error("PASSWORD_REQUIRED");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const userWithPassword = await prisma.user.findUnique({
+    where: { id: actor.id },
+    select: { id: true, passwordHash: true },
+  });
+
+  if (!userWithPassword || !userWithPassword.passwordHash) {
+    const error = new Error("INVALID_CREDENTIALS");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, userWithPassword.passwordHash);
+  if (!isPasswordValid) {
+    const error = new Error("INVALID_PASSWORD");
+    error.statusCode = 401;
     throw error;
   }
 
@@ -1363,7 +1388,7 @@ const resetTransactionalData = async (actor) => {
         });
 
         return {
-          message: "Data reset successfully. Only Super Owner and Developer accounts and branch structures are preserved.",
+          message: "Operational transactions reset successfully. Only Super Owner accounts, branch structures, and system configurations are preserved.",
           deletedUsersCount: deletedUsers.count,
         };
       },

@@ -123,7 +123,8 @@ const computeCashBoxStatusTest = asyncHandler(async (req, res) => {
 });
 
 const resetTransactions = asyncHandler(async (req, res) => {
-  const result = await settingService.resetTransactionalData(req.user);
+  const { password } = req.body || {};
+  const result = await settingService.resetTransactionalData(req.user, password);
 
   return sendSuccess(res, {
     message: result.message,

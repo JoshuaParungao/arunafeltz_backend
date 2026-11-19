@@ -55,10 +55,21 @@ const updateProfile = asyncHandler(async (req, res) => {
   });
 });
 
+const verifyPassword = asyncHandler(async (req, res) => {
+  const { password } = req.body || {};
+  await authService.verifyUserPassword(req.user, password);
+
+  return sendSuccess(res, {
+    message: "Password verified successfully",
+    data: { verified: true },
+  });
+});
+
 module.exports = {
   login,
   getMe,
   updateProfile,
   permissionTest,
   branchAccessTest,
+  verifyPassword,
 };

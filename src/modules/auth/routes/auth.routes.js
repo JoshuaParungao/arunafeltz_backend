@@ -7,7 +7,7 @@ const { requireBranchAccess } = require("../../../middlewares/branchAccess.middl
 const { loginRateLimit } = require("../../../middlewares/loginRateLimit.middleware");
 const { PERMISSIONS } = require("../../../constants/permissions");
 const authController = require("../controllers/auth.controller");
-const { loginSchema, updateProfileSchema } = require("../validations/auth.validation");
+const { loginSchema, updateProfileSchema, verifyPasswordSchema } = require("../validations/auth.validation");
 
 const router = express.Router();
 
@@ -15,6 +15,7 @@ router.post("/login", loginRateLimit, validate(loginSchema), authController.logi
 
 router.get("/me", protect, authController.getMe);
 router.patch("/profile", protect, validate(updateProfileSchema), authController.updateProfile);
+router.post("/verify-password", protect, validate(verifyPasswordSchema), authController.verifyPassword);
 
 router.get(
   "/permission-test/settings",

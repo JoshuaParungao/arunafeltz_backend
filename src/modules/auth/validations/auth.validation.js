@@ -60,7 +60,17 @@ const updateProfileSchema = z.object({
     }),
 });
 
+const verifyPasswordSchema = z.object({
+  body: z.object({
+    password: z
+      .string()
+      .min(1, "Password is required")
+      .max(128, "Password is too long"),
+  }).strict(),
+});
+
 module.exports = {
   loginSchema,
   updateProfileSchema,
+  verifyPasswordSchema,
 };
