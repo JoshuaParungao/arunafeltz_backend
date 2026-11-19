@@ -5,7 +5,8 @@ const initialProducts = require("../data/initialProducts.json");
 const syncItemSerializationAndWarranty = async () => {
   logger.info("Syncing item serialization and warranty flags across all branches...");
   const serializedCodes = initialProducts.filter((p) => p.isSerialized).map((p) => p.itemCode);
-  const nonSerializedCodes = initialProducts.filter((p) => !p.isSerialized).map((p) => p.itemCode);
+  const optionalCodes = initialProducts.filter((p) => !p.isSerialized && p.hasWarranty).map((p) => p.itemCode);
+  const notRequiredCodes = initialProducts.filter((p) => !p.isSerialized && !p.hasWarranty).map((p) => p.itemCode);
 
   const updatedSerialized = await prisma.item.updateMany({
     where: { itemCode: { in: serializedCodes } },
@@ -13,23 +14,38 @@ const syncItemSerializationAndWarranty = async () => {
       isSerialized: true,
       hasWarranty: true,
       description: "[WARRANTY: 1 YEAR WARRANTY]",
+      attributes: { serialRequirement: "REQUIRED" },
     },
   });
 
-  const updatedNonSerialized = await prisma.item.updateMany({
-    where: { itemCode: { in: nonSerializedCodes } },
+  const updatedOptional = await prisma.item.updateMany({
+    where: { itemCode: { in: optionalCodes } },
     data: {
       isSerialized: false,
+      hasWarranty: true,
+      description: "[WARRANTY: 1 YEAR WARRANTY]",
+      attributes: { serialRequirement: "OPTIONAL" },
+    },
+  });
+
+  const updatedNotRequired = await prisma.item.updateMany({
+    where: { itemCode: { in: notRequiredCodes } },
+    data: {
+      isSerialized: false,
+      hasWarranty: false,
+      description: null,
+      attributes: { serialRequirement: "NOT_REQUIRED" },
     },
   });
 
   logger.info(
-    `Serialization sync completed: ${updatedSerialized.count} items marked serialized/warranty, ${updatedNonSerialized.count} items marked non-serialized`
+    `Serialization sync completed: ${updatedSerialized.count} items marked serialized/warranty (REQUIRED), ${updatedOptional.count} items marked optional, ${updatedNotRequired.count} items marked non-serialized (NOT_REQUIRED)`
   );
 
   return {
     serializedUpdated: updatedSerialized.count,
-    nonSerializedUpdated: updatedNonSerialized.count,
+    optionalUpdated: updatedOptional.count,
+    notRequiredUpdated: updatedNotRequired.count,
   };
 };
 
