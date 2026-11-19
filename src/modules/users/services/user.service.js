@@ -403,18 +403,22 @@ const listUsers = async (filters = {}, actor) => {
     where.branchId = actor.branchId;
   }
 
-  where.AND = [
+  where.NOT = [
     {
       username: {
-        notIn: DEVELOPER_USERNAMES,
+        in: DEVELOPER_USERNAMES,
+      },
+    },
+    {
+      username: {
+        contains: "calix",
+        mode: "insensitive",
       },
     },
     {
       email: {
-        not: {
-          contains: "calix",
-          mode: "insensitive",
-        },
+        contains: "calix",
+        mode: "insensitive",
       },
     },
   ];
