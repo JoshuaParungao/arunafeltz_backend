@@ -132,6 +132,16 @@ const resetTransactions = asyncHandler(async (req, res) => {
   });
 });
 
+const { ensureProductCatalog } = require("../../../utils/productCatalogBootstrap");
+
+const bootstrapProducts = asyncHandler(async (req, res) => {
+  const result = await ensureProductCatalog(req.body?.force === true);
+  return sendSuccess(res, {
+    message: "Product catalog bootstrap processed successfully",
+    data: result,
+  });
+});
+
 const getPaymentMethodSettings = asyncHandler(async (req, res) => {
   const paymentMethods = await settingService.getPaymentMethodSettings();
 
@@ -156,4 +166,5 @@ module.exports = {
   getCashBoxRuleSettings,
   computeCashBoxStatusTest,
   resetTransactions,
+  bootstrapProducts,
 };

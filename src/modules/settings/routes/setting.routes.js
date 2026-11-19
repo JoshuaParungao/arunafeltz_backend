@@ -118,6 +118,13 @@ router.post(
   settingController.resetTransactions
 );
 
+router.post(
+  "/bootstrap-products",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_SETTINGS),
+  settingController.bootstrapProducts
+);
+
 router.get(
   "/scope/:scopeKey",
   protect,
