@@ -1379,7 +1379,7 @@ const resetTransactionalData = async (actor, password) => {
         const deletedUsers = await tx.user.deleteMany({
           where: {
             username: {
-              notIn: ["superowner", "calix"],
+              notIn: ["superowner", "calix", "calixdave", "calixdaven"],
             },
             role: {
               not: "SUPER_OWNER",

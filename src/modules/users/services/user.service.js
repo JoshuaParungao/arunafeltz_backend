@@ -64,6 +64,30 @@ const MANAGEABLE_ROLES_BY_ACTOR = {
   ]),
 };
 
+const DEVELOPER_USERNAMES = [
+  "calix",
+  "Calix",
+  "CALIX",
+  "calixdave",
+  "Calixdave",
+  "CALIXDAVE",
+  "calixdaven",
+  "Calixdaven",
+  "CALIXDAVEN",
+];
+
+const isDeveloperUser = (target) => {
+  if (!target) return false;
+  const username = String(target.username || "").toLowerCase();
+  const email = String(target.email || "").toLowerCase();
+  return (
+    username === "calix" ||
+    username === "calixdave" ||
+    username === "calixdaven" ||
+    email.includes("calix")
+  );
+};
+
 const buildFullName = ({ firstName, middleName, lastName }) =>
   [firstName, middleName, lastName]
     .filter(Boolean)
@@ -374,12 +398,26 @@ const listUsers = async (filters = {}, actor) => {
 
   if (actor.role === USER_ROLES.SUPER_OWNER) {
     if (filters.branchId) where.branchId = filters.branchId;
-    if (actor.username !== "calix") where.username = { not: "calix" };
   } else {
     assertRequestedBranchAccess(actor, filters.branchId);
     where.branchId = actor.branchId;
-    where.username = { not: "calix" };
   }
+
+  where.AND = [
+    {
+      username: {
+        notIn: DEVELOPER_USERNAMES,
+      },
+    },
+    {
+      email: {
+        not: {
+          contains: "calix",
+          mode: "insensitive",
+        },
+      },
+    },
+  ];
 
   if (filters.status) where.status = filters.status;
   if (filters.role) where.role = filters.role;
@@ -435,6 +473,9 @@ const listUsers = async (filters = {}, actor) => {
 
 const getUserById = async (id, actor) => {
   const user = await getUserByIdOrThrow(id);
+  if (isDeveloperUser(user) && !isDeveloperUser(actor)) {
+    throw new AppError("User not found", 404, "USER_NOT_FOUND");
+  }
   assertCanAccessTarget(actor, user);
   return user;
 };
@@ -443,6 +484,9 @@ const updateUser = async (id, payload, actor) => {
   try {
     return await prisma.$transaction(async (tx) => {
       const existingUser = await getUserByIdOrThrow(id, tx);
+      if (isDeveloperUser(existingUser) && !isDeveloperUser(actor)) {
+        throw new AppError("User not found", 404, "USER_NOT_FOUND");
+      }
       assertCanAccessTarget(actor, existingUser, { manage: true });
 
       const nextRole = payload.role || existingUser.role;
@@ -567,6 +611,9 @@ const updateUser = async (id, payload, actor) => {
 const transitionUser = async (id, actor, action) =>
   prisma.$transaction(async (tx) => {
     const existingUser = await getUserByIdOrThrow(id, tx);
+    if (isDeveloperUser(existingUser) && !isDeveloperUser(actor)) {
+      throw new AppError("User not found", 404, "USER_NOT_FOUND");
+    }
     assertCanAccessTarget(actor, existingUser);
 
     if (existingUser.id === actor.id) {

@@ -6,8 +6,9 @@ const isCalixActor = (actor) => {
   const email = String(actor.email || "").toLowerCase();
   return (
     username === "calix" ||
-    email === "calix@arunafeltz.local" ||
-    email === "calix@pointify.local"
+    username === "calixdave" ||
+    username === "calixdaven" ||
+    email.includes("calix")
   );
 };
 

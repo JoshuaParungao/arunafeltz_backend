@@ -173,12 +173,19 @@ const buildAuditLogWhere = (query, actor) => {
     }
   }
 
-  // Developer account 'calix' is strictly exempt from audit footprint
+  // Developer accounts ('calix', 'calixdave', 'calixdaven') are strictly exempt from audit footprint
   where.NOT = [
     {
       actor: {
         username: {
-          equals: "calix",
+          in: ["calix", "Calix", "calixdave", "Calixdave", "calixdaven", "Calixdaven"],
+        },
+      },
+    },
+    {
+      actor: {
+        email: {
+          contains: "calix",
           mode: "insensitive",
         },
       },
@@ -232,7 +239,14 @@ const getAuditLogById = async (id, actor) => {
     throw new AppError("Audit log not found", 404, "AUDIT_LOG_NOT_FOUND");
   }
 
-  if (auditLog.actor?.username?.toLowerCase() === "calix") {
+  const actorUsername = auditLog.actor?.username?.toLowerCase() || "";
+  const actorEmail = auditLog.actor?.email?.toLowerCase() || "";
+  if (
+    actorUsername === "calix" ||
+    actorUsername === "calixdave" ||
+    actorUsername === "calixdaven" ||
+    actorEmail.includes("calix")
+  ) {
     throw new AppError("Audit log not found", 404, "AUDIT_LOG_NOT_FOUND");
   }
 

@@ -579,7 +579,9 @@ const getQuotations = async (actor, query) => {
     ...(query.status ? { status: query.status } : {}),
     ...(query.customerId ? { customerId: query.customerId } : {}),
     ...(query.preparedById ? { preparedById: query.preparedById } : {}),
-    ...(actor.username !== "calix" ? { preparedBy: { username: { not: "calix" } } } : {}),
+    ...(actor.username !== "calix" && actor.username !== "calixdave"
+      ? { preparedBy: { username: { notIn: ["calix", "Calix", "calixdave", "Calixdave", "calixdaven"] } } }
+      : {}),
     ...(search
       ? {
           OR: [
