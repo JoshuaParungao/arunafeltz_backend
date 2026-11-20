@@ -1,11 +1,15 @@
 const prisma = require("../../../config/prisma");
 const AppError = require("../../../utils/appError");
+const logger = require("../../../utils/logger");
 
 const ITEM_SELECT = {
   id: true,
   itemCode: true,
   itemName: true,
   description: true,
+  barcode: true,
+  brand: true,
+  modelName: true,
   status: true,
   isSerialized: true,
   hasWarranty: true,
@@ -437,6 +441,160 @@ const assertItemCodeIsUniqueForUpdate = async (
   }
 };
 
+const resolveOrCreateCategoryInBranch = async (sourceCategoryId, targetBranchId, actor) => {
+  if (!sourceCategoryId || !targetBranchId) return null;
+
+  const sourceCategory = await prisma.itemCategory.findUnique({
+    where: { id: sourceCategoryId },
+    include: { parent: true },
+  });
+
+  if (!sourceCategory) return null;
+
+  if (sourceCategory.branchId === targetBranchId) {
+    return sourceCategory.id;
+  }
+
+  let targetParentId = null;
+  if (sourceCategory.parentId && sourceCategory.parent) {
+    const parentCode = sourceCategory.parent.categoryCode;
+    const parentName = sourceCategory.parent.name;
+
+    let targetParent = await prisma.itemCategory.findFirst({
+      where: {
+        branchId: targetBranchId,
+        OR: [
+          { categoryCode: parentCode },
+          { name: { equals: parentName, mode: "insensitive" } },
+        ],
+      },
+    });
+
+    if (!targetParent) {
+      targetParent = await prisma.itemCategory.create({
+        data: {
+          branchId: targetBranchId,
+          categoryCode: parentCode,
+          name: parentName,
+          description: sourceCategory.parent.description,
+          status: "ACTIVE",
+          createdById: actor?.id || null,
+          updatedById: actor?.id || null,
+        },
+      });
+    }
+    targetParentId = targetParent.id;
+  }
+
+  let targetCategory = await prisma.itemCategory.findFirst({
+    where: {
+      branchId: targetBranchId,
+      OR: [
+        { categoryCode: sourceCategory.categoryCode },
+        { name: { equals: sourceCategory.name, mode: "insensitive" } },
+      ],
+    },
+  });
+
+  if (!targetCategory) {
+    targetCategory = await prisma.itemCategory.create({
+      data: {
+        branchId: targetBranchId,
+        categoryCode: sourceCategory.categoryCode,
+        name: sourceCategory.name,
+        description: sourceCategory.description,
+        parentId: targetParentId,
+        status: "ACTIVE",
+        createdById: actor?.id || null,
+        updatedById: actor?.id || null,
+      },
+    });
+  } else if (targetParentId && targetCategory.parentId !== targetParentId) {
+    targetCategory = await prisma.itemCategory.update({
+      where: { id: targetCategory.id },
+      data: { parentId: targetParentId },
+    });
+  }
+
+  return targetCategory.id;
+};
+
+const mirrorItemAcrossBranches = async (baseItem, actor, oldItemCode = null) => {
+  try {
+    const targetBranches = await prisma.branch.findMany({
+      where: {
+        id: { not: baseItem.branchId },
+        status: "ACTIVE",
+      },
+      select: { id: true, code: true, name: true },
+    });
+
+    const lookupCode = oldItemCode || baseItem.itemCode;
+
+    for (const targetBranch of targetBranches) {
+      const existingInTarget = await prisma.item.findFirst({
+        where: {
+          branchId: targetBranch.id,
+          itemCode: lookupCode,
+        },
+      });
+
+      const targetCategoryId = await resolveOrCreateCategoryInBranch(
+        baseItem.categoryId,
+        targetBranch.id,
+        actor
+      );
+
+      const mirrorData = {
+        itemCode: baseItem.itemCode,
+        itemName: baseItem.itemName,
+        description: baseItem.description,
+        barcode: baseItem.barcode,
+        brand: baseItem.brand,
+        modelName: baseItem.modelName,
+        status: baseItem.status || "ACTIVE",
+        isSerialized: Boolean(baseItem.isSerialized),
+        hasWarranty: Boolean(baseItem.hasWarranty),
+        costPrice: baseItem.costPrice,
+        price1: baseItem.price1,
+        price2: baseItem.price2,
+        price3: baseItem.price3,
+        price4: baseItem.price4,
+        price5: baseItem.price5,
+        minimumStock: baseItem.minimumStock,
+        reorderLevel: baseItem.reorderLevel,
+        unitId: baseItem.unitId,
+        updatedById: actor?.id || null,
+      };
+
+      if (targetCategoryId) {
+        mirrorData.categoryId = targetCategoryId;
+      }
+
+      if (existingInTarget) {
+        // Update product metadata & prices in target branch.
+        // NOTICE: InventoryBatch, ItemSerial, movements, and stock are NOT modified.
+        await prisma.item.update({
+          where: { id: existingInTarget.id },
+          data: mirrorData,
+        });
+      } else {
+        // Create new mirrored product record with 0 stock (no inventory batches created).
+        await prisma.item.create({
+          data: {
+            ...mirrorData,
+            branchId: targetBranch.id,
+            categoryId: targetCategoryId || baseItem.categoryId,
+            createdById: actor?.id || null,
+          },
+        });
+      }
+    }
+  } catch (mirrorErr) {
+    logger.error("Error mirroring item across branches:", mirrorErr);
+  }
+};
+
 const createItem = async (payload, actor) => {
   const branchId = getActorBranchIdForCreate(actor, payload.branchId);
   const branch = await getActiveBranchOrThrow(branchId);
@@ -489,135 +647,10 @@ const createItem = async (payload, actor) => {
     select: ITEM_SELECT,
   });
 
-  // Auto-propagate item across other active branches with 0 stock
-  try {
-    const otherBranches = await prisma.branch.findMany({
-      where: {
-        id: { not: branch.id },
-        status: "ACTIVE",
-      },
-      select: { id: true, code: true, name: true },
-    });
+  // Mirror across other active branches with exact metadata & prices, leaving stock at 0
+  await mirrorItemAcrossBranches(createdItem, actor);
 
-    for (const targetBranch of otherBranches) {
-      const existingInTarget = await prisma.item.findUnique({
-        where: {
-          branchId_itemCode: {
-            branchId: targetBranch.id,
-            itemCode: createdItem.itemCode,
-          },
-        },
-        select: { id: true },
-      });
-
-      if (!existingInTarget) {
-        let targetCategoryId = null;
-
-        let matchedCat = await prisma.itemCategory.findFirst({
-          where: {
-            branchId: targetBranch.id,
-            OR: [
-              { categoryCode: category.categoryCode },
-              { name: { equals: category.name, mode: "insensitive" } },
-            ],
-          },
-          select: { id: true },
-        });
-
-        if (!matchedCat && category.parentId) {
-          const parentCat = await prisma.itemCategory.findUnique({
-            where: { id: category.parentId },
-            select: { id: true, categoryCode: true, name: true, description: true },
-          });
-
-          if (parentCat) {
-            let targetParentCat = await prisma.itemCategory.findFirst({
-              where: {
-                branchId: targetBranch.id,
-                OR: [
-                  { categoryCode: parentCat.categoryCode },
-                  { name: { equals: parentCat.name, mode: "insensitive" } },
-                ],
-              },
-              select: { id: true },
-            });
-
-            if (!targetParentCat) {
-              targetParentCat = await prisma.itemCategory.create({
-                data: {
-                  branchId: targetBranch.id,
-                  categoryCode: parentCat.categoryCode,
-                  name: parentCat.name,
-                  description: parentCat.description,
-                  status: "ACTIVE",
-                  createdById: actor.id,
-                  updatedById: actor.id,
-                },
-                select: { id: true },
-              });
-            }
-
-            matchedCat = await prisma.itemCategory.create({
-              data: {
-                branchId: targetBranch.id,
-                categoryCode: category.categoryCode,
-                name: category.name,
-                description: category.description,
-                parentId: targetParentCat.id,
-                status: "ACTIVE",
-                createdById: actor.id,
-                updatedById: actor.id,
-              },
-              select: { id: true },
-            });
-          }
-        } else if (!matchedCat) {
-          matchedCat = await prisma.itemCategory.create({
-            data: {
-              branchId: targetBranch.id,
-              categoryCode: category.categoryCode,
-              name: category.name,
-              description: category.description,
-              status: "ACTIVE",
-              createdById: actor.id,
-              updatedById: actor.id,
-            },
-            select: { id: true },
-          });
-        }
-
-        targetCategoryId = matchedCat ? matchedCat.id : category.id;
-
-        await prisma.item.create({
-          data: {
-            itemCode: createdItem.itemCode,
-            itemName: createdItem.itemName,
-            description: createdItem.description,
-            status: "ACTIVE",
-            isSerialized: createdItem.isSerialized,
-            hasWarranty: createdItem.hasWarranty,
-            costPrice: "0.00",
-            price1: "0.00",
-            price2: "0.00",
-            price3: "0.00",
-            price4: "0.00",
-            price5: "0.00",
-            minimumStock: "0.00",
-            reorderLevel: "0.00",
-            branchId: targetBranch.id,
-            categoryId: targetCategoryId,
-            unitId: createdItem.unitId,
-            createdById: actor.id,
-            updatedById: actor.id,
-          },
-        });
-      }
-    }
-  } catch (propagateErr) {
-    console.error("Auto-propagation to other branches non-fatal error:", propagateErr);
-  }
-
-  return createdItem;
+  return attachAvailableStock(createdItem);
 };
 
 const listItems = async (filters = {}, actor) => {
@@ -834,13 +867,18 @@ const updateItemById = async (itemId, payload, actor) => {
     updateData.reorderLevel = normalizeMoney(payload.reorderLevel);
   }
 
-  return prisma.item.update({
+  const updatedItem = await prisma.item.update({
     where: {
       id: existingItem.id,
     },
     data: updateData,
     select: ITEM_SELECT,
   });
+
+  // Mirror updated product metadata & prices across all other active branches (stock untouched)
+  await mirrorItemAcrossBranches(updatedItem, actor, existingItem.itemCode);
+
+  return attachAvailableStock(updatedItem);
 };
 
 module.exports = {
