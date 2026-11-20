@@ -2912,140 +2912,7 @@ const updateServiceJobStatus = async (
   });
 };
 
-const DEFAULT_SERVICE_CATALOG = [
-  {
-    id: "sc-clean-laptop",
-    name: "Laptop Deep Cleaning & Thermal Repaste",
-    deviceType: "LAPTOP",
-    repairType: "ORDINARY_REPAIR",
-    basePrice: 500,
-    markupPercent: 0,
-    description: "Complete disassembly, dust blower, fan lubrication, and high-performance thermal paste re-application.",
-    isQuickService: true,
-    isActive: true,
-  },
-  {
-    id: "sc-clean-desktop",
-    name: "Desktop Deep Cleaning & Cable Management",
-    deviceType: "DESKTOP",
-    repairType: "ORDINARY_REPAIR",
-    basePrice: 450,
-    markupPercent: 0,
-    description: "Full casing air dusting, fan blade cleaning, thermal paste repasting, and clean cable routing.",
-    isQuickService: true,
-    isActive: true,
-  },
-  {
-    id: "sc-format-os",
-    name: "OS Reformatting & Basic Software Setup",
-    deviceType: "DESKTOP",
-    repairType: "ORDINARY_REPAIR",
-    basePrice: 450,
-    markupPercent: 0,
-    description: "Clean OS installation (Windows/Linux), updated drivers, essential productivity software, and system optimization.",
-    isQuickService: true,
-    isActive: true,
-  },
-  {
-    id: "sc-screen-laptop",
-    name: "Laptop LCD / Screen Replacement Labor",
-    deviceType: "LAPTOP",
-    repairType: "ORDINARY_REPAIR",
-    basePrice: 800,
-    markupPercent: 0,
-    description: "Bezel and hinge inspection, LCD/eDP cable testing, and replacement screen installation.",
-    isQuickService: false,
-    isActive: true,
-  },
-  {
-    id: "sc-gpu-repaste",
-    name: "GPU Deep Clean & Thermal Pad Repaste",
-    deviceType: "GPU",
-    repairType: "ORDINARY_REPAIR",
-    basePrice: 850,
-    markupPercent: 0,
-    description: "GPU shroud removal, heatsink wash/dusting, high-conductivity thermal paste and replacement thermal pads.",
-    isQuickService: true,
-    isActive: true,
-  },
-  {
-    id: "sc-board-power",
-    name: "Motherboard Shorted Line / Power IC Repair",
-    deviceType: "MOTHERBOARD",
-    repairType: "BOARD_LEVEL_REPAIR",
-    basePrice: 2500,
-    markupPercent: 0,
-    description: "Component-level micro-soldering, shorted capacitor/MOSFET tracing, power rail diagnosis, and IC replacement.",
-    isQuickService: false,
-    isActive: true,
-  },
-  {
-    id: "sc-macbook-liquid",
-    name: "MacBook Liquid Damage & Component Repair",
-    deviceType: "MACBOOK",
-    repairType: "BOARD_LEVEL_REPAIR",
-    basePrice: 4500,
-    markupPercent: 0,
-    description: "Ultrasonic cleaning, corrosion removal, SMC/T2/PMIC circuit repair, and board trace restoration.",
-    isQuickService: false,
-    isActive: true,
-  },
-  {
-    id: "sc-printer-clean",
-    name: "Printer Waste Ink Pad Reset & Printhead Cleaning",
-    deviceType: "PRINTER",
-    repairType: "ORDINARY_REPAIR",
-    basePrice: 600,
-    markupPercent: 0,
-    description: "Waste ink counter reset, purge unit flushing, printhead nozzle declogging, and test printing.",
-    isQuickService: false,
-    isActive: true,
-  },
-  {
-    id: "sc-monitor-board",
-    name: "Monitor Power Supply / Display Board Repair",
-    deviceType: "MONITOR",
-    repairType: "BOARD_LEVEL_REPAIR",
-    basePrice: 1500,
-    markupPercent: 0,
-    description: "Inverter board troubleshooting, blown capacitor replacement, and power delivery restoration.",
-    isQuickService: false,
-    isActive: true,
-  },
-  {
-    id: "sc-smartphone-lcd",
-    name: "Smartphone / Tablet Screen Replacement Labor",
-    deviceType: "SMARTPHONE / TABLET",
-    repairType: "ORDINARY_REPAIR",
-    basePrice: 750,
-    markupPercent: 0,
-    description: "Screen disassembly, frame cleaning, adhesive re-application, and replacement digitizer/LCD installation.",
-    isQuickService: false,
-    isActive: true,
-  },
-  {
-    id: "sc-console-clean",
-    name: "Console Deep Clean & HDMI Port Repair",
-    deviceType: "CONSOLE",
-    repairType: "BOARD_LEVEL_REPAIR",
-    basePrice: 2000,
-    markupPercent: 0,
-    description: "PlayStation / Xbox / Switch disassembly, dust blower, liquid metal / thermal paste repasting, and HDMI port micro-soldering.",
-    isQuickService: false,
-    isActive: true,
-  },
-  {
-    id: "sc-pccomponent-diagnosis",
-    name: "Component Level Hardware Bench Diagnosis",
-    deviceType: "PC COMPONENT",
-    repairType: "ORDINARY_REPAIR",
-    basePrice: 350,
-    markupPercent: 0,
-    description: "Bench testing of RAM, PSU voltage rails, storage health, or peripheral issues on specialized test benches.",
-    isQuickService: true,
-    isActive: true,
-  },
-];
+const DEFAULT_SERVICE_CATALOG = require("../../../data/initialServiceCatalog.json");
 
 const SERVICE_CATALOG_SCOPE_KEY = "GLOBAL:service.catalog";
 
@@ -3054,10 +2921,16 @@ const getServiceCatalog = async (actor) => {
     where: { scopeKey: SERVICE_CATALOG_SCOPE_KEY },
   });
 
-  if (!setting) {
+  const existingItems = Array.isArray(setting?.value) ? setting.value : null;
+  const hasLegacyDummyItems = Boolean(
+    existingItems?.some((item) => item && item.id === "sc-clean-laptop")
+  );
+
+  if (!setting || !existingItems || existingItems.length === 0 || hasLegacyDummyItems) {
     try {
-      setting = await prisma.businessSetting.create({
-        data: {
+      setting = await prisma.businessSetting.upsert({
+        where: { scopeKey: SERVICE_CATALOG_SCOPE_KEY },
+        create: {
           scopeKey: SERVICE_CATALOG_SCOPE_KEY,
           key: "service.catalog",
           category: "OPERATION",
@@ -3067,6 +2940,13 @@ const getServiceCatalog = async (actor) => {
           description: "Predefined list of standard service rates, repair classifications, and pricing.",
           isEditable: true,
           isActive: true,
+          ...(actor?.id ? { updatedById: actor.id } : {}),
+        },
+        update: {
+          value: DEFAULT_SERVICE_CATALOG,
+          isEditable: true,
+          isActive: true,
+          ...(actor?.id ? { updatedById: actor.id } : {}),
         },
       });
     } catch {
@@ -3076,7 +2956,9 @@ const getServiceCatalog = async (actor) => {
     }
   }
 
-  const items = Array.isArray(setting?.value) ? setting.value : DEFAULT_SERVICE_CATALOG;
+  const items = Array.isArray(setting?.value) && setting.value.length > 0
+    ? setting.value
+    : DEFAULT_SERVICE_CATALOG;
   return items;
 };
 

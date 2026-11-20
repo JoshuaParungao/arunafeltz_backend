@@ -2,6 +2,7 @@ const { Prisma } = require("@prisma/client");
 const prisma = require("../config/prisma");
 const logger = require("./logger");
 const initialProducts = require("../data/initialProducts.json");
+const initialServiceCatalog = require("../data/initialServiceCatalog.json");
 
 const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
 
@@ -674,6 +675,51 @@ const ensureProductCatalog = async (force = false) => {
       await prisma.unit.deleteMany({
         where: { id: { in: unusedUnitIds } },
       });
+    }
+
+    // 8. Sync Service & Repair Rates Catalog (GLOBAL:service.catalog)
+    const existingServiceCatalog = await prisma.businessSetting.findUnique({
+      where: { scopeKey: "GLOBAL:service.catalog" },
+      select: { value: true },
+    });
+    const serviceCatalogRows = Array.isArray(existingServiceCatalog?.value)
+      ? existingServiceCatalog.value
+      : null;
+    const hasLegacyDummyServiceCatalog = Boolean(
+      serviceCatalogRows?.some((item) => item && item.id === "sc-clean-laptop")
+    );
+
+    if (
+      force === true ||
+      !serviceCatalogRows ||
+      serviceCatalogRows.length === 0 ||
+      hasLegacyDummyServiceCatalog
+    ) {
+      await prisma.businessSetting.upsert({
+        where: { scopeKey: "GLOBAL:service.catalog" },
+        create: {
+          scopeKey: "GLOBAL:service.catalog",
+          key: "service.catalog",
+          category: "OPERATION",
+          valueType: "JSON",
+          value: initialServiceCatalog,
+          label: "Service & Repair Rates Catalog",
+          description:
+            "Predefined list of standard service rates, repair classifications, and pricing.",
+          isEditable: true,
+          isActive: true,
+          ...(actorId ? { updatedById: actorId } : {}),
+        },
+        update: {
+          value: initialServiceCatalog,
+          isEditable: true,
+          isActive: true,
+          ...(actorId ? { updatedById: actorId } : {}),
+        },
+      });
+      logger.info(
+        `Synced GLOBAL:service.catalog with ${initialServiceCatalog.length} official service rates.`
+      );
     }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);

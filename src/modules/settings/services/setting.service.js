@@ -3,6 +3,7 @@ const prisma = require("../../../config/prisma");
 const cache = require("../../../config/cache");
 const AppError = require("../../../utils/appError");
 const { createAuditLog } = require("../../../utils/auditLogger");
+const initialServiceCatalog = require("../../../data/initialServiceCatalog.json");
 
 const SETTINGS_CACHE_TTL = 2 * 60 * 1000;
 
@@ -1340,14 +1341,14 @@ const resetTransactionalData = async (actor, password) => {
             key: "service.catalog",
             category: "OPERATION",
             valueType: "JSON",
-            value: [],
+            value: initialServiceCatalog,
             label: "Service & Repair Rates Catalog",
             description: "Predefined list of standard service rates, repair classifications, and pricing.",
             isEditable: true,
             isActive: true,
           },
           update: {
-            value: [],
+            value: initialServiceCatalog,
           },
         });
         await tx.businessSetting.upsert({
