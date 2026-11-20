@@ -7,10 +7,7 @@ const ITEM_SELECT = {
   itemName: true,
   description: true,
   barcode: true,
-  brand: true,
-  modelName: true,
   status: true,
-  attributes: true,
   isSerialized: true,
   hasWarranty: true,
   costPrice: true,
@@ -48,7 +45,6 @@ const ITEM_SELECT = {
           name: true,
         },
       },
-      attributeSchema: true,
     },
   },
 
@@ -672,9 +668,6 @@ const listItems = async (filters = {}, actor) => {
   const where = {
     branchId,
     ...(filters.categoryId ? { categoryId: categoryCondition } : {}),
-    ...(filters.brand && filters.brand.trim()
-      ? { brand: { contains: filters.brand.trim(), mode: "insensitive" } }
-      : {}),
     unitId: filters.unitId,
     status: filters.status,
     isSerialized: parseBooleanQuery(filters.isSerialized),
@@ -697,18 +690,6 @@ const listItems = async (filters = {}, actor) => {
       },
       {
         barcode: {
-          contains: search,
-          mode: "insensitive",
-        },
-      },
-      {
-        brand: {
-          contains: search,
-          mode: "insensitive",
-        },
-      },
-      {
-        modelName: {
           contains: search,
           mode: "insensitive",
         },

@@ -70,9 +70,6 @@ const getInventoryOverview = async (actor, query) => {
   const where = {
     ...(branchId ? { branchId } : {}),
     ...(query.categoryId ? { categoryId: categoryCondition } : {}),
-    ...(query.brand && query.brand.trim()
-      ? { brand: { contains: query.brand.trim(), mode: "insensitive" } }
-      : {}),
     ...(query.status ? { status: query.status } : {}),
     ...(search
       ? {
@@ -85,18 +82,6 @@ const getInventoryOverview = async (actor, query) => {
             },
             {
               itemName: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-            {
-              brand: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-            {
-              modelName: {
                 contains: search,
                 mode: "insensitive",
               },
@@ -129,11 +114,8 @@ const getInventoryOverview = async (actor, query) => {
         id: true,
         itemCode: true,
         itemName: true,
-        brand: true,
-        modelName: true,
         status: true,
         isSerialized: true,
-        attributes: true,
         minimumStock: true,
         reorderLevel: true,
         branch: {
@@ -208,11 +190,8 @@ const getInventoryOverview = async (actor, query) => {
       id: item.id,
       itemCode: item.itemCode,
       itemName: item.itemName,
-      brand: item.brand,
-      modelName: item.modelName,
       status: item.status,
       isSerialized: item.isSerialized,
-      attributes: item.attributes || null,
       branch: item.branch,
       category: item.category,
       unit: item.unit,
@@ -358,8 +337,6 @@ const getInventoryBatches = async (actor, query) => {
             id: true,
             itemCode: true,
             itemName: true,
-            brand: true,
-            modelName: true,
             isSerialized: true,
           },
         },
@@ -458,8 +435,6 @@ const getInventorySerials = async (actor, query) => {
             id: true,
             itemCode: true,
             itemName: true,
-            brand: true,
-            modelName: true,
             category: {
               select: {
                 id: true,
@@ -1254,8 +1229,6 @@ const updateSerialStatus = async (actor, serialId, payload) => {
           id: true,
           itemCode: true,
           itemName: true,
-          brand: true,
-          modelName: true,
         },
       },
       batch: {
@@ -1408,8 +1381,6 @@ const updateSerialBatch = async (actor, serialId, payload) => {
             id: true,
             itemCode: true,
             itemName: true,
-            brand: true,
-            modelName: true,
             category: {
               select: {
                 id: true,
@@ -1588,8 +1559,6 @@ const getInventoryMovements = async (actor, query) => {
             id: true,
             itemCode: true,
             itemName: true,
-            brand: true,
-            modelName: true,
             category: {
               select: {
                 id: true,
