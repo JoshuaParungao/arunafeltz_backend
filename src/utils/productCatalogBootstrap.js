@@ -532,6 +532,20 @@ const ensureProductCatalog = async (force = false) => {
           const batchCode = `BAT-INIT-${p.itemCode}`;
           const existingBatch = existingBatchMap.get(batchCode);
 
+          if (availableQty <= 0) {
+            // Remove initial batch if stock is 0 so batches count is 0
+            if (existingBatch) {
+              await prisma.inventoryMovement.deleteMany({
+                where: { batchId: existingBatch.id },
+              });
+              await prisma.inventoryBatch.delete({
+                where: { id: existingBatch.id },
+              });
+              existingBatchMap.delete(batchCode);
+            }
+            continue;
+          }
+
           if (existingBatch) {
             if (Number(existingBatch.quantityAvailable) !== availableQty) {
               await prisma.inventoryBatch.update({
@@ -539,14 +553,12 @@ const ensureProductCatalog = async (force = false) => {
                 data: {
                   quantityIn: availableQty,
                   quantityAvailable: availableQty,
-                  status: availableQty > 0 ? "ACTIVE" : "DEPLETED",
+                  status: "ACTIVE",
                 },
               });
             }
             continue;
           }
-
-          if (availableQty <= 0) continue;
 
           const itemRow = mainItemByCode.get(p.itemCode);
           if (!itemRow || itemRow._count.inventoryBatches > 0) continue;
