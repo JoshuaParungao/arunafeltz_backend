@@ -117,6 +117,8 @@ const createSaleSchema = z.object({
       idempotencyKey: z.string().trim().min(1).max(128).optional().or(z.literal("")),
       customerId: optionalNullableId,
       quotationId: optionalNullableId,
+      saleDate: z.string().trim().min(1).optional().nullable().or(z.literal("")),
+      transactionDate: z.string().trim().min(1).optional().nullable().or(z.literal("")),
       serviceCharge: nonNegativeNumber.optional().default(0),
       remarks: optionalString,
       items: z.array(saleItemSchema).min(1, "At least one sale item is required"),
@@ -173,6 +175,8 @@ const createSaleReturnSchema = z.object({
   body: z
     .object({
       reason: z.string().trim().min(1, "Return reason is required"),
+      requestedAt: z.string().trim().min(1).optional().nullable().or(z.literal("")),
+      transactionDate: z.string().trim().min(1).optional().nullable().or(z.literal("")),
       notes: optionalString,
       internalNotes: optionalString,
       refundMethod: z.enum([

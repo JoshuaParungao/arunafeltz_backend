@@ -71,7 +71,7 @@ const createCreditCollectionSchema = z.object({
     paymentMethod: z.enum(collectionPaymentMethodValues).default("CASH"),
     referenceNo: optionalString,
     remarks: optionalString,
-    paidAt: z.string().trim().min(1).optional(),
+    paidAt: z.string().trim().min(1).optional().nullable().or(z.literal("")),
     idempotencyKey: z.string().uuid().optional(),
   }),
 });

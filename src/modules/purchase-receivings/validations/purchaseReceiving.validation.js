@@ -61,6 +61,14 @@ const purchaseReceivingItemSchema = z.object({
   serialNumbers: z.array(z.string().trim().min(1, "Serial number cannot be empty")).optional(),
 });
 
+const optionalDateSchema = z
+  .string()
+  .trim()
+  .min(1, "Date cannot be empty")
+  .optional()
+  .nullable()
+  .or(z.literal(""));
+
 const createPurchaseReceivingSchema = z.object({
   body: z.object({
     branchId: z.string().trim().min(1, "Branch ID cannot be empty").optional(),
@@ -76,6 +84,7 @@ const createPurchaseReceivingSchema = z.object({
       .min(1, "Purchase order ID cannot be empty")
       .optional()
       .nullable(),
+    receivingDate: optionalDateSchema,
     supplierDeliveryNo: optionalString,
     supplierInvoiceNo: optionalString,
     referenceNo: optionalString,
@@ -129,6 +138,7 @@ const updatePurchaseReceivingSchema = z.object({
       .trim()
       .min(1, "Receiving code cannot be empty")
       .optional(),
+    receivingDate: optionalDateSchema,
     supplierDeliveryNo: optionalString,
     supplierInvoiceNo: optionalString,
     referenceNo: optionalString,

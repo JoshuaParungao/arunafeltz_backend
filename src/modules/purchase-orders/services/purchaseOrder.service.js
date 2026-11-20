@@ -1,6 +1,7 @@
 const prisma = require("../../../config/prisma");
 const AppError = require("../../../utils/appError");
 const { createAuditLog } = require("../../../utils/auditLogger");
+const { parseTransactionDate } = require("../../../utils/businessDate");
 
 const PURCHASE_ORDER_INCLUDE = {
   branch: {
@@ -652,6 +653,7 @@ const createPurchaseOrder = async (payload, actor) => {
       data: {
         poCode,
         status: "DRAFT",
+        orderDate: payload.orderDate ? parseTransactionDate(payload.orderDate) : new Date(),
         expectedDate: normalizeOptionalDate(payload.expectedDate),
         supplierNameSnapshot: supplier.name,
         supplierContactSnapshot:
@@ -889,6 +891,12 @@ const updatePurchaseOrderById = async (purchaseOrderId, payload, actor) => {
       updateData.supplierContactSnapshot = normalizeOptionalString(
         payload.supplierContact
       );
+    }
+
+    if (payload.orderDate !== undefined) {
+      updateData.orderDate = payload.orderDate
+        ? parseTransactionDate(payload.orderDate)
+        : existingPurchaseOrder.orderDate;
     }
 
     if (payload.expectedDate !== undefined) {

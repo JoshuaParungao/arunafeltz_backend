@@ -108,6 +108,8 @@ const stockInSchema = z.object({
     supplierName: optionalString,
     referenceNo: optionalString,
     remarks: optionalString,
+    transactionDate: z.string().trim().min(1).optional().nullable().or(z.literal("")),
+    movementDate: z.string().trim().min(1).optional().nullable().or(z.literal("")),
     expiryDate: z.string().datetime().optional(),
     serialNumbers: z.array(z.string().trim().min(1)).optional(),
   }),
@@ -122,6 +124,8 @@ const adjustmentSchema = z.object({
     quantity: positiveNumber,
     referenceNo: optionalString,
     remarks: optionalString,
+    transactionDate: z.string().trim().min(1).optional().nullable().or(z.literal("")),
+    movementDate: z.string().trim().min(1).optional().nullable().or(z.literal("")),
     serialNumbers: z.array(z.string().trim().min(1)).optional(),
   }),
 });

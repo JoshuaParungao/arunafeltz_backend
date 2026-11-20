@@ -1,6 +1,7 @@
 const prisma = require("../../../config/prisma");
 const AppError = require("../../../utils/appError");
 const { createAuditLog } = require("../../../utils/auditLogger");
+const { parseTransactionDate } = require("../../../utils/businessDate");
 
 const PURCHASE_RECEIVING_INCLUDE = {
   branch: {
@@ -886,6 +887,9 @@ const createPurchaseReceiving = async (payload, actor) => {
       data: {
         receivingCode,
         status: "DRAFT",
+        receivingDate: payload.receivingDate
+          ? parseTransactionDate(payload.receivingDate)
+          : new Date(),
         supplierDeliveryNo: references.supplierDeliveryNo,
         supplierInvoiceNo: references.supplierInvoiceNo,
         referenceNo: references.referenceNo,
@@ -1132,6 +1136,12 @@ const updatePurchaseReceivingById = async (purchaseReceivingId, payload, actor) 
       updateData.receivingCode = receivingCode;
     }
 
+    if (payload.receivingDate !== undefined) {
+      updateData.receivingDate = payload.receivingDate
+        ? parseTransactionDate(payload.receivingDate)
+        : existingReceiving.receivingDate;
+    }
+
     if (payload.supplierDeliveryNo !== undefined) {
       updateData.supplierDeliveryNo = normalizeOptionalString(
         payload.supplierDeliveryNo
@@ -1350,6 +1360,10 @@ const generateNextReceivingBatchCode = async (tx, branchId) => {
 };
 
 const postReceivingStockIn = async (tx, receiving, actor) => {
+  const effectiveDate = receiving.receivingDate
+    ? new Date(receiving.receivingDate)
+    : new Date();
+
   for (const receivingItem of receiving.items) {
     const quantityReceived = Number(receivingItem.quantityReceived);
     const netAcquisitionUnitCost = toMoney(
@@ -1570,6 +1584,7 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
             sellingPrice5: item.price5.toString(),
             supplierName: receiving.supplierNameSnapshot,
             referenceNo,
+            receivedAt: effectiveDate,
             remarks: `Purchase receiving ${receiving.receivingCode}`,
             expiryDate: receivingItem.expiryDate || null,
             status: "ACTIVE",
@@ -1612,6 +1627,7 @@ const postReceivingStockIn = async (tx, receiving, actor) => {
         newQuantity,
         unitCost: netAcquisitionUnitCost.toFixed(2),
         referenceNo,
+        movementDate: effectiveDate,
         remarks: `Posted purchase receiving ${receiving.receivingCode}`,
         createdById: actor.id,
         updatedById: actor.id,

@@ -27,6 +27,8 @@ const createWarrantyClaimSchema = z.object({
     serialId: z.string().trim().min(1).optional(),
     saleId: z.string().trim().min(1).optional(),
     saleItemId: z.string().trim().min(1).optional(),
+    receivedAt: optionalString,
+    transactionDate: optionalString,
 
     issueDescription: z.string().trim().min(1, "Issue description is required"),
     customerComplaint: optionalString,

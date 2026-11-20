@@ -6,7 +6,7 @@ const {
   deriveReceivablePaymentState,
 } = require("../../credit-accounts/services/receivableAccount.service");
 const { createAuditLog } = require("../../../utils/auditLogger");
-const { businessDateCode } = require("../../../utils/businessDate");
+const { businessDateCode, parseTransactionDate } = require("../../../utils/businessDate");
 const {
   assertIdempotencyMatch,
   createIdempotencyFingerprint,
@@ -1556,6 +1556,10 @@ const createServiceJob = async (actor, payload, database = prisma) => {
       data: {
         jobCode,
         status: "PENDING",
+        receivedAt: parseTransactionDate(
+          payload.receivedAt || payload.transactionDate,
+          new Date()
+        ),
         repairType: payload.repairType,
         jobTitle: payload.jobTitle,
         deviceDescription: payload.deviceDescription || null,
@@ -2056,7 +2060,7 @@ const createServicePayment = async (
             amount: toMoneyString(amount),
             referenceNo: payload.referenceNo || null,
             remarks: payload.remarks || null,
-            paidAt: payload.paidAt || undefined,
+            paidAt: parseTransactionDate(payload.paidAt, new Date()),
             idempotencyKey: payload.idempotencyKey || null,
             idempotencyFingerprint,
             serviceJobId: serviceJob.id,

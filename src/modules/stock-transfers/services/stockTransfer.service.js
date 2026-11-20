@@ -2,6 +2,7 @@ const prisma = require("../../../config/prisma");
 const AppError = require("../../../utils/appError");
 const { Prisma } = require("@prisma/client");
 const { createAuditLog } = require("../../../utils/auditLogger");
+const { parseTransactionDate } = require("../../../utils/businessDate");
 
 const STOCK_TRANSFER_INCLUDE = {
   fromBranch: {
@@ -1127,11 +1128,17 @@ const createStockTransferRequest = async (payload, actor) => {
     actor
   );
 
+  const effectiveDate = parseTransactionDate(
+    payload.transferDate || payload.transactionDate,
+    new Date()
+  );
+
   return prisma.$transaction(async (tx) => {
     const stockTransfer = await tx.stockTransfer.create({
       data: {
         transferCode,
         status: "REQUESTED",
+        transferDate: effectiveDate,
 
         fulfillmentMethod,
         fulfillmentStatus: "PENDING",
@@ -1142,7 +1149,7 @@ const createStockTransferRequest = async (payload, actor) => {
         fromBranchId: fromBranch.id,
         toBranchId: toBranch.id,
 
-        requestedAt: new Date(),
+        requestedAt: effectiveDate,
         requestedById: actor.id,
 
         createdById: actor.id,
@@ -1199,11 +1206,17 @@ const createStockTransfer = async (payload, actor) => {
 
   const items = await validateAndBuildItems(payload.items, fromBranch.id, actor);
 
+  const effectiveDate = parseTransactionDate(
+    payload.transferDate || payload.transactionDate,
+    new Date()
+  );
+
   return prisma.$transaction(async (tx) => {
     const stockTransfer = await tx.stockTransfer.create({
       data: {
         transferCode,
         status: "DRAFT",
+        transferDate: effectiveDate,
         notes: normalizeOptionalString(payload.notes),
         internalNotes: normalizeOptionalString(payload.internalNotes),
         fromBranchId: fromBranch.id,
@@ -1487,6 +1500,13 @@ const updateStockTransferById = async (stockTransferId, payload, actor) => {
 
   if (payload.internalNotes !== undefined) {
     updateData.internalNotes = normalizeOptionalString(payload.internalNotes);
+  }
+
+  if (payload.transferDate !== undefined || payload.transactionDate !== undefined) {
+    updateData.transferDate = parseTransactionDate(
+      payload.transferDate || payload.transactionDate,
+      existingTransfer.transferDate
+    );
   }
 
   if (payload.items !== undefined) {

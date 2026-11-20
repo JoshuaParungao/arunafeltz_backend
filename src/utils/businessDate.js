@@ -38,9 +38,63 @@ const businessDateText = (value = new Date()) => {
 const businessDateCode = (value = new Date()) =>
   businessDateText(value).replaceAll("-", "");
 
+const BUSINESS_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: BUSINESS_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
+const parseTransactionDate = (value, fallback = new Date()) => {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return fallback;
+  }
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      const error = new Error("Invalid transaction date");
+      error.statusCode = 400;
+      throw error;
+    }
+    return value;
+  }
+
+  const raw = String(value).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const now = new Date();
+    if (raw === businessDateText(now)) {
+      return now;
+    }
+
+    const timePartRaw = BUSINESS_TIME_FORMATTER.format(now);
+    const timePart = /^\d{2}:\d{2}:\d{2}$/.test(timePartRaw) ? timePartRaw : "12:00:00";
+    const parsedDateOnly = new Date(`${raw}T${timePart}+08:00`);
+
+    if (Number.isNaN(parsedDateOnly.getTime())) {
+      const error = new Error("Invalid transaction date");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return parsedDateOnly;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    const error = new Error("Invalid transaction date");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return parsed;
+};
+
 module.exports = {
   BUSINESS_TIME_ZONE,
   businessDateCode,
   businessDateText,
   getBusinessDateParts,
+  parseTransactionDate,
 };

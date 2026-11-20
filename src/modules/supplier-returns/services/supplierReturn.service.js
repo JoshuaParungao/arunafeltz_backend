@@ -1,5 +1,6 @@
 const prisma = require("../../../config/prisma");
 const { createAuditLog } = require("../../../utils/auditLogger");
+const { parseTransactionDate } = require("../../../utils/businessDate");
 
 const SUPPLIER_RETURN_ROLES = new Set([
   "SUPER_OWNER",
@@ -797,6 +798,9 @@ const createSupplierReturn = async (actor, payload) => {
       data: {
         returnCode,
         status: "DRAFT",
+        ...(payload.returnDate || payload.transactionDate
+          ? { createdAt: parseTransactionDate(payload.returnDate || payload.transactionDate) }
+          : {}),
         sourceType: detectedSourceType,
         branchId: branch.id,
         supplierId: supplier.id,
@@ -885,6 +889,9 @@ const updateSupplierReturn = async (actor, returnId, payload) => {
     }
 
     if (payload.supplierRmaNumber !== undefined) updateData.supplierRmaNumber = payload.supplierRmaNumber ? payload.supplierRmaNumber.trim() : null;
+    if (payload.returnDate || payload.transactionDate) {
+      updateData.createdAt = parseTransactionDate(payload.returnDate || payload.transactionDate);
+    }
     if (payload.notes !== undefined) updateData.notes = payload.notes ? payload.notes.trim() : null;
     if (payload.internalNotes !== undefined) updateData.internalNotes = payload.internalNotes ? payload.internalNotes.trim() : null;
     if (payload.expectedResolutionDate !== undefined) updateData.expectedResolutionDate = payload.expectedResolutionDate ? new Date(payload.expectedResolutionDate) : null;

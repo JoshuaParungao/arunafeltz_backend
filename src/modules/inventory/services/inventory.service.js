@@ -1,6 +1,7 @@
 const prisma = require("../../../config/prisma");
 
 const { createAuditLog } = require("../../../utils/auditLogger");
+const { parseTransactionDate } = require("../../../utils/businessDate");
 
 const isSuperOwner = (actor) => actor && actor.role === "SUPER_OWNER";
 
@@ -638,6 +639,10 @@ const createStockIn = async (actor, payload) => {
 
   const quantity = Number(payload.quantity);
   const serialNumbers = assertUniqueSerialNumbers(payload.serialNumbers);
+  const effectiveDate = parseTransactionDate(
+    payload.transactionDate || payload.movementDate,
+    new Date()
+  );
 
   if (item.isSerialized && serialNumbers.length !== quantity) {
     const error = new Error("SERIAL_COUNT_MISMATCH");
@@ -787,6 +792,7 @@ const createStockIn = async (actor, payload) => {
             sellingPrice5: payload.sellingPrice5 !== undefined ? payload.sellingPrice5.toString() : item.price5.toString(),
             supplierName: payload.supplierName || null,
             referenceNo: payload.referenceNo || null,
+            receivedAt: effectiveDate,
             remarks: payload.remarks || null,
             expiryDate: payload.expiryDate ? new Date(payload.expiryDate) : null,
             status: "ACTIVE",
@@ -820,6 +826,7 @@ const createStockIn = async (actor, payload) => {
         newQuantity: newQuantity.toString(),
         unitCost: resolvedUnitCost,
         referenceNo: payload.referenceNo || null,
+        movementDate: effectiveDate,
         remarks: payload.remarks || "Manual stock-in.",
         createdById: actor.id,
         updatedById: actor.id,
@@ -876,6 +883,10 @@ const createStockAdjustment = async (actor, payload) => {
   const allowedBranchId = ensureManageBranchAccess(actor, requestedBranchId);
   const quantity = Number(payload.quantity);
   const movementType = payload.type === "INCREASE" ? "ADJUSTMENT_IN" : "ADJUSTMENT_OUT";
+  const effectiveDate = parseTransactionDate(
+    payload.transactionDate || payload.movementDate,
+    new Date()
+  );
 
   return prisma.$transaction(async (tx) => {
     let batch = null;
@@ -956,6 +967,7 @@ const createStockAdjustment = async (actor, payload) => {
             sellingPrice3: item.price3 ? item.price3.toString() : "0",
             sellingPrice4: item.price4 ? item.price4.toString() : "0",
             sellingPrice5: item.price5 ? item.price5.toString() : "0",
+            receivedAt: effectiveDate,
             remarks: payload.remarks || "Initial batch for adjustment.",
             status: "ACTIVE",
             createdById: actor.id,
@@ -1122,6 +1134,7 @@ const createStockAdjustment = async (actor, payload) => {
         newQuantity: newQuantity.toString(),
         unitCost: batch.unitCost ? batch.unitCost.toString() : null,
         referenceNo: payload.referenceNo || null,
+        movementDate: effectiveDate,
         remarks: payload.remarks || "Manual stock adjustment.",
         createdById: actor.id,
         updatedById: actor.id,

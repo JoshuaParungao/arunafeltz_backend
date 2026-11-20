@@ -103,6 +103,7 @@ const createCashHandoverSchema = z.object({
   body: z.object({
     amount: z.coerce.number().positive("Amount must be greater than zero"),
     toUserId: z.string().trim().min(1).optional(),
+    transactionDate: z.string().trim().min(1).optional().nullable().or(z.literal("")),
     remarks: optionalString,
   }),
 });

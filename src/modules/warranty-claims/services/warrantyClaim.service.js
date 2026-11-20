@@ -1,5 +1,6 @@
 const prisma = require("../../../config/prisma");
 const { createAuditLog } = require("../../../utils/auditLogger");
+const { parseTransactionDate } = require("../../../utils/businessDate");
 
 const CREATE_WARRANTY_CLAIM_ROLES = new Set([
   "SUPER_OWNER",
@@ -520,6 +521,10 @@ const createWarrantyClaim = async (actor, payload) => {
       data: {
         claimCode,
         status: "IN",
+        receivedAt: parseTransactionDate(
+          payload.receivedAt || payload.transactionDate,
+          new Date()
+        ),
         issueDescription: payload.issueDescription,
         customerComplaint: payload.customerComplaint || null,
         diagnosis: payload.diagnosis || null,

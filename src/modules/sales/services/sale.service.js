@@ -9,7 +9,7 @@ const {
   deriveSourcePaymentStatus,
 } = require("../../credit-accounts/services/receivableAccount.service");
 const { createAuditLog } = require("../../../utils/auditLogger");
-const { businessDateCode } = require("../../../utils/businessDate");
+const { businessDateCode, parseTransactionDate } = require("../../../utils/businessDate");
 const {
   assertIdempotencyMatch,
   createIdempotencyFingerprint,
@@ -464,6 +464,7 @@ const buildQuotationConversionPayload = (quotation, payload) => {
   return {
     ...payload,
     customerId: quotation.customerId || null,
+    saleDate: payload.saleDate || payload.transactionDate,
     serviceCharge: 0,
     items: buildQuotationConversionItems(quotation, payload.items),
   };
@@ -1174,7 +1175,7 @@ const buildSaleItems = async (
   };
 };
 
-const buildSalePayments = (actor, payments = []) => {
+const buildSalePayments = (actor, payments = [], saleDate = undefined) => {
   let amountPaid = 0;
 
   const salePayments = payments.map((payment) => {
@@ -1195,6 +1196,7 @@ const buildSalePayments = (actor, payments = []) => {
       amount: toMoneyString(amount),
       referenceNo: payment.referenceNo || null,
       remarks: payment.remarks || null,
+      ...(saleDate ? { paidAt: saleDate } : {}),
       createdById: actor.id,
     };
   });
@@ -1290,9 +1292,15 @@ const createSale = async (actor, payload, database = prisma) => {
       throwQuotationConversionError("QUOTATION_TOTAL_MISMATCH");
     }
 
+    const effectiveSaleDate = parseTransactionDate(
+      salePayload.saleDate || salePayload.transactionDate,
+      new Date()
+    );
+
     const { salePayments, amountPaid } = buildSalePayments(
       actor,
-      salePayload.payments
+      salePayload.payments,
+      effectiveSaleDate
     );
     const hasReceivable = Boolean(salePayload.receivable);
 
@@ -1447,6 +1455,7 @@ const createSale = async (actor, payload, database = prisma) => {
           newQuantity: toMoneyString(deduction.newQuantity),
           unitCost: deduction.acquisitionUnitCost.toString(),
           referenceNo: receiptCode,
+          movementDate: effectiveSaleDate,
           remarks: `Sale stock deduction for ${receiptCode}.`,
           createdById: actor.id,
           updatedById: actor.id,
@@ -1480,6 +1489,7 @@ const createSale = async (actor, payload, database = prisma) => {
         receiptCode,
         status: "COMPLETED",
         paymentStatus,
+        saleDate: effectiveSaleDate,
         subtotal: toMoneyString(subtotal),
         totalDiscount: toMoneyString(totalDiscount),
         serviceCharge: toMoneyString(serviceCharge),
@@ -2599,11 +2609,16 @@ const createSaleReturn = async (actor, saleId, payload) => {
       sale.branch.code,
       sale.branchId
     );
-    const completedAt = new Date();
+    const requestedAt = parseTransactionDate(
+      payload.requestedAt || payload.transactionDate,
+      new Date()
+    );
+    const completedAt = requestedAt;
     const returnRequest = await tx.returnRequest.create({
       data: {
         returnCode,
         status: "COMPLETED",
+        requestedAt,
         reason: payload.reason,
         notes: payload.notes || null,
         internalNotes: payload.internalNotes || null,

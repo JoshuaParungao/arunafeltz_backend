@@ -2,6 +2,7 @@ const prisma = require("../../../config/prisma");
 
 const { BRANCH_SCOPED_ROLES, DEVELOPER_PRISMA_NOT_FILTER } = require("../../../constants/roles");
 const { createAuditLog } = require("../../../utils/auditLogger");
+const { parseTransactionDate } = require("../../../utils/businessDate");
 const logger = require("../../../utils/logger");
 
 const OWNER_ADMIN_ROLES = new Set(["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"]);
@@ -438,6 +439,9 @@ const createQuotation = async (actor, payload) => {
     const quotation = await tx.quotation.create({
       data: {
         quotationCode,
+        ...(payload.quotationDate
+          ? { createdAt: parseTransactionDate(payload.quotationDate) }
+          : {}),
         title: payload.title || null,
         notes: payload.notes || null,
         internalNotes: payload.internalNotes || null,
@@ -893,6 +897,10 @@ const updateQuotation = async (actor, quotationId, payload) => {
 
     if (payload.validUntil !== undefined) {
       updateData.validUntil = payload.validUntil ? new Date(payload.validUntil) : null;
+    }
+
+    if (payload.quotationDate) {
+      updateData.createdAt = parseTransactionDate(payload.quotationDate);
     }
 
     const normalizedCustomerId = normalizeOptionalId(payload.customerId);

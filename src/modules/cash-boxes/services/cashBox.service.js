@@ -906,6 +906,9 @@ const createCashHandover = async (actor, cashBoxId, payload) => {
       data: {
         handoverCode,
         status: "PENDING",
+        ...(payload.transactionDate
+          ? { createdAt: parseOptionalDate(payload.transactionDate) }
+          : {}),
         amount: toMoneyString(amount),
         remarks: payload.remarks || null,
         cashBoxId: cashBox.id,
