@@ -1702,6 +1702,60 @@ const updateBatchCode = async (actor, batchId, { batchCode, remarks }) => {
   return updated;
 };
 
+const createBatch = async (actor, { branchId, itemId, batchCode, remarks }) => {
+  const targetBranchId = actor.role === "SUPER_OWNER" && branchId ? branchId : actor.branchId;
+  const normalizedBatchCode = String(batchCode || "").trim();
+  if (!normalizedBatchCode) {
+    const error = new Error("BATCH_CODE_REQUIRED");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!targetBranchId) {
+    const error = new Error("BRANCH_REQUIRED");
+    error.statusCode = 400;
+    throw error;
+  }
+  const item = await prisma.item.findUnique({ where: { id: itemId } });
+  if (!item) {
+    const error = new Error("ITEM_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+  const existing = await prisma.inventoryBatch.findUnique({
+    where: {
+      branchId_batchCode: {
+        branchId: targetBranchId,
+        batchCode: normalizedBatchCode,
+      },
+    },
+  });
+  if (existing) {
+    const error = new Error("BATCH_CODE_ALREADY_EXISTS");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const created = await prisma.inventoryBatch.create({
+    data: {
+      branchId: targetBranchId,
+      itemId: item.id,
+      batchCode: normalizedBatchCode,
+      quantityIn: 0,
+      quantityAvailable: 0,
+      unitCost: item.costPrice || 0,
+      sellingPrice1: item.sellingPrice1 || 0,
+      sellingPrice2: item.sellingPrice2 || 0,
+      sellingPrice3: item.sellingPrice3 || 0,
+      sellingPrice4: item.sellingPrice4 || 0,
+      sellingPrice5: item.sellingPrice5 || 0,
+      remarks: remarks || "Manual batch setup",
+      createdById: actor.id,
+    },
+    include: { item: true },
+  });
+  return created;
+};
+
 module.exports = {
   getInventoryOverview,
   getInventoryBatches,
@@ -1712,4 +1766,5 @@ module.exports = {
   updateSerialStatus,
   updateSerialBatch,
   updateBatchCode,
+  createBatch,
 };

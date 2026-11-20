@@ -185,6 +185,19 @@ const updateBatchCode = async (req, res, next) => {
   }
 };
 
+const createBatch = async (req, res, next) => {
+  try {
+    const result = await inventoryService.createBatch(req.user, req.body);
+    return res.status(201).json({
+      success: true,
+      message: "Batch created successfully",
+      data: result,
+    });
+  } catch (error) {
+    return handleInventoryMutationError(error, res, next);
+  }
+};
+
 const getMovements = async (req, res, next) => {
   try {
     const result = await inventoryService.getInventoryMovements(req.user, req.query);
@@ -210,4 +223,5 @@ module.exports = {
   updateSerialStatus,
   updateSerialBatch,
   updateBatchCode,
+  createBatch,
 };
