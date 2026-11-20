@@ -55,6 +55,7 @@ const parseBoolean = (value) => {
 const getInventoryOverview = async (actor, query) => {
   const branchId = resolveBranchFilter(actor, query.branchId);
   const search = query.search ? String(query.search).trim() : "";
+  const searchTokens = search ? search.split(/\s+/).filter(Boolean) : [];
   const lowStockOnly = parseBoolean(query.lowStockOnly);
 
   let categoryCondition = query.categoryId;
@@ -72,22 +73,40 @@ const getInventoryOverview = async (actor, query) => {
     ...(branchId ? { branchId } : {}),
     ...(query.categoryId ? { categoryId: categoryCondition } : {}),
     ...(query.status ? { status: query.status } : {}),
-    ...(search
+    ...(searchTokens.length > 0
       ? {
-          OR: [
-            {
-              itemCode: {
-                contains: search,
-                mode: "insensitive",
+          AND: searchTokens.map((token) => ({
+            OR: [
+              {
+                itemCode: {
+                  contains: token,
+                  mode: "insensitive",
+                },
               },
-            },
-            {
-              itemName: {
-                contains: search,
-                mode: "insensitive",
+              {
+                itemName: {
+                  contains: token,
+                  mode: "insensitive",
+                },
               },
-            },
-          ],
+              {
+                description: {
+                  contains: token,
+                  mode: "insensitive",
+                },
+              },
+              {
+                category: {
+                  is: {
+                    name: {
+                      contains: token,
+                      mode: "insensitive",
+                    },
+                  },
+                },
+              },
+            ],
+          })),
         }
       : {}),
   };

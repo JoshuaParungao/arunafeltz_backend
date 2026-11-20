@@ -866,35 +866,6 @@ const validateAndBuildRequestItems = async (items, fromBranchId, actor) => {
       );
     }
 
-
-    if (item.isSerialized) {
-      const availableSerialCount = await prisma.itemSerial.count({
-        where: {
-          branchId: fromBranchId,
-          itemId: item.id,
-          status: "AVAILABLE",
-          batchId: {
-            not: null,
-          },
-          batch: {
-            is: {
-              branchId: fromBranchId,
-              itemId: item.id,
-              status: "ACTIVE",
-            },
-          },
-        },
-      });
-
-      if (cumulativeQuantity > availableSerialCount) {
-        throw new AppError(
-          "Total requested quantity is higher than available serialized stock",
-          400,
-          "INSUFFICIENT_AVAILABLE_SERIALS"
-        );
-      }
-    }
-
     requestedQuantityByItem.set(item.id, cumulativeQuantity);
 
     const cleanDescription = normalizeOptionalString(itemPayload.description);
@@ -939,45 +910,30 @@ const listRequestableStock = async (filters = {}, actor) => {
   }
 
   const page = Number.parseInt(filters.page || "1", 10);
-  const limit = Math.min(Number.parseInt(filters.limit || "20", 10), 100);
+  const limit = Math.min(Number.parseInt(filters.limit || "100", 10), 500);
   const skip = (page - 1) * limit;
   const search = normalizeOptionalString(filters.search);
+  const searchTokens = search ? search.split(/\s+/).filter(Boolean) : [];
   const where = {
     branchId: sourceBranch.id,
     status: "ACTIVE",
-    AND: [
-      {
-        inventoryBatches: {
-          some: {
-            status: "ACTIVE",
-            quantityAvailable: { gt: 0 },
-          },
-        },
+    inventoryBatches: {
+      some: {
+        status: "ACTIVE",
+        quantityAvailable: { gt: 0 },
       },
-      {
-        OR: [
-          { isSerialized: false },
-          {
-            isSerialized: true,
-            itemSerials: {
-              some: {
-                status: "AVAILABLE",
-                batchId: { not: null },
-                batch: { is: { status: "ACTIVE", quantityAvailable: { gt: 0 } } },
-              },
-            },
-          },
-        ],
-      },
-    ],
-    ...(search
+    },
+    ...(searchTokens.length > 0
       ? {
-          OR: [
-            { itemCode: { contains: search, mode: "insensitive" } },
-            { itemName: { contains: search, mode: "insensitive" } },
-            { brand: { contains: search, mode: "insensitive" } },
-            { modelName: { contains: search, mode: "insensitive" } },
-          ],
+          AND: searchTokens.map((token) => ({
+            OR: [
+              { itemCode: { contains: token, mode: "insensitive" } },
+              { itemName: { contains: token, mode: "insensitive" } },
+              { description: { contains: token, mode: "insensitive" } },
+              { category: { is: { name: { contains: token, mode: "insensitive" } } } },
+              { category: { is: { parent: { is: { name: { contains: token, mode: "insensitive" } } } } } },
+            ],
+          })),
         }
       : {}),
   };
@@ -993,11 +949,15 @@ const listRequestableStock = async (filters = {}, actor) => {
         id: true,
         itemCode: true,
         itemName: true,
-        brand: true,
-        modelName: true,
         isSerialized: true,
         branch: { select: { id: true, code: true, name: true } },
-        category: { select: { id: true, name: true } },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            parent: { select: { id: true, name: true } },
+          },
+        },
         unit: { select: { id: true, name: true } },
         inventoryBatches: {
           where: { status: "ACTIVE", quantityAvailable: { gt: 0 } },
@@ -1015,22 +975,22 @@ const listRequestableStock = async (filters = {}, actor) => {
     }),
   ]);
 
-  const data = items.map((item) => {
-    const batchQuantity = item.inventoryBatches.reduce(
-      (sum, batch) => sum + Number(batch.quantityAvailable || 0),
-      0
-    );
-    const quantityAvailable = item.isSerialized
-      ? Math.min(batchQuantity, item.itemSerials.length)
-      : batchQuantity;
-    const { inventoryBatches, itemSerials, ...safeItem } = item;
+  const data = items
+    .map((item) => {
+      const batchQuantity = item.inventoryBatches.reduce(
+        (sum, batch) => sum + Number(batch.quantityAvailable || 0),
+        0
+      );
+      const quantityAvailable = batchQuantity;
+      const { inventoryBatches, itemSerials, ...safeItem } = item;
 
-    return {
-      ...safeItem,
-      quantityAvailable,
-      availableSerialCount: item.isSerialized ? itemSerials.length : null,
-    };
-  });
+      return {
+        ...safeItem,
+        quantityAvailable,
+        availableSerialCount: item.isSerialized ? itemSerials.length : null,
+      };
+    })
+    .filter((item) => Number(item.quantityAvailable || 0) > 0);
 
   return {
     data,
