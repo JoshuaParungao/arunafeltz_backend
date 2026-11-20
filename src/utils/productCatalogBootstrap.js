@@ -514,17 +514,14 @@ const ensureProductCatalog = async (force = false) => {
             _count: { select: { inventoryBatches: true } },
           },
         });
-        const existingBatchCodes = new Set(
-          (
-            await prisma.inventoryBatch.findMany({
-              where: {
-                branchId: mainBranch.id,
-                batchCode: { startsWith: "BAT-INIT-" },
-              },
-              select: { batchCode: true },
-            })
-          ).map((b) => b.batchCode)
-        );
+        const existingBatches = await prisma.inventoryBatch.findMany({
+          where: {
+            branchId: mainBranch.id,
+            batchCode: { startsWith: "BAT-INIT-" },
+          },
+          select: { id: true, batchCode: true, quantityAvailable: true, status: true },
+        });
+        const existingBatchMap = new Map(existingBatches.map((b) => [b.batchCode, b]));
         const mainItemByCode = new Map(mainItems.map((it) => [it.itemCode, it]));
 
         const batchRows = [];
@@ -532,13 +529,27 @@ const ensureProductCatalog = async (force = false) => {
 
         for (const p of initialProducts) {
           const availableQty = Number(p.available || 0);
+          const batchCode = `BAT-INIT-${p.itemCode}`;
+          const existingBatch = existingBatchMap.get(batchCode);
+
+          if (existingBatch) {
+            if (Number(existingBatch.quantityAvailable) !== availableQty) {
+              await prisma.inventoryBatch.update({
+                where: { id: existingBatch.id },
+                data: {
+                  quantityIn: availableQty,
+                  quantityAvailable: availableQty,
+                  status: availableQty > 0 ? "ACTIVE" : "DEPLETED",
+                },
+              });
+            }
+            continue;
+          }
+
           if (availableQty <= 0) continue;
 
           const itemRow = mainItemByCode.get(p.itemCode);
           if (!itemRow || itemRow._count.inventoryBatches > 0) continue;
-
-          const batchCode = `BAT-INIT-${p.itemCode}`;
-          if (existingBatchCodes.has(batchCode)) continue;
 
           totalStockUnits += availableQty;
           batchRows.push({
