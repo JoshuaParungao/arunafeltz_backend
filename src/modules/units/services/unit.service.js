@@ -138,7 +138,7 @@ const createUnit = async (payload, actor) => {
 const listUnits = async (filters = {}) => {
   const page = Number.parseInt(filters.page || "1", 10);
   const limit = Number.parseInt(filters.limit || "20", 10);
-  const safeLimit = Math.min(limit, 100);
+  const safeLimit = Math.min(limit, 500);
   const skip = (page - 1) * safeLimit;
 
   const search = filters.search ? filters.search.trim() : null;

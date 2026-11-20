@@ -148,6 +148,14 @@ const getInventoryOverview = async (actor, query) => {
             id: true,
             categoryCode: true,
             name: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                categoryCode: true,
+                name: true,
+              },
+            },
           },
         },
         unit: {
@@ -452,6 +460,21 @@ const getInventorySerials = async (actor, query) => {
             itemName: true,
             brand: true,
             modelName: true,
+            category: {
+              select: {
+                id: true,
+                categoryCode: true,
+                name: true,
+                parentId: true,
+                parent: {
+                  select: {
+                    id: true,
+                    categoryCode: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
         batch: {
@@ -1387,6 +1410,21 @@ const updateSerialBatch = async (actor, serialId, payload) => {
             itemName: true,
             brand: true,
             modelName: true,
+            category: {
+              select: {
+                id: true,
+                categoryCode: true,
+                name: true,
+                parentId: true,
+                parent: {
+                  select: {
+                    id: true,
+                    categoryCode: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
         batch: {
@@ -1552,6 +1590,21 @@ const getInventoryMovements = async (actor, query) => {
             itemName: true,
             brand: true,
             modelName: true,
+            category: {
+              select: {
+                id: true,
+                categoryCode: true,
+                name: true,
+                parentId: true,
+                parent: {
+                  select: {
+                    id: true,
+                    categoryCode: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
         batch: {

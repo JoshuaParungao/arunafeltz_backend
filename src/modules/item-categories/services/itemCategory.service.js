@@ -303,22 +303,39 @@ const createItemCategory = async (payload, actor) => {
   const branch = await getActiveBranchOrThrow(branchId);
 
   let parentId = null;
+  let parentCategoryName = null;
   if (payload.parentId) {
     const parentCategory = await prisma.itemCategory.findUnique({
       where: { id: payload.parentId },
-      select: { id: true, branchId: true, status: true },
+      select: { id: true, branchId: true, status: true, name: true },
     });
     if (!parentCategory || parentCategory.branchId !== branch.id) {
       throw new AppError("Parent category not found in this branch", 404, "PARENT_CATEGORY_NOT_FOUND");
     }
     parentId = parentCategory.id;
+    parentCategoryName = parentCategory.name;
   }
 
   const categoryCode = payload.categoryCode
     ? payload.categoryCode.trim().toUpperCase()
     : await generateCategoryCode(branch);
 
-  const name = payload.name.trim();
+  let name = payload.name.trim();
+
+  if (parentId && parentCategoryName) {
+    const collidingCategory = await prisma.itemCategory.findUnique({
+      where: {
+        branchId_name: {
+          branchId: branch.id,
+          name,
+        },
+      },
+      select: { id: true, parentId: true },
+    });
+    if (collidingCategory && collidingCategory.parentId !== parentId) {
+      name = `${name} (${parentCategoryName.trim()})`;
+    }
+  }
 
   await assertCategoryCodeIsUnique(branch.id, categoryCode);
   await assertCategoryNameIsUnique(branch.id, name);
@@ -503,7 +520,7 @@ const syncCategoriesAcrossBranches = async (actor) => {
 const listItemCategories = async (filters = {}, actor) => {
   const page = Number.parseInt(filters.page || "1", 10);
   const limit = Number.parseInt(filters.limit || "20", 10);
-  const safeLimit = Math.min(limit, 100);
+  const safeLimit = Math.min(limit, 1000);
   const skip = (page - 1) * safeLimit;
 
   const branchId = getBranchIdForList(actor, filters.branchId);
@@ -556,7 +573,7 @@ const listItemCategories = async (filters = {}, actor) => {
           },
         },
         {
-          categoryCode: "asc",
+          name: "asc",
         },
       ],
       skip,
@@ -629,8 +646,52 @@ const updateItemCategoryById = async (categoryId, payload, actor) => {
     updateData.categoryCode = categoryCode;
   }
 
+  if (payload.parentId !== undefined) {
+    if (payload.parentId === null || payload.parentId === "") {
+      updateData.parentId = null;
+    } else {
+      if (payload.parentId === existingCategory.id) {
+        throw new AppError("A category cannot be its own parent", 400, "INVALID_PARENT_CATEGORY");
+      }
+      const parentCategory = await prisma.itemCategory.findUnique({
+        where: { id: payload.parentId },
+        select: { id: true, branchId: true, parentId: true, name: true },
+      });
+      if (!parentCategory || parentCategory.branchId !== existingCategory.branchId) {
+        throw new AppError("Parent category not found in this branch", 404, "PARENT_CATEGORY_NOT_FOUND");
+      }
+      if (parentCategory.parentId === existingCategory.id) {
+        throw new AppError("Circular category hierarchy is not allowed", 400, "CIRCULAR_CATEGORY_HIERARCHY");
+      }
+      updateData.parentId = parentCategory.id;
+    }
+  }
+
   if (payload.name !== undefined) {
-    const name = payload.name.trim();
+    let name = payload.name.trim();
+    const effectiveParentId =
+      updateData.parentId !== undefined ? updateData.parentId : existingCategory.parentId;
+
+    if (effectiveParentId) {
+      const colliding = await prisma.itemCategory.findUnique({
+        where: {
+          branchId_name: {
+            branchId: existingCategory.branchId,
+            name,
+          },
+        },
+        select: { id: true, parentId: true },
+      });
+      if (colliding && colliding.id !== existingCategory.id && colliding.parentId !== effectiveParentId) {
+        const parentRow = await prisma.itemCategory.findUnique({
+          where: { id: effectiveParentId },
+          select: { name: true },
+        });
+        if (parentRow?.name) {
+          name = `${name} (${parentRow.name.trim()})`;
+        }
+      }
+    }
 
     await assertCategoryNameIsUniqueForUpdate(
       existingCategory.branchId,
@@ -643,27 +704,6 @@ const updateItemCategoryById = async (categoryId, payload, actor) => {
 
   if (payload.description !== undefined) {
     updateData.description = normalizeOptionalString(payload.description);
-  }
-
-  if (payload.parentId !== undefined) {
-    if (payload.parentId === null || payload.parentId === "") {
-      updateData.parentId = null;
-    } else {
-      if (payload.parentId === existingCategory.id) {
-        throw new AppError("A category cannot be its own parent", 400, "INVALID_PARENT_CATEGORY");
-      }
-      const parentCategory = await prisma.itemCategory.findUnique({
-        where: { id: payload.parentId },
-        select: { id: true, branchId: true, parentId: true },
-      });
-      if (!parentCategory || parentCategory.branchId !== existingCategory.branchId) {
-        throw new AppError("Parent category not found in this branch", 404, "PARENT_CATEGORY_NOT_FOUND");
-      }
-      if (parentCategory.parentId === existingCategory.id) {
-        throw new AppError("Circular category hierarchy is not allowed", 400, "CIRCULAR_CATEGORY_HIERARCHY");
-      }
-      updateData.parentId = parentCategory.id;
-    }
   }
 
   if (payload.attributeSchema !== undefined) {
