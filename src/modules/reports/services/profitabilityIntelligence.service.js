@@ -347,19 +347,19 @@ const getSixLayerProfitability = async (actor, query = {}) => {
   return {
     layers: {
       layerA: {
-        label: "Layer A — Puhunan (Total Cost)",
+        label: "Layer A — Total Cost",
         productCost,
         serviceCost,
         totalPuhunan,
         description: "Total Product Acquisition Cost plus Service Operational Cost",
       },
       layerB: {
-        label: "Layer B — Base Sales & Pure Base Tubo",
+        label: "Layer B — Base Sales & Pure Base Margin",
         productBaseSales: baseSales,
         serviceBaseSales: serviceSales,
         totalBaseSales: baseSales + serviceSales,
         pureBaseTubo,
-        description: "Pure trading profit: Base Sales minus Puhunan (no markup, no interest)",
+        description: "Pure trading profit: Base Sales minus Total Cost (no markup, no interest)",
       },
       layerC: {
         label: "Layer C — Mark-up Income",
@@ -369,10 +369,10 @@ const getSixLayerProfitability = async (actor, query = {}) => {
         description: "Store mark-up additions over standard SRP",
       },
       layerD: {
-        label: "Layer D — Tubo With Mark-up",
+        label: "Layer D — Margin With Mark-up",
         tuboWithMarkup,
         marginWithMarkupPercent: (baseSales + serviceSales + totalMarkup) > 0 ? (tuboWithMarkup / (baseSales + serviceSales + totalMarkup)) * 100 : 0,
-        description: "Merchandise profit: Base Sales + Mark-up minus Puhunan",
+        description: "Merchandise profit: Base Sales + Mark-up minus Total Cost",
       },
       layerE: {
         label: "Layer E — Financing Interest Income",
@@ -380,7 +380,7 @@ const getSixLayerProfitability = async (actor, query = {}) => {
         description: "Installment interest yield generated from AR contracts",
       },
       layerF: {
-        label: "Layer F — Overall Total Kita (Consolidated Profit)",
+        label: "Layer F — Consolidated Profit (Overall Net Earnings)",
         overallTotalKita,
         consolidatedRevenue: baseSales + serviceSales + totalMarkup + financingInterest,
         netReturnOnCostPercent: totalPuhunan > 0 ? (overallTotalKita / totalPuhunan) * 100 : 0,

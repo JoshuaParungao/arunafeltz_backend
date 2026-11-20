@@ -126,7 +126,7 @@ const returnBorrowTransfer = asyncHandler(async (req, res) => {
 
   const actionMsgMap = {
     INITIATE_RETURN: "Replacement stock return dispatched successfully",
-    CONFIRM_RETURN: "Replacement stock confirmed received (Nasoli na)",
+    CONFIRM_RETURN: "Replacement stock confirmed received",
     INITIATE_PURCHASE: "Purchase conversion requested; awaiting billing amount",
     SET_BILLING_AMOUNT: "Billing amount sent successfully",
     SUBMIT_PAYMENT: "Payment submitted successfully; awaiting confirmation",
