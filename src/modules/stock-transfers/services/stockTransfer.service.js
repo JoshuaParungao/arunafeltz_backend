@@ -942,7 +942,7 @@ const listRequestableStock = async (filters = {}, actor) => {
     prisma.item.count({ where }),
     prisma.item.findMany({
       where,
-      orderBy: { itemCode: "asc" },
+      orderBy: [{ itemName: "asc" }, { itemCode: "asc" }],
       skip,
       take: limit,
       select: {

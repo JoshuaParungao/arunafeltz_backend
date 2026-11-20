@@ -716,6 +716,9 @@ const listItems = async (filters = {}, actor) => {
           },
         },
         {
+          itemName: "asc",
+        },
+        {
           itemCode: "asc",
         },
       ],

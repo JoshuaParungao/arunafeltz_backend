@@ -126,6 +126,9 @@ const getInventoryOverview = async (actor, query) => {
           },
         },
         {
+          itemName: "asc",
+        },
+        {
           itemCode: "asc",
         },
       ],

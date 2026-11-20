@@ -44,6 +44,7 @@ const executeOmnisearch = async (actor, { query = "", branchId: requestedBranchI
         ],
       },
       take: 5,
+      orderBy: [{ itemName: "asc" }, { itemCode: "asc" }],
       select: {
         id: true,
         itemCode: true,
