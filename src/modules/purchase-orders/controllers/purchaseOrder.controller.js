@@ -65,10 +65,23 @@ const updatePurchaseOrderStatusById = asyncHandler(async (req, res) => {
   });
 });
 
+const getPreSaleBatches = asyncHandler(async (req, res) => {
+  const result = await purchaseOrderService.getPreSaleBatches(
+    req.user,
+    req.query
+  );
+
+  return sendSuccess(res, {
+    message: "Pre-sale batches retrieved successfully",
+    data: result,
+  });
+});
+
 module.exports = {
   createPurchaseOrder,
   listPurchaseOrders,
   getPurchaseOrderById,
   updatePurchaseOrderById,
   updatePurchaseOrderStatusById,
+  getPreSaleBatches,
 };

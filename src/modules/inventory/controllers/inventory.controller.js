@@ -167,6 +167,23 @@ const updateSerialBatch = async (req, res, next) => {
   }
 };
 
+const updateBatchCode = async (req, res, next) => {
+  try {
+    const result = await inventoryService.updateBatchCode(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Batch code updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    return handleInventoryMutationError(error, res, next);
+  }
+};
 
 const getMovements = async (req, res, next) => {
   try {
@@ -192,4 +209,5 @@ module.exports = {
   createAdjustment,
   updateSerialStatus,
   updateSerialBatch,
+  updateBatchCode,
 };

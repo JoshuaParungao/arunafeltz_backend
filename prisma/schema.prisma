@@ -814,6 +814,8 @@ model PurchaseOrderItem {
   discountAmount Decimal @default(0) @db.Decimal(12, 2)
   lineTotal      Decimal @default(0) @db.Decimal(12, 2)
 
+  batchCode String?
+
   purchaseOrderId String
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 

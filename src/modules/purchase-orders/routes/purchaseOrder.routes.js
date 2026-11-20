@@ -32,6 +32,13 @@ router.post(
 );
 
 router.get(
+  "/pre-sales",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_PURCHASE_ORDERS),
+  purchaseOrderController.getPreSaleBatches
+);
+
+router.get(
   "/:id",
   protect,
   requirePermission(PERMISSIONS.VIEW_PURCHASE_ORDERS),

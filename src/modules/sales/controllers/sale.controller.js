@@ -40,6 +40,11 @@ const handleSaleError = (error, res, next) => {
     SERIAL_REQUIRED: [400, "Serial is required for serialized item."],
     SERIAL_NOT_FOUND: [404, "Serial not found for this item and branch."],
     SERIAL_NOT_AVAILABLE: [400, "Serial is not available."],
+    NEW_SERIAL_REQUIRED: [400, "New serial number is required."],
+    SALE_ITEM_NOT_FOUND: [404, "Sale item not found."],
+    ITEM_IS_NOT_SERIALIZED: [400, "This item is not serialized."],
+    SERIAL_ALREADY_ASSIGNED: [400, "The serial number is already assigned to this sale item."],
+    NEW_SERIAL_ALREADY_SOLD: [400, "The specified serial number is already marked as sold on another sale."],
     SERIAL_BATCH_REQUIRED: [400, "Serialized item must be linked to a batch."],
     SERIAL_BATCH_MISMATCH: [400, "Selected batch does not match the serial batch."],
     SERIALIZED_QUANTITY_MUST_BE_ONE: [400, "Serialized item quantity must be 1 per sale line."],
@@ -227,6 +232,24 @@ const createSaleReturn = async (req, res, next) => {
   }
 };
 
+const swapSaleSerial = async (req, res, next) => {
+  try {
+    const result = await saleService.swapSaleSerial(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Sale serial number swapped successfully",
+      data: result,
+    });
+  } catch (error) {
+    return handleSaleError(error, res, next);
+  }
+};
+
 module.exports = {
   createSale,
   appendSaleItems,
@@ -235,4 +258,5 @@ module.exports = {
   getSaleById,
   createCreditAccountFromSale,
   cancelSale,
+  swapSaleSerial,
 };

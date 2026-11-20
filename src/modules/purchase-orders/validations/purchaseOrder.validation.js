@@ -43,6 +43,7 @@ const purchaseOrderItemSchema = z.object({
   quantity: quantitySchema,
   unitCost: moneySchema("Unit cost"),
   discountAmount: moneySchema("Discount amount").optional().default(0),
+  batchCode: optionalString.or(z.literal("")),
 });
 
 const optionalDateSchema = z

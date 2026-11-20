@@ -13,6 +13,7 @@ const {
   listSalesSchema,
   saleIdParamSchema,
   appendSaleItemsSchema,
+  swapSaleSerialSchema,
 } = require("../validations/sale.validation");
 
 const router = express.Router();
@@ -61,6 +62,13 @@ router.patch(
   requirePermission(PERMISSIONS.MANAGE_SALES),
   validate(cancelSaleSchema),
   saleController.cancelSale
+);
+
+router.post(
+  "/:id/swap-serial",
+  requirePermission(PERMISSIONS.MANAGE_SALES),
+  validate(swapSaleSerialSchema),
+  saleController.swapSaleSerial
 );
 
 router.post(

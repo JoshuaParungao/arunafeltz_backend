@@ -1649,6 +1649,59 @@ const getInventoryMovements = async (actor, query) => {
   };
 };
 
+const updateBatchCode = async (actor, batchId, { batchCode, remarks }) => {
+  const normalizedBatchCode = String(batchCode).trim();
+  if (!normalizedBatchCode) {
+    const error = new Error("BATCH_CODE_REQUIRED");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const batch = await prisma.inventoryBatch.findUnique({
+    where: { id: batchId },
+    include: { item: true },
+  });
+
+  if (!batch) {
+    const error = new Error("BATCH_NOT_FOUND");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (actor.role !== "SUPER_OWNER" && batch.branchId !== actor.branchId) {
+    const error = new Error("FORBIDDEN");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const existingWithCode = await prisma.inventoryBatch.findUnique({
+    where: {
+      branchId_batchCode: {
+        branchId: batch.branchId,
+        batchCode: normalizedBatchCode,
+      },
+    },
+  });
+
+  if (existingWithCode && existingWithCode.id !== batch.id) {
+    const error = new Error("BATCH_CODE_ALREADY_EXISTS");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const updated = await prisma.inventoryBatch.update({
+    where: { id: batch.id },
+    data: {
+      batchCode: normalizedBatchCode,
+      ...(remarks !== undefined ? { remarks } : {}),
+      updatedById: actor.id,
+    },
+    include: { item: true },
+  });
+
+  return updated;
+};
+
 module.exports = {
   getInventoryOverview,
   getInventoryBatches,
@@ -1658,4 +1711,5 @@ module.exports = {
   createStockAdjustment,
   updateSerialStatus,
   updateSerialBatch,
+  updateBatchCode,
 };

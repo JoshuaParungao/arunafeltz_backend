@@ -509,6 +509,38 @@ const assertPurchaseOrderCodeIsUnique = async (
   }
 };
 
+const generateNextPoBatchCode = async (tx, branchId, offset = 0) => {
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  let seq = (await tx.inventoryBatch.count({ where: { branchId } })) + 1 + offset;
+  let batchCode = `BAT-${dateStr}-${String(seq).padStart(4, "0")}`;
+
+  let existing = await tx.inventoryBatch.findUnique({
+    where: {
+      branchId_batchCode: {
+        branchId,
+        batchCode,
+      },
+    },
+    select: { id: true },
+  });
+
+  while (existing) {
+    seq += 1;
+    batchCode = `BAT-${dateStr}-${String(seq).padStart(4, "0")}`;
+    existing = await tx.inventoryBatch.findUnique({
+      where: {
+        branchId_batchCode: {
+          branchId,
+          batchCode,
+        },
+      },
+      select: { id: true },
+    });
+  }
+
+  return batchCode;
+};
+
 const validateAndBuildItems = async (items, branchId, db = prisma) => {
   const builtItems = [];
   let subtotal = 0;
@@ -576,6 +608,11 @@ const validateAndBuildItems = async (items, branchId, db = prisma) => {
     subtotal = toMoney(subtotal + lineSubtotal);
     totalDiscount = toMoney(totalDiscount + discountAmount);
 
+    let lineBatchCode = itemPayload.batchCode ? String(itemPayload.batchCode).trim() : "";
+    if (!lineBatchCode) {
+      lineBatchCode = await generateNextPoBatchCode(db, branchId, index);
+    }
+
     builtItems.push({
       lineNo: index + 1,
       description: itemPayload.description.trim(),
@@ -584,6 +621,7 @@ const validateAndBuildItems = async (items, branchId, db = prisma) => {
       unitCost,
       discountAmount,
       lineTotal,
+      batchCode: lineBatchCode,
       itemId: item ? item.id : null,
     });
   }
@@ -1109,6 +1147,53 @@ const updatePurchaseOrderStatusById = async (purchaseOrderId, payload, actor) =>
   });
 };
 
+const getPreSaleBatches = async (actor, query = {}) => {
+  const branchId = resolveBranchFilter(actor, query.branchId);
+  const where = {
+    ...(branchId ? { branchId } : {}),
+    ...(query.itemId ? { itemId: query.itemId } : {}),
+    OR: [
+      { remarks: { contains: "POS Pre-sale", mode: "insensitive" } },
+      { remarks: { contains: "Pre-sale", mode: "insensitive" } },
+      { remarks: { contains: "POS checkout", mode: "insensitive" } },
+    ],
+  };
+
+  const batches = await prisma.inventoryBatch.findMany({
+    where,
+    include: {
+      item: {
+        select: {
+          id: true,
+          itemCode: true,
+          itemName: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  return batches.map((batch) => {
+    const preSoldQty = Math.max(
+      0,
+      Number(batch.quantityIn || 0) - Number(batch.quantityAvailable || 0)
+    );
+    return {
+      id: batch.id,
+      batchCode: batch.batchCode,
+      itemId: batch.itemId,
+      itemCode: batch.item?.itemCode,
+      itemName: batch.item?.itemName,
+      quantityIn: Number(batch.quantityIn || 0),
+      quantityAvailable: Number(batch.quantityAvailable || 0),
+      preSoldQty,
+      remarks: batch.remarks,
+      createdAt: batch.createdAt,
+    };
+  });
+};
+
 module.exports = {
   PURCHASE_ORDER_INCLUDE,
   createPurchaseOrder,
@@ -1116,4 +1201,5 @@ module.exports = {
   getPurchaseOrderById,
   updatePurchaseOrderById,
   updatePurchaseOrderStatusById,
+  getPreSaleBatches,
 };

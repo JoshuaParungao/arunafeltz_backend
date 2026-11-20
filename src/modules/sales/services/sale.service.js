@@ -813,27 +813,46 @@ const buildSaleItems = async (
           }
 
           if (!batchToUse) {
-            const autoBatchCode = await generateUniqueAutoBatchCode(tx, branchId);
-            batchToUse = await tx.inventoryBatch.create({
-              data: {
+            const chosenBatchCode = itemPayload.batchCode?.trim() || (await generateUniqueAutoBatchCode(tx, branchId));
+            const existingBatch = await tx.inventoryBatch.findFirst({
+              where: {
                 branchId,
+                batchCode: chosenBatchCode,
                 itemId: item.id,
-                batchCode: autoBatchCode,
-                quantityIn: "1",
-                quantityAvailable: "1",
-                unitCost: item.costPrice.toString(),
-                operationalUnitCost: item.costPrice.toString(),
-                sellingPrice1: item.price1.toString(),
-                sellingPrice2: item.price2.toString(),
-                sellingPrice3: item.price3.toString(),
-                sellingPrice4: item.price4.toString(),
-                sellingPrice5: item.price5.toString(),
-                remarks: "Auto-created for available serial checkout",
-                status: "ACTIVE",
-                createdById: actor.id,
-                updatedById: actor.id,
               },
             });
+            if (existingBatch) {
+              batchToUse = existingBatch;
+              await tx.inventoryBatch.update({
+                where: { id: existingBatch.id },
+                data: {
+                  quantityIn: (Number(existingBatch.quantityIn || 0) + 1).toString(),
+                  quantityAvailable: "1",
+                  status: "ACTIVE",
+                },
+              });
+            } else {
+              batchToUse = await tx.inventoryBatch.create({
+                data: {
+                  branchId,
+                  itemId: item.id,
+                  batchCode: chosenBatchCode,
+                  quantityIn: "1",
+                  quantityAvailable: "1",
+                  unitCost: item.costPrice.toString(),
+                  operationalUnitCost: item.costPrice.toString(),
+                  sellingPrice1: item.price1.toString(),
+                  sellingPrice2: item.price2.toString(),
+                  sellingPrice3: item.price3.toString(),
+                  sellingPrice4: item.price4.toString(),
+                  sellingPrice5: item.price5.toString(),
+                  remarks: "POS Pre-sale / 0-stock checkout",
+                  status: "ACTIVE",
+                  createdById: actor.id,
+                  updatedById: actor.id,
+                },
+              });
+            }
           }
 
           resolvedBatchId = batchToUse.id;
@@ -902,28 +921,46 @@ const buildSaleItems = async (
           }
 
           if (!targetBatch) {
-            const autoBatchCode = await generateUniqueAutoBatchCode(tx, branchId);
-
-            targetBatch = await tx.inventoryBatch.create({
-              data: {
+            const chosenBatchCode = itemPayload.batchCode?.trim() || (await generateUniqueAutoBatchCode(tx, branchId));
+            const existingBatch = await tx.inventoryBatch.findFirst({
+              where: {
                 branchId,
+                batchCode: chosenBatchCode,
                 itemId: item.id,
-                batchCode: autoBatchCode,
-                quantityIn: "1",
-                quantityAvailable: "1",
-                unitCost: item.costPrice.toString(),
-                operationalUnitCost: item.costPrice.toString(),
-                sellingPrice1: item.price1.toString(),
-                sellingPrice2: item.price2.toString(),
-                sellingPrice3: item.price3.toString(),
-                sellingPrice4: item.price4.toString(),
-                sellingPrice5: item.price5.toString(),
-                remarks: "Auto-created from POS serial barcode scan",
-                status: "ACTIVE",
-                createdById: actor.id,
-                updatedById: actor.id,
               },
             });
+            if (existingBatch) {
+              targetBatch = existingBatch;
+              await tx.inventoryBatch.update({
+                where: { id: existingBatch.id },
+                data: {
+                  quantityIn: (Number(existingBatch.quantityIn || 0) + 1).toString(),
+                  quantityAvailable: "1",
+                  status: "ACTIVE",
+                },
+              });
+            } else {
+              targetBatch = await tx.inventoryBatch.create({
+                data: {
+                  branchId,
+                  itemId: item.id,
+                  batchCode: chosenBatchCode,
+                  quantityIn: "1",
+                  quantityAvailable: "1",
+                  unitCost: item.costPrice.toString(),
+                  operationalUnitCost: item.costPrice.toString(),
+                  sellingPrice1: item.price1.toString(),
+                  sellingPrice2: item.price2.toString(),
+                  sellingPrice3: item.price3.toString(),
+                  sellingPrice4: item.price4.toString(),
+                  sellingPrice5: item.price5.toString(),
+                  remarks: "POS Pre-sale / 0-stock checkout",
+                  status: "ACTIVE",
+                  createdById: actor.id,
+                  updatedById: actor.id,
+                },
+              });
+            }
           }
 
           const deduction = await deductBatchStock({
@@ -1008,28 +1045,50 @@ const buildSaleItems = async (
         }
 
         if (!targetBatch) {
-          const autoBatchCode = await generateUniqueAutoBatchCode(tx, branchId);
-
-          targetBatch = await tx.inventoryBatch.create({
-            data: {
+          const chosenBatchCode = itemPayload.batchCode?.trim() || (await generateUniqueAutoBatchCode(tx, branchId));
+          const existingBatch = await tx.inventoryBatch.findFirst({
+            where: {
               branchId,
+              batchCode: chosenBatchCode,
               itemId: item.id,
-              batchCode: autoBatchCode,
-              quantityIn: quantity.toString(),
-              quantityAvailable: quantity.toString(),
-              unitCost: item.costPrice.toString(),
-              operationalUnitCost: item.costPrice.toString(),
-              sellingPrice1: item.price1.toString(),
-              sellingPrice2: item.price2.toString(),
-              sellingPrice3: item.price3.toString(),
-              sellingPrice4: item.price4.toString(),
-              sellingPrice5: item.price5.toString(),
-              remarks: "Auto-created from POS checkout (legacy stock / pre-sale)",
-              status: "ACTIVE",
-              createdById: actor.id,
-              updatedById: actor.id,
             },
           });
+          if (existingBatch) {
+            targetBatch = existingBatch;
+            const currentAvail = Number(existingBatch.quantityAvailable || 0);
+            if (currentAvail < quantity) {
+              const shortfall = quantity - currentAvail;
+              await tx.inventoryBatch.update({
+                where: { id: existingBatch.id },
+                data: {
+                  quantityIn: (Number(existingBatch.quantityIn || 0) + shortfall).toString(),
+                  quantityAvailable: (currentAvail + shortfall).toString(),
+                  status: "ACTIVE",
+                },
+              });
+            }
+          } else {
+            targetBatch = await tx.inventoryBatch.create({
+              data: {
+                branchId,
+                itemId: item.id,
+                batchCode: chosenBatchCode,
+                quantityIn: quantity.toString(),
+                quantityAvailable: quantity.toString(),
+                unitCost: item.costPrice.toString(),
+                operationalUnitCost: item.costPrice.toString(),
+                sellingPrice1: item.price1.toString(),
+                sellingPrice2: item.price2.toString(),
+                sellingPrice3: item.price3.toString(),
+                sellingPrice4: item.price4.toString(),
+                sellingPrice5: item.price5.toString(),
+                remarks: "POS Pre-sale / 0-stock checkout",
+                status: "ACTIVE",
+                createdById: actor.id,
+                updatedById: actor.id,
+              },
+            });
+          }
           resolvedBatchId = targetBatch.id;
         }
 
@@ -3462,6 +3521,143 @@ const appendSaleItems = async (actor, saleId, payload, database = prisma) => {
   });
 };
 
+const swapSaleSerial = async (actor, saleId, { saleItemId, newSerialNumber, reason }) => {
+  const normalizedNewSerial = String(newSerialNumber || "").trim();
+  if (!normalizedNewSerial) {
+    const error = new Error("NEW_SERIAL_REQUIRED");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({
+      where: { id: saleId },
+      include: {
+        items: {
+          include: {
+            serial: true,
+            item: true,
+          },
+        },
+      },
+    });
+
+    if (!sale) {
+      const error = new Error("SALE_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (actor.role !== "SUPER_OWNER" && sale.branchId !== actor.branchId) {
+      const error = new Error("FORBIDDEN");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const saleItem = sale.items.find((item) => item.id === saleItemId);
+    if (!saleItem) {
+      const error = new Error("SALE_ITEM_NOT_FOUND");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!saleItem.serialId && !saleItem.serial) {
+      const error = new Error("ITEM_IS_NOT_SERIALIZED");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const oldSerial = saleItem.serial;
+
+    if (oldSerial && oldSerial.serialNumber === normalizedNewSerial) {
+      const error = new Error("SERIAL_ALREADY_ASSIGNED");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let newSerial = await tx.itemSerial.findFirst({
+      where: {
+        branchId: sale.branchId,
+        itemId: saleItem.itemId,
+        serialNumber: normalizedNewSerial,
+      },
+    });
+
+    if (newSerial) {
+      if (newSerial.status === "SOLD" && newSerial.id !== oldSerial?.id) {
+        const error = new Error("NEW_SERIAL_ALREADY_SOLD");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      await tx.itemSerial.update({
+        where: { id: newSerial.id },
+        data: {
+          status: "SOLD",
+          batchId: saleItem.batchId || newSerial.batchId,
+          updatedById: actor.id,
+        },
+      });
+    } else {
+      newSerial = await tx.itemSerial.create({
+        data: {
+          branchId: sale.branchId,
+          itemId: saleItem.itemId,
+          batchId: saleItem.batchId,
+          serialNumber: normalizedNewSerial,
+          status: "SOLD",
+          remarks: `Swapped onto sale ${sale.saleCode}`,
+          createdById: actor.id,
+          updatedById: actor.id,
+        },
+      });
+    }
+
+    if (oldSerial) {
+      await tx.itemSerial.update({
+        where: { id: oldSerial.id },
+        data: {
+          status: "AVAILABLE",
+          remarks: `Reverted from sale ${sale.saleCode} via serial swap`,
+          updatedById: actor.id,
+        },
+      });
+    }
+
+    const updatedSaleItem = await tx.saleItem.update({
+      where: { id: saleItem.id },
+      data: {
+        serialId: newSerial.id,
+      },
+      include: {
+        serial: true,
+        item: true,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        branchId: sale.branchId,
+        userId: actor.id,
+        action: "SALE_SERIAL_SWAPPED",
+        resourceType: "SALE",
+        resourceId: sale.id,
+        details: JSON.stringify({
+          saleCode: sale.saleCode,
+          saleItemId: saleItem.id,
+          oldSerial: oldSerial?.serialNumber || null,
+          newSerial: normalizedNewSerial,
+          reason: reason || "Serial corrected by user",
+        }),
+      },
+    });
+
+    return updatedSaleItem;
+  });
+
+  return result;
+};
+
 module.exports = {
   createSale,
   appendSaleItems,
@@ -3470,6 +3666,7 @@ module.exports = {
   getSaleById,
   createCreditAccountFromSale,
   cancelSale,
+  swapSaleSerial,
   testInternals: {
     applyMarkupToBasePrice,
     buildQuotationConversionItems,

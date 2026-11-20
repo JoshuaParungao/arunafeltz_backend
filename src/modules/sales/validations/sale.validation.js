@@ -249,6 +249,17 @@ const appendSaleItemsSchema = z.object({
   }),
 });
 
+const swapSaleSerialSchema = z.object({
+  params: z.object({
+    id: z.string().trim().min(1, "Sale ID is required"),
+  }),
+  body: z.object({
+    saleItemId: z.string().trim().min(1, "Sale item ID is required"),
+    newSerialNumber: z.string().trim().min(1, "New serial number is required"),
+    reason: optionalString,
+  }),
+});
+
 module.exports = {
   createSaleSchema,
   cancelSaleSchema,
@@ -257,4 +268,5 @@ module.exports = {
   listSalesSchema,
   saleIdParamSchema,
   appendSaleItemsSchema,
+  swapSaleSerialSchema,
 };
