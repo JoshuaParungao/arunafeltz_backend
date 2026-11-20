@@ -67,14 +67,9 @@ const createItemSchema = z.object({
     itemName: z.string().trim().min(1, "Item name is required"),
 
     description: optionalText("Description"),
-    barcode: optionalText("Barcode"),
-    brand: optionalText("Brand"),
-    modelName: optionalText("Model name"),
 
     categoryId: z.string().trim().min(1, "Category ID is required"),
     unitId: z.string().trim().min(1, "Unit ID is required"),
-
-    attributes: z.record(z.any()).optional().nullable(),
 
     isSerialized: z.boolean().optional(),
     hasWarranty: z.boolean().optional(),
@@ -141,9 +136,6 @@ const updateItemSchema = z.object({
     itemName: z.string().trim().min(1, "Item name cannot be empty").optional(),
 
     description: optionalText("Description"),
-    barcode: optionalText("Barcode"),
-    brand: optionalText("Brand"),
-    modelName: optionalText("Model name"),
 
     categoryId: z
       .string()
@@ -152,8 +144,6 @@ const updateItemSchema = z.object({
       .optional(),
 
     unitId: z.string().trim().min(1, "Unit ID cannot be empty").optional(),
-
-    attributes: z.record(z.any()).optional().nullable(),
 
     status: z.enum(catalogStatusValues).optional(),
 

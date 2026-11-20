@@ -6,7 +6,6 @@ const ITEM_SELECT = {
   itemCode: true,
   itemName: true,
   description: true,
-  barcode: true,
   status: true,
   isSerialized: true,
   hasWarranty: true,
@@ -272,7 +271,6 @@ const getActiveCategoryOrThrow = async (categoryId) => {
       status: true,
       branchId: true,
       parentId: true,
-      attributeSchema: true,
       branch: {
         select: {
           id: true,
@@ -296,19 +294,6 @@ const getActiveCategoryOrThrow = async (categoryId) => {
   }
 
   return category;
-};
-
-const validateItemAttributes = (attributes) => {
-  if (attributes && typeof attributes === "object" && !Array.isArray(attributes)) {
-    const cleaned = {};
-    for (const [key, val] of Object.entries(attributes)) {
-      if (val !== undefined && val !== null && String(val).trim() !== "") {
-        cleaned[key] = typeof val === "string" ? val.trim() : val;
-      }
-    }
-    return Object.keys(cleaned).length > 0 ? cleaned : null;
-  }
-  return null;
 };
 
 const getActiveUnitOrThrow = async (unitId) => {
@@ -475,18 +460,12 @@ const createItem = async (payload, actor) => {
 
   await assertItemCodeIsUnique(branch.id, itemCode);
 
-  const attributes = validateItemAttributes(payload.attributes);
-
   const createdItem = await prisma.item.create({
     data: {
       itemCode,
       itemName: payload.itemName.trim(),
       description: normalizeOptionalString(payload.description),
-      barcode: normalizeOptionalString(payload.barcode),
-      brand: normalizeOptionalString(payload.brand),
-      modelName: normalizeOptionalString(payload.modelName),
       status: "ACTIVE",
-      attributes,
       isSerialized: Boolean(payload.isSerialized),
       hasWarranty: Boolean(payload.hasWarranty),
 
@@ -614,11 +593,7 @@ const createItem = async (payload, actor) => {
             itemCode: createdItem.itemCode,
             itemName: createdItem.itemName,
             description: createdItem.description,
-            barcode: createdItem.barcode,
-            brand: createdItem.brand,
-            modelName: createdItem.modelName,
             status: "ACTIVE",
-            attributes: createdItem.attributes,
             isSerialized: createdItem.isSerialized,
             hasWarranty: createdItem.hasWarranty,
             costPrice: "0.00",
@@ -684,12 +659,6 @@ const listItems = async (filters = {}, actor) => {
       },
       {
         itemName: {
-          contains: search,
-          mode: "insensitive",
-        },
-      },
-      {
-        barcode: {
           contains: search,
           mode: "insensitive",
         },
@@ -806,18 +775,6 @@ const updateItemById = async (itemId, payload, actor) => {
     updateData.description = normalizeOptionalString(payload.description);
   }
 
-  if (payload.barcode !== undefined) {
-    updateData.barcode = normalizeOptionalString(payload.barcode);
-  }
-
-  if (payload.brand !== undefined) {
-    updateData.brand = normalizeOptionalString(payload.brand);
-  }
-
-  if (payload.modelName !== undefined) {
-    updateData.modelName = normalizeOptionalString(payload.modelName);
-  }
-
   if (payload.status !== undefined) {
     updateData.status = payload.status;
   }
@@ -837,10 +794,6 @@ const updateItemById = async (itemId, payload, actor) => {
     assertCategoryBelongsToBranchId(targetCategory, existingItem.branchId);
 
     updateData.categoryId = targetCategory.id;
-  }
-
-  if (payload.attributes !== undefined) {
-    updateData.attributes = validateItemAttributes(payload.attributes);
   }
 
   if (payload.unitId !== undefined) {
