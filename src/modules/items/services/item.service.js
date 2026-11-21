@@ -1,6 +1,7 @@
 const prisma = require("../../../config/prisma");
 const AppError = require("../../../utils/appError");
 const logger = require("../../../utils/logger");
+const { createAuditLog } = require("../../../utils/auditLogger");
 
 const ITEM_SELECT = {
   id: true,
@@ -650,6 +651,25 @@ const createItem = async (payload, actor) => {
   // Mirror across other active branches with exact metadata & prices, leaving stock at 0
   await mirrorItemAcrossBranches(createdItem, actor);
 
+  await createAuditLog({
+    actor,
+    branchId: createdItem.branchId,
+    action: "ITEM_CREATED",
+    entityType: "Item",
+    entityId: createdItem.id,
+    description: `Created new product ${createdItem.itemCode} - ${createdItem.itemName || createdItem.description}`,
+    metadata: {
+      itemCode: createdItem.itemCode,
+      itemName: createdItem.itemName || createdItem.description,
+      costPrice: createdItem.costPrice,
+      price1: createdItem.price1,
+      price2: createdItem.price2,
+      price3: createdItem.price3,
+      price4: createdItem.price4,
+      price5: createdItem.price5,
+    },
+  });
+
   return attachAvailableStock(createdItem);
 };
 
@@ -880,6 +900,33 @@ const updateItemById = async (itemId, payload, actor) => {
 
   // Mirror updated product metadata & prices across all other active branches (stock untouched)
   await mirrorItemAcrossBranches(updatedItem, actor, existingItem.itemCode);
+
+  // Record audit trail of the product edit
+  const changedFields = [];
+  const changesMeta = {};
+  for (const [key, val] of Object.entries(updateData)) {
+    const oldVal = existingItem[key];
+    if (String(oldVal ?? "") !== String(val ?? "")) {
+      changedFields.push(`${key}: ${oldVal ?? "none"} -> ${val ?? "none"}`);
+      changesMeta[key] = { from: oldVal, to: val };
+    }
+  }
+
+  if (changedFields.length > 0) {
+    await createAuditLog({
+      actor,
+      branchId: updatedItem.branchId,
+      action: "ITEM_UPDATED",
+      entityType: "Item",
+      entityId: updatedItem.id,
+      description: `Updated product ${updatedItem.itemCode} (${updatedItem.itemName || updatedItem.description}): ${changedFields.slice(0, 4).join(", ")}${changedFields.length > 4 ? ` (+${changedFields.length - 4} more)` : ""}`,
+      metadata: {
+        itemCode: updatedItem.itemCode,
+        itemName: updatedItem.itemName || updatedItem.description,
+        changes: changesMeta,
+      },
+    });
+  }
 
   return attachAvailableStock(updatedItem);
 };

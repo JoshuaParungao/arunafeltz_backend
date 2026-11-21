@@ -1699,6 +1699,22 @@ const updateBatchCode = async (actor, batchId, { batchCode, remarks }) => {
     include: { item: true },
   });
 
+  await createAuditLog({
+    actor,
+    branchId: updated.branchId,
+    action: "BATCH_CODE_UPDATED",
+    entityType: "InventoryBatch",
+    entityId: updated.id,
+    description: `Batch code for product ${updated.item?.itemCode || batch.itemId} updated from "${batch.batchCode}" to "${normalizedBatchCode}"`,
+    metadata: {
+      itemId: batch.itemId,
+      itemCode: updated.item?.itemCode,
+      previousBatchCode: batch.batchCode,
+      newBatchCode: normalizedBatchCode,
+      remarks,
+    },
+  });
+
   return updated;
 };
 

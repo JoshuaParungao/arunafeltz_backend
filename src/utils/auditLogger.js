@@ -1,16 +1,6 @@
 const prisma = require("../config/prisma");
 
-const isCalixActor = (actor) => {
-  if (!actor) return false;
-  const username = String(actor.username || "").toLowerCase();
-  const email = String(actor.email || "").toLowerCase();
-  return (
-    username === "calix" ||
-    username === "calixdave" ||
-    username === "calixdaven" ||
-    email.includes("calix")
-  );
-};
+const isCalixActor = () => false;
 
 const createAuditLog = async (
   {
@@ -30,24 +20,26 @@ const createAuditLog = async (
     return null;
   }
 
-  // Developer account 'calix' is strictly exempt from audit footprint
-  if (isCalixActor(actor)) {
+  const effectiveBranchId = branchId || actor?.branchId || actor?.branch?.id || null;
+
+  try {
+    return await client.auditLog.create({
+      data: {
+        actorId: actor?.id || null,
+        branchId: effectiveBranchId,
+        action,
+        entityType,
+        entityId: entityId ? String(entityId) : null,
+        description,
+        metadata: metadata || undefined,
+        ipAddress,
+        userAgent,
+      },
+    });
+  } catch (err) {
+    console.error("Failed to create audit log:", err.message);
     return null;
   }
-
-  return client.auditLog.create({
-    data: {
-      actorId: actor?.id || null,
-      branchId,
-      action,
-      entityType,
-      entityId,
-      description,
-      metadata,
-      ipAddress,
-      userAgent,
-    },
-  });
 };
 
 module.exports = {
