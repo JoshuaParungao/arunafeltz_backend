@@ -6,6 +6,36 @@ const cache = require("../../../config/cache");
 const BRANCH_CACHE_PREFIX = "branches:";
 const BRANCH_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+const BRANCH_DEFAULTS = {
+  MAIN: {
+    address:
+      "Kingspire Business Centre, Km. 71 Mac Arthur Highway, San Isidro, City of San Fernando, Pampanga, Philippines, 2000",
+    contactNo: "0961-873-5798 / 045-404-0673",
+  },
+  MAB: {
+    address:
+      "ODT Bldg, Mac Arthur Highway, Lakandula, Mabalacat, Pampanga, Philippines, 2010",
+    contactNo: "+63 991 010 5840 / (045) 649-9669",
+  },
+};
+
+const withBranchDefaults = (branch) => {
+  if (!branch) return branch;
+  const code = String(branch.code || branch.name || "").toUpperCase();
+  const defaults = code.includes("MAB") ? BRANCH_DEFAULTS.MAB : BRANCH_DEFAULTS.MAIN;
+  return {
+    ...branch,
+    address:
+      branch.address && branch.address.trim() && branch.address !== "-" && branch.address !== "—"
+        ? branch.address
+        : defaults.address,
+    contactNo:
+      branch.contactNo && branch.contactNo.trim() && branch.contactNo !== "-" && branch.contactNo !== "—"
+        ? branch.contactNo
+        : defaults.contactNo,
+  };
+};
+
 const normalizeCode = (code) => {
   return code.trim().toUpperCase();
 };
@@ -62,8 +92,9 @@ const getBranches = async ({ status } = {}) => {
     orderBy: [{ status: "asc" }, { name: "asc" }],
   });
 
-  cache.set(cacheKey, branches, BRANCH_CACHE_TTL);
-  return branches;
+  const enriched = branches.map(withBranchDefaults);
+  cache.set(cacheKey, enriched, BRANCH_CACHE_TTL);
+  return enriched;
 };
 
 const getBranchById = async (id) => {
@@ -75,7 +106,7 @@ const getBranchById = async (id) => {
     throw new AppError("Branch not found", 404, "BRANCH_NOT_FOUND");
   }
 
-  return branch;
+  return withBranchDefaults(branch);
 };
 
 const updateBranch = async (id, payload, actor = null) => {
