@@ -722,6 +722,24 @@ const listItems = async (filters = {}, actor) => {
           mode: "insensitive",
         },
       },
+      {
+        barcode: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        brand: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        modelName: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
     ];
   }
 
