@@ -38,6 +38,13 @@ router.get(
   itemController.getItemById
 );
 
+router.post(
+  "/restore-edits-from-audit",
+  protect,
+  requirePermission(PERMISSIONS.MANAGE_CATALOG),
+  itemController.restoreFromAudit
+);
+
 router.patch(
   "/:id",
   protect,

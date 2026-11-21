@@ -51,9 +51,20 @@ const updateItemById = asyncHandler(async (req, res) => {
   });
 });
 
+const restoreFromAudit = asyncHandler(async (req, res) => {
+  const { restoreUserEditsFromAuditLog } = require("../../../utils/restoreUserEdits");
+  const result = await restoreUserEditsFromAuditLog();
+
+  return sendSuccess(res, {
+    message: `Restored ${result.restoredCount} items from audit trail`,
+    data: result,
+  });
+});
+
 module.exports = {
   createItem,
   listItems,
   getItemById,
   updateItemById,
+  restoreFromAudit,
 };

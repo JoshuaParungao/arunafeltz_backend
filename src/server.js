@@ -106,12 +106,12 @@ const server = app.listen(env.port, () => {
     logger.warn("Initial settings sync warning", { error: err.message });
   });
   try {
-    const { bootstrapProductCatalog } = require("./utils/productCatalogBootstrap");
-    bootstrapProductCatalog().catch((err) => {
-      logger.warn("Initial product catalog bootstrap warning", { error: err.message });
+    const { restoreUserEditsFromAuditLog } = require("./utils/restoreUserEdits");
+    restoreUserEditsFromAuditLog().catch((err) => {
+      logger.warn("Initial audit log user edits restoration warning", { error: err.message });
     });
   } catch (err) {
-    logger.warn("Could not load product catalog bootstrap helper", { error: err.message });
+    logger.warn("Could not load restoreUserEdits helper", { error: err.message });
   }
   try {
     const { cleanupExpiredQuotations } = require("./modules/quotations/services/quotation.service");

@@ -41,7 +41,11 @@ const LEGACY_DUMMY_CATEGORY_NAMES = new Set([
   "USB FLASH DRIVE",
 ]);
 
-const syncItemSerializationAndWarranty = async () => {
+const syncItemSerializationAndWarranty = async (force = false) => {
+  if (!force) {
+    logger.info("Skipping syncItemSerializationAndWarranty to protect live operational user data.");
+    return { skipped: true };
+  }
   logger.info("Syncing item serialization and warranty flags across all branches...");
   const serializedCodes = initialProducts
     .filter((p) => Boolean(p.isSerialized))
@@ -96,6 +100,13 @@ const ensureProductCatalog = async (force = false) => {
     logger.info(
       `Running product catalog sync/bootstrap (existing items: ${initialItemCount}, force: ${Boolean(force)})...`
     );
+
+    if (initialItemCount > 0 && !force) {
+      logger.info(
+        `Product catalog already contains ${initialItemCount} items. Skipping bootstrap to protect live operational user data.`
+      );
+      return { skipped: true, initialItemCount };
+    }
 
     // 1. Branches
     const branches = await prisma.branch.findMany({
