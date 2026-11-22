@@ -1636,8 +1636,7 @@ const getServiceTechnicians = async (actor, query = {}) => {
       ? {
           OR: [
             { branchId },
-            { branchId: null },
-            { role: { in: ["SUPER_OWNER", "BRANCH_OWNER", "ADMIN"] } },
+            { role: "SUPER_OWNER" },
           ],
         }
       : {}),
