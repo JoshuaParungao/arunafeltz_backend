@@ -1527,10 +1527,9 @@ const createSale = async (actor, payload, database = prisma) => {
       const assignedUser = await tx.user.findFirst({
         where: {
           id: salePayload.cashierId,
-          isActive: true,
+          status: "ACTIVE",
           OR: [
             { branchId: branchId },
-            { branchId: null },
             { role: "SUPER_OWNER" },
           ],
         },
