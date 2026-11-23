@@ -705,6 +705,20 @@ const getQuotations = async (actor, query) => {
                 price3: true,
                 price4: true,
                 price5: true,
+                category: {
+                  select: {
+                    id: true,
+                    categoryCode: true,
+                    name: true,
+                    parent: {
+                      select: {
+                        id: true,
+                        categoryCode: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -803,6 +817,20 @@ const getQuotationById = async (actor, quotationId) => {
               price4: true,
               price5: true,
               hasWarranty: true,
+              category: {
+                select: {
+                  id: true,
+                  categoryCode: true,
+                  name: true,
+                  parent: {
+                    select: {
+                      id: true,
+                      categoryCode: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
               inventoryBatches: {
                 where: {
                   status: "ACTIVE",
