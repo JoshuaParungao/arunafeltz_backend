@@ -176,6 +176,8 @@ const getInventoryOverview = async (actor, query) => {
             batchCode: true,
             quantityIn: true,
             quantityAvailable: true,
+            supplierName: true,
+            referenceNo: true,
             status: true,
           },
           orderBy: {
@@ -346,6 +348,7 @@ const getInventoryBatches = async (actor, query) => {
             itemId: true,
             unitCost: true,
             operationalUnitCost: true,
+            supplierName: true,
           },
         },
         branch: {
@@ -1649,7 +1652,7 @@ const getInventoryMovements = async (actor, query) => {
   };
 };
 
-const updateBatchCode = async (actor, batchId, { batchCode, remarks }) => {
+const updateBatchCode = async (actor, batchId, { batchCode, remarks, supplierName }) => {
   const normalizedBatchCode = String(batchCode).trim();
   if (!normalizedBatchCode) {
     const error = new Error("BATCH_CODE_REQUIRED");
@@ -1694,6 +1697,7 @@ const updateBatchCode = async (actor, batchId, { batchCode, remarks }) => {
     data: {
       batchCode: normalizedBatchCode,
       ...(remarks !== undefined ? { remarks } : {}),
+      ...(supplierName !== undefined ? { supplierName: supplierName ? String(supplierName).trim() : null } : {}),
       updatedById: actor.id,
     },
     include: { item: true },
@@ -1718,7 +1722,7 @@ const updateBatchCode = async (actor, batchId, { batchCode, remarks }) => {
   return updated;
 };
 
-const createBatch = async (actor, { branchId, itemId, batchCode, remarks }) => {
+const createBatch = async (actor, { branchId, itemId, batchCode, remarks, supplierName }) => {
   const targetBranchId = actor.role === "SUPER_OWNER" && branchId ? branchId : actor.branchId;
   const normalizedBatchCode = String(batchCode || "").trim();
   if (!normalizedBatchCode) {
@@ -1756,6 +1760,7 @@ const createBatch = async (actor, { branchId, itemId, batchCode, remarks }) => {
       branchId: targetBranchId,
       itemId: item.id,
       batchCode: normalizedBatchCode,
+      supplierName: supplierName ? String(supplierName).trim() : null,
       quantityIn: 0,
       quantityAvailable: 0,
       unitCost: item.costPrice || 0,

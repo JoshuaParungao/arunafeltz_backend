@@ -159,6 +159,7 @@ const batchCodeUpdateSchema = z.object({
   }),
   body: z.object({
     batchCode: z.string().trim().min(1, "Batch code cannot be empty"),
+    supplierName: optionalString,
     remarks: optionalString,
   }),
 });
@@ -168,6 +169,7 @@ const createBatchSchema = z.object({
     itemId: z.string().trim().min(1, "Item ID is required"),
     batchCode: z.string().trim().min(1, "Batch code cannot be empty"),
     branchId: optionalString,
+    supplierName: optionalString,
     remarks: optionalString,
   }),
 });
