@@ -773,6 +773,14 @@ const getQuotationById = async (actor, quotationId) => {
               modelName: true,
               status: true,
               isSerialized: true,
+              price1: true,
+              price2: true,
+              price3: true,
+              price4: true,
+              price5: true,
+              hasWarranty: true,
+              warrantyDurationMonths: true,
+              uom: true,
               inventoryBatches: {
                 where: {
                   status: "ACTIVE",
@@ -869,7 +877,7 @@ const updateQuotation = async (actor, quotationId, payload) => {
 
     ensureCanAccessQuotationBranch(actor, existingQuotation);
 
-    if (existingQuotation.status !== "DRAFT") {
+    if (["CONVERTED", "CANCELLED"].includes(existingQuotation.status)) {
       const error = new Error("QUOTATION_NOT_EDITABLE");
       error.statusCode = 400;
       throw error;
