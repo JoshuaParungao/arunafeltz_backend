@@ -779,8 +779,6 @@ const getQuotationById = async (actor, quotationId) => {
               price4: true,
               price5: true,
               hasWarranty: true,
-              warrantyDurationMonths: true,
-              uom: true,
               inventoryBatches: {
                 where: {
                   status: "ACTIVE",
