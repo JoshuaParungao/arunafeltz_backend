@@ -685,6 +685,30 @@ const getQuotations = async (actor, query) => {
             items: true,
           },
         },
+        items: {
+          orderBy: {
+            lineNo: "asc",
+          },
+          include: {
+            item: {
+              select: {
+                id: true,
+                itemCode: true,
+                itemName: true,
+                brand: true,
+                modelName: true,
+                status: true,
+                isSerialized: true,
+                hasWarranty: true,
+                price1: true,
+                price2: true,
+                price3: true,
+                price4: true,
+                price5: true,
+              },
+            },
+          },
+        },
       },
     }),
   ]);
