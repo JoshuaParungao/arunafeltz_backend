@@ -66,6 +66,10 @@ const PURCHASE_ORDER_INCLUDE = {
           itemName: true,
           status: true,
           branchId: true,
+          isSerialized: true,
+          barcode: true,
+          brand: true,
+          modelName: true,
         },
       },
     },
@@ -575,6 +579,7 @@ const validateAndBuildItems = async (items, branchId, db = prisma) => {
           itemName: true,
           status: true,
           branchId: true,
+          isSerialized: true,
         },
       });
 
