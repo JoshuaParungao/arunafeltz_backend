@@ -546,7 +546,9 @@ const mirrorItemAcrossBranches = async (baseItem, actor, oldItemCode = null) => 
         actor
       );
 
-      const mirrorData = {
+      // Only mirror metadata (catalog identity) across branches.
+      // Prices (price1-5), costPrice, replenishment thresholds, and inventory are branch-unique and must NOT be overwritten.
+      const mirrorMetadata = {
         itemCode: baseItem.itemCode,
         itemName: baseItem.itemName,
         description: baseItem.description,
@@ -556,34 +558,37 @@ const mirrorItemAcrossBranches = async (baseItem, actor, oldItemCode = null) => 
         status: baseItem.status || "ACTIVE",
         isSerialized: Boolean(baseItem.isSerialized),
         hasWarranty: Boolean(baseItem.hasWarranty),
-        costPrice: baseItem.costPrice,
-        price1: baseItem.price1,
-        price2: baseItem.price2,
-        price3: baseItem.price3,
-        price4: baseItem.price4,
-        price5: baseItem.price5,
-        minimumStock: baseItem.minimumStock,
-        reorderLevel: baseItem.reorderLevel,
         unitId: baseItem.unitId,
         updatedById: actor?.id || null,
       };
 
       if (targetCategoryId) {
-        mirrorData.categoryId = targetCategoryId;
+        mirrorMetadata.categoryId = targetCategoryId;
       }
 
       if (existingInTarget) {
-        // Update product metadata & prices in target branch.
-        // NOTICE: InventoryBatch, ItemSerial, movements, and stock are NOT modified.
+        // Update product metadata ONLY in target branch.
+        // NOTICE: costPrice, price1, price2, price3, price4, price5, minimumStock, reorderLevel,
+        // InventoryBatch, ItemSerial, movements, and stock are NOT modified.
+        // Each branch maintains its own unique selling prices, costs, and inventory.
         await prisma.item.update({
           where: { id: existingInTarget.id },
-          data: mirrorData,
+          data: mirrorMetadata,
         });
       } else {
-        // Create new mirrored product record with 0 stock (no inventory batches created).
+        // Create new mirrored product record in target branch with 0 stock and 0 prices/cost.
+        // Each branch configures its own unique selling prices, costs, and inventory.
         await prisma.item.create({
           data: {
-            ...mirrorData,
+            ...mirrorMetadata,
+            costPrice: "0.00",
+            price1: "0.00",
+            price2: "0.00",
+            price3: "0.00",
+            price4: "0.00",
+            price5: "0.00",
+            minimumStock: "0.00",
+            reorderLevel: "0.00",
             branchId: targetBranch.id,
             categoryId: targetCategoryId || baseItem.categoryId,
             createdById: actor?.id || null,
@@ -648,7 +653,7 @@ const createItem = async (payload, actor) => {
     select: ITEM_SELECT,
   });
 
-  // Mirror across other active branches with exact metadata & prices, leaving stock at 0
+  // Mirror metadata across other active branches, leaving prices, cost, and stock unique to each branch
   await mirrorItemAcrossBranches(createdItem, actor);
 
   await createAuditLog({
@@ -916,7 +921,7 @@ const updateItemById = async (itemId, payload, actor) => {
     select: ITEM_SELECT,
   });
 
-  // Mirror updated product metadata & prices across all other active branches (stock untouched)
+  // Mirror updated product metadata across all other active branches (prices, cost, and stock remain branch-unique)
   await mirrorItemAcrossBranches(updatedItem, actor, existingItem.itemCode);
 
   // Record audit trail of the product edit
