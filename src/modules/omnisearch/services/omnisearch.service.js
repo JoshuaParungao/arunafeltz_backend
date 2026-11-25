@@ -81,6 +81,14 @@ const executeOmnisearch = async (actor, { query = "", branchId: requestedBranchI
         serialNumber: true,
         status: true,
         remarks: true,
+        batch: {
+          select: {
+            id: true,
+            batchCode: true,
+            supplierName: true,
+            referenceNo: true,
+          },
+        },
         item: {
           select: {
             id: true,
@@ -221,9 +229,57 @@ const executeOmnisearch = async (actor, { query = "", branchId: requestedBranchI
     };
   });
 
+  const missingSupplierSerials = serials
+    .filter((s) => !s.batch?.supplierName)
+    .map((s) => s.serialNumber);
+
+  const prSupplierMap = new Map();
+  if (missingSupplierSerials.length > 0) {
+    try {
+      const prSerials = await prisma.purchaseReceivingSerial.findMany({
+        where: {
+          serialNumber: { in: missingSupplierSerials },
+        },
+        select: {
+          serialNumber: true,
+          purchaseReceivingItem: {
+            select: {
+              purchaseReceiving: {
+                select: {
+                  supplierNameSnapshot: true,
+                  supplier: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      for (const prs of prSerials) {
+        const suppName =
+          prs.purchaseReceivingItem?.purchaseReceiving?.supplierNameSnapshot ||
+          prs.purchaseReceivingItem?.purchaseReceiving?.supplier?.name;
+        if (suppName && !prSupplierMap.has(prs.serialNumber)) {
+          prSupplierMap.set(prs.serialNumber, suppName);
+        }
+      }
+    } catch {
+      // safe fallback
+    }
+  }
+
   const formattedSerials = serials.map((serial) => {
     const lastSaleItem = serial.saleItems?.[0];
     const sale = lastSaleItem?.sale;
+    const supplierName =
+      serial.batch?.supplierName ||
+      prSupplierMap.get(serial.serialNumber) ||
+      null;
+
     return {
       id: serial.id,
       serialNumber: serial.serialNumber,
@@ -231,6 +287,8 @@ const executeOmnisearch = async (actor, { query = "", branchId: requestedBranchI
       remarks: serial.remarks,
       itemCode: serial.item?.itemCode,
       itemName: serial.item?.itemName,
+      batchCode: serial.batch?.batchCode || null,
+      supplierName,
       receiptCode: sale?.receiptCode || null,
       soldTo: sale?.customer?.fullName || null,
       saleDate: sale?.saleDate || null,
