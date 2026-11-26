@@ -116,6 +116,8 @@ const recordSupplierPaymentSchema = z.object({
       "CHECK",
       "GCASH",
       "MAYA",
+      "CREDIT_CARD",
+      "WITHHOLDING",
       "OTHER",
     ]),
     cashBoxId: z.string().trim().optional().nullable(),
