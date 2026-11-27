@@ -67,12 +67,13 @@ const createCreditCollectionSchema = z.object({
     id: z.string().trim().min(1, "Credit account ID is required"),
   }),
   body: z.object({
-    amount: z.coerce.number().positive("Collection amount must be greater than zero"),
+    amount: z.coerce.number().min(0, "Collection amount must be zero or greater"),
     paymentMethod: z.enum(collectionPaymentMethodValues).default("CASH"),
     referenceNo: optionalString,
     remarks: optionalString,
     paidAt: z.string().trim().min(1).optional().nullable().or(z.literal("")),
     idempotencyKey: z.string().uuid().optional(),
+    isFinalSettlement: z.boolean().optional(),
   }),
 });
 

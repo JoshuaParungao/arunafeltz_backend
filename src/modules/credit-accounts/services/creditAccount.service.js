@@ -465,15 +465,15 @@ const getCreditAccounts = async (actor, query = {}) => {
     const rem = Number(group._sum?.remainingBalance || 0);
     const coll = Number(group._sum?.totalCollected || 0);
     const cnt = group._count || 0;
-    const regular = Number(group._sum?.regularPriceTotalAmount || group._sum?.balanceAmount || 0);
-    const source = Number(group._sum?.cashPromoTotalAmount || group._sum?.sourceTotalAmountSnapshot || 0);
-    const variance = Math.max(0, regular - source);
+    const balSum = Number(group._sum?.balanceAmount || 0);
 
     totalCollections += coll;
-    totalFloatVariance += variance;
 
     if (group.status === "ACTIVE") {
       totalActiveBalance += rem;
+    } else if (group.status === "PAID") {
+      const settledFloat = Math.max(0, balSum - coll);
+      totalFloatVariance += settledFloat;
     } else if (group.status === "DEFAULTED") {
       totalDefaultedBalance += rem;
       totalDefaultedCount += cnt;
@@ -752,10 +752,11 @@ const createCreditCollection = async (
       throw error;
     }
 
+    const isFinalSettlement = Boolean(payload.isFinalSettlement);
     const amount = toMoney(payload.amount);
     const previousBalance = toMoney(Number(creditAccount.remainingBalance));
 
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(amount) || amount < 0 || (!isFinalSettlement && amount <= 0)) {
       const error = new Error("INVALID_COLLECTION_AMOUNT");
       error.statusCode = 400;
       throw error;
@@ -767,7 +768,8 @@ const createCreditCollection = async (
       throw error;
     }
 
-    const newBalance = toMoney(previousBalance - amount);
+    const floatAbsorbed = isFinalSettlement ? toMoney(previousBalance - amount) : 0;
+    const newBalance = isFinalSettlement ? 0 : toMoney(previousBalance - amount);
     const previousTotalCollected = toMoney(Number(creditAccount.totalCollected));
     const newTotalCollected = toMoney(previousTotalCollected + amount);
 
@@ -777,8 +779,14 @@ const createCreditCollection = async (
       creditAccount.branchId
     );
 
-    const paidAt = parseOptionalDate(payload.paidAt);
-    const accountIsPaid = newBalance <= 0;
+    const paidAt = parseOptionalDate(payload.paidAt) || new Date();
+    const accountIsPaid = newBalance <= 0 || isFinalSettlement;
+
+    let finalRemarks = payload.remarks || null;
+    if (isFinalSettlement && floatAbsorbed > 0) {
+      const tag = `[Final Settlement: ₱${toMoneyString(floatAbsorbed)} absorbed as Float/Fee variance]`;
+      finalRemarks = finalRemarks ? `${finalRemarks} ${tag}` : tag;
+    }
 
     const collection = await tx.creditCollection.create({
       data: {
@@ -789,7 +797,7 @@ const createCreditCollection = async (
         newBalance: toMoneyString(newBalance),
         paymentMethod,
         referenceNo: payload.referenceNo || null,
-        remarks: payload.remarks || null,
+        remarks: finalRemarks,
         paidAt,
         idempotencyKey: payload.idempotencyKey || null,
         idempotencyFingerprint,
