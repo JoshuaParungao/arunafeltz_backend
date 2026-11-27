@@ -446,6 +446,10 @@ const getCreditAccounts = async (actor, query = {}) => {
       _sum: {
         remainingBalance: true,
         totalCollected: true,
+        balanceAmount: true,
+        sourceTotalAmountSnapshot: true,
+        regularPriceTotalAmount: true,
+        cashPromoTotalAmount: true,
       },
       _count: true,
     }),
@@ -455,13 +459,18 @@ const getCreditAccounts = async (actor, query = {}) => {
   let totalCollections = 0;
   let totalDefaultedBalance = 0;
   let totalDefaultedCount = 0;
+  let totalFloatVariance = 0;
 
   for (const group of summaryAggregates) {
     const rem = Number(group._sum?.remainingBalance || 0);
     const coll = Number(group._sum?.totalCollected || 0);
     const cnt = group._count || 0;
+    const regular = Number(group._sum?.regularPriceTotalAmount || group._sum?.balanceAmount || 0);
+    const source = Number(group._sum?.cashPromoTotalAmount || group._sum?.sourceTotalAmountSnapshot || 0);
+    const variance = Math.max(0, regular - source);
 
     totalCollections += coll;
+    totalFloatVariance += variance;
 
     if (group.status === "ACTIVE") {
       totalActiveBalance += rem;
@@ -483,6 +492,7 @@ const getCreditAccounts = async (actor, query = {}) => {
         totalCollections,
         totalDefaultedBalance,
         totalDefaultedCount,
+        totalFloatVariance,
       },
     },
   };
