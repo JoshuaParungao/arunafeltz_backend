@@ -3175,6 +3175,30 @@ const cancelSale = async (actor, saleId, payload, database = prisma) => {
       // Non-fatal if no service jobs matched
     }
 
+    if (sale.quotationId) {
+      const activeSalesCount = await tx.sale.count({
+        where: {
+          quotationId: sale.quotationId,
+          id: { not: sale.id },
+          status: "COMPLETED",
+        },
+      });
+
+      if (activeSalesCount === 0) {
+        await tx.quotation.update({
+          where: { id: sale.quotationId },
+          data: {
+            status: "CANCELLED",
+            cancelledAt: new Date(),
+            internalNotes: payload.cancellationReason
+              ? `Cancelled because converted sale ${sale.receiptCode} was cancelled: ${payload.cancellationReason}`
+              : `Cancelled because converted sale ${sale.receiptCode} was cancelled.`,
+            updatedById: actor.id,
+          },
+        });
+      }
+    }
+
     const cancelledSale = await tx.sale.update({
       where: {
         id: sale.id,

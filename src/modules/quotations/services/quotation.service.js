@@ -576,6 +576,7 @@ const parsePagination = (query) => {
 
 const getQuotations = async (actor, query) => {
   cleanupExpiredQuotations().catch(() => {});
+  await syncConvertedQuotationsWithCancelledSales();
   const branchId = resolveBranchFilterForRead(actor, query.branchId);
   const search = query.search ? String(query.search).trim() : "";
 
@@ -855,6 +856,32 @@ const getQuotationById = async (actor, quotationId) => {
     throw error;
   }
 
+  if (quotation.status === "CONVERTED") {
+    const activeSale = await prisma.sale.findFirst({
+      where: { quotationId, status: "COMPLETED" },
+    });
+    if (!activeSale) {
+      const cancelledSale = await prisma.sale.findFirst({
+        where: { quotationId, status: "CANCELLED" },
+        select: { receiptCode: true, cancellationReason: true, cancelledAt: true },
+      });
+      if (cancelledSale) {
+        await prisma.quotation.update({
+          where: { id: quotationId },
+          data: {
+            status: "CANCELLED",
+            cancelledAt: cancelledSale.cancelledAt || new Date(),
+            internalNotes: cancelledSale.cancellationReason
+              ? `Cancelled because converted sale ${cancelledSale.receiptCode} was cancelled: ${cancelledSale.cancellationReason}`
+              : `Cancelled because converted sale was cancelled.`,
+          },
+        });
+        quotation.status = "CANCELLED";
+        quotation.cancelledAt = cancelledSale.cancelledAt || new Date();
+      }
+    }
+  }
+
   const formattedItems = (quotation.items || []).map((qItem) => {
     let availableStock = null;
     if (qItem.item && Array.isArray(qItem.item.inventoryBatches)) {
@@ -1100,7 +1127,7 @@ const assertValidQuotationStatusTransition = (currentStatus, nextStatus) => {
     SENT: ["APPROVED", "CANCELLED"],
     APPROVED: ["CANCELLED"],
     CANCELLED: [],
-    CONVERTED: [],
+    CONVERTED: ["CANCELLED"],
   };
 
   const allowedNextStatuses = allowedTransitions[currentStatus] || [];
@@ -1140,6 +1167,21 @@ const updateQuotationStatus = async (actor, quotationId, payload) => {
 
     ensureCanAccessQuotationBranch(actor, existingQuotation);
     assertValidQuotationStatusTransition(existingQuotation.status, payload.status);
+
+    if (payload.status === "CANCELLED" && existingQuotation.status === "CONVERTED") {
+      const activeSale = await tx.sale.findFirst({
+        where: {
+          quotationId: existingQuotation.id,
+          status: "COMPLETED",
+        },
+      });
+      if (activeSale) {
+        const error = new Error("QUOTATION_HAS_ACTIVE_SALE");
+        error.message = `Cannot cancel quotation because it is linked to active sale ${activeSale.receiptCode}. Void or cancel the sale first.`;
+        error.statusCode = 400;
+        throw error;
+      }
+    }
 
     const now = new Date();
 
@@ -1245,6 +1287,49 @@ const updateQuotationStatus = async (actor, quotationId, payload) => {
   });
 };
 
+const syncConvertedQuotationsWithCancelledSales = async (tx = prisma) => {
+  try {
+    const staleConvertedQuotations = await tx.quotation.findMany({
+      where: {
+        status: "CONVERTED",
+        sales: {
+          some: {
+            status: "CANCELLED",
+          },
+          none: {
+            status: "COMPLETED",
+          },
+        },
+      },
+      select: {
+        id: true,
+        quotationCode: true,
+        sales: {
+          where: { status: "CANCELLED" },
+          select: { receiptCode: true, cancellationReason: true, cancelledAt: true },
+          take: 1,
+        },
+      },
+    });
+
+    for (const q of staleConvertedQuotations) {
+      const sale = q.sales[0];
+      await tx.quotation.update({
+        where: { id: q.id },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: sale?.cancelledAt || new Date(),
+          internalNotes: sale?.cancellationReason
+            ? `Cancelled because converted sale ${sale.receiptCode} was cancelled: ${sale.cancellationReason}`
+            : `Cancelled because converted sale was cancelled.`,
+        },
+      });
+    }
+  } catch (err) {
+    logger.warn(`[QUOTATION_STATUS_SYNC] Warning during quotation sync: ${err.message}`);
+  }
+};
+
 const cleanupExpiredQuotations = async () => {
   try {
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
@@ -1278,6 +1363,7 @@ module.exports = {
   updateQuotation,
   updateQuotationStatus,
   cleanupExpiredQuotations,
+  syncConvertedQuotationsWithCancelledSales,
   testInternals: {
     applyMarkupToBasePrice,
     buildQuotationItems,
