@@ -53,7 +53,7 @@ const listCashBoxesSchema = z.object({
     status: z.enum(cashBoxStatusValues).optional(),
     search: z.string().trim().optional(),
     page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().max(100).optional(),
+    limit: z.coerce.number().int().positive().max(500).optional(),
   }),
 });
 
@@ -73,7 +73,7 @@ const listCashTransactionsSchema = z.object({
     source: z.enum(cashTransactionSourceValues).optional(),
     search: z.string().trim().optional(),
     page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().max(100).optional(),
+    limit: z.coerce.number().int().positive().max(500).optional(),
   }),
 });
 
@@ -139,7 +139,7 @@ const listCashHandoversSchema = z.object({
     dateFrom: z.string().trim().min(1).optional(),
     dateTo: z.string().trim().min(1).optional(),
     page: z.coerce.number().int().positive().optional().default(1),
-    limit: z.coerce.number().int().positive().max(100).optional().default(20),
+    limit: z.coerce.number().int().positive().max(500).optional().default(20),
   }),
 });
 
