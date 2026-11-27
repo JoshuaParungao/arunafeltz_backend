@@ -1,4 +1,5 @@
 const creditAccountService = require("../services/creditAccount.service");
+const logger = require("../../../utils/logger");
 
 const handleCreditAccountError = (error, res, next) => {
   const knownErrors = {
@@ -6,7 +7,7 @@ const handleCreditAccountError = (error, res, next) => {
     CREDIT_ACCOUNT_VIEW_FORBIDDEN: [403, "Only owner/admin roles can view credit accounts."],
     CREDIT_ACCOUNT_NOT_FOUND: [404, "Credit account not found."],
     CREDIT_ACCOUNT_NOT_COLLECTIBLE: [400, "Only active credit accounts can receive collections."],
-    INVALID_COLLECTION_AMOUNT: [400, "Collection amount must be greater than zero."],
+    INVALID_COLLECTION_AMOUNT: [400, "Collection amount must be zero or greater."],
     INVALID_COLLECTION_SETTLEMENT_METHOD: [400, "Card and credit rails cannot be used as collection settlement methods."],
     COLLECTION_AMOUNT_EXCEEDS_BALANCE: [400, "Collection amount cannot exceed remaining balance."],
     CREDIT_COLLECTION_IDEMPOTENCY_CONFLICT: [409, "This collection idempotency key was already used for a different request."],
@@ -34,6 +35,12 @@ const handleCreditAccountError = (error, res, next) => {
       errorCode: error.message,
     });
   }
+
+  logger.error("Credit account operation error:", {
+    message: error.message,
+    code: error.code,
+    stack: error.stack,
+  });
 
   return next(error);
 };
@@ -64,6 +71,8 @@ const createCreditCollection = async (req, res, next) => {
       success: true,
       message: result.replayed
         ? "Credit collection replayed successfully"
+        : result.isFinalSettlementOnly
+        ? "Credit account float absorbed and closed successfully"
         : "Credit collection posted successfully",
       data: result,
     });

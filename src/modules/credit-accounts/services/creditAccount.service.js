@@ -84,8 +84,10 @@ const formatCreditAccount = (account) => {
 
     safeAccount.termBasis = basis.toFixed(4);
     safeAccount.regularPriceTotalAmount = toMoneyString(computedRegular);
-    safeAccount.balanceAmount = toMoneyString(computedBalance);
-    safeAccount.remainingBalance = toMoneyString(computedBalance);
+    if (safeAccount.status !== "PAID" && Number(safeAccount.remainingBalance) > 0) {
+      safeAccount.balanceAmount = toMoneyString(computedBalance);
+      safeAccount.remainingBalance = toMoneyString(computedBalance);
+    }
   }
 
   return {
@@ -769,18 +771,10 @@ const createCreditCollection = async (
     }
 
     const floatAbsorbed = isFinalSettlement ? toMoney(previousBalance - amount) : 0;
-    const newBalance = isFinalSettlement ? 0 : toMoney(previousBalance - amount);
     const previousTotalCollected = toMoney(Number(creditAccount.totalCollected));
     const newTotalCollected = toMoney(previousTotalCollected + amount);
-
-    const collectionCode = await generateCollectionCode(
-      tx,
-      creditAccount.branch.code,
-      creditAccount.branchId
-    );
-
     const paidAt = parseOptionalDate(payload.paidAt) || new Date();
-    const accountIsPaid = newBalance <= 0 || isFinalSettlement;
+    const accountIsPaid = isFinalSettlement || toMoney(previousBalance - amount) <= 0;
 
     let finalRemarks = payload.remarks || null;
     if (isFinalSettlement && floatAbsorbed > 0) {
@@ -788,39 +782,79 @@ const createCreditCollection = async (
       finalRemarks = finalRemarks ? `${finalRemarks} ${tag}` : tag;
     }
 
-    const collection = await tx.creditCollection.create({
-      data: {
-        collectionCode,
-        status: "POSTED",
-        amount: toMoneyString(amount),
-        previousBalance: toMoneyString(previousBalance),
-        newBalance: toMoneyString(newBalance),
-        paymentMethod,
-        referenceNo: payload.referenceNo || null,
-        remarks: finalRemarks,
-        paidAt,
-        idempotencyKey: payload.idempotencyKey || null,
-        idempotencyFingerprint,
-        creditAccountId: creditAccount.id,
-        branchId: creditAccount.branchId,
-        customerId: creditAccount.customerId,
-        collectedById: actor.id,
-        createdById: actor.id,
-      },
-      include: CREDIT_COLLECTION_RESULT_INCLUDE,
-    });
+    let collection = null;
+
+    if (amount > 0) {
+      const collectionCode = await generateCollectionCode(
+        tx,
+        creditAccount.branch.code,
+        creditAccount.branchId
+      );
+
+      // On CreditCollection, the PostgreSQL check constraint requires:
+      // "newBalance" = "previousBalance" - "amount"
+      const collectionNewBalance = toMoney(previousBalance - amount);
+
+      collection = await tx.creditCollection.create({
+        data: {
+          collectionCode,
+          status: "POSTED",
+          amount: toMoneyString(amount),
+          previousBalance: toMoneyString(previousBalance),
+          newBalance: toMoneyString(collectionNewBalance),
+          paymentMethod,
+          referenceNo: payload.referenceNo || null,
+          remarks: finalRemarks,
+          paidAt,
+          idempotencyKey: payload.idempotencyKey || null,
+          idempotencyFingerprint,
+          creditAccountId: creditAccount.id,
+          branchId: creditAccount.branchId,
+          customerId: creditAccount.customerId,
+          collectedById: actor.id,
+          createdById: actor.id,
+        },
+        include: CREDIT_COLLECTION_RESULT_INCLUDE,
+      });
+
+      if (paymentMethod === "CASH") {
+        await cashLinkService.postSystemCashIn(tx, actor, creditAccount.branch, {
+          type: "CREDIT_COLLECTION",
+          source: "CREDIT_COLLECTION",
+          amount,
+          description: `Cash payment from credit collection ${collection.collectionCode}.`,
+          referenceNo: collection.referenceNo,
+          sourceId: collection.id,
+          sourceCode: collection.collectionCode,
+          transactionDate: collection.paidAt,
+        });
+      }
+    }
+
+    // Update CreditAccount:
+    // In PostgreSQL check constraint CreditAccount_amount_integrity_check:
+    // "remainingBalance" = "balanceAmount" - "totalCollected"
+    // And CreditAccount_status_lifecycle_check:
+    // status = 'PAID' requires "remainingBalance" = 0 AND "paidAt" IS NOT NULL
+    // Therefore, balanceAmount must match totalCollected when remainingBalance is 0.
+    const accountData = {
+      totalCollected: toMoneyString(newTotalCollected),
+      remainingBalance: accountIsPaid ? "0.00" : toMoneyString(toMoney(previousBalance - amount)),
+      status: accountIsPaid ? "PAID" : "ACTIVE",
+      paidAt: accountIsPaid ? paidAt : null,
+      remarks: finalRemarks,
+      updatedById: actor.id,
+    };
+
+    if (accountIsPaid) {
+      accountData.balanceAmount = toMoneyString(newTotalCollected);
+    }
 
     const updatedCreditAccount = await tx.creditAccount.update({
       where: {
         id: creditAccount.id,
       },
-      data: {
-        totalCollected: toMoneyString(newTotalCollected),
-        remainingBalance: toMoneyString(newBalance),
-        status: accountIsPaid ? "PAID" : "ACTIVE",
-        paidAt: accountIsPaid ? paidAt : null,
-        updatedById: actor.id,
-      },
+      data: accountData,
       include: CREDIT_ACCOUNT_DETAIL_INCLUDE,
     });
 
@@ -830,43 +864,34 @@ const createCreditCollection = async (
       {
         actor,
         branchId: creditAccount.branchId,
-        action: "RECEIVABLE_COLLECTION_POSTED",
-        entityType: "CreditCollection",
-        entityId: collection.id,
-        description: `Collection ${collection.collectionCode} posted to ${creditAccount.creditCode}`,
+        action: collection ? "RECEIVABLE_COLLECTION_POSTED" : "RECEIVABLE_FLOAT_ABSORBED_SETTLED",
+        entityType: collection ? "CreditCollection" : "CreditAccount",
+        entityId: collection ? collection.id : creditAccount.id,
+        description: collection
+          ? `Collection ${collection.collectionCode} posted to ${creditAccount.creditCode}`
+          : `Credit account ${creditAccount.creditCode} settled in full. ₱${toMoneyString(floatAbsorbed)} absorbed as Float/Fee variance.`,
         metadata: {
           creditAccountId: creditAccount.id,
           creditCode: creditAccount.creditCode,
           sourceType: creditAccount.sourceType,
           provider: creditAccount.provider,
-          collectionCode: collection.collectionCode,
-          paymentMethod: collection.paymentMethod,
+          collectionCode: collection?.collectionCode || null,
+          paymentMethod: collection?.paymentMethod || paymentMethod,
           amount: toMoneyString(amount),
           previousBalance: toMoneyString(previousBalance),
-          newBalance: toMoneyString(newBalance),
-          paidAt: collection.paidAt.toISOString(),
+          newBalance: accountData.remainingBalance,
+          floatAbsorbed: toMoneyString(floatAbsorbed),
+          paidAt: paidAt.toISOString(),
         },
       },
       tx
     );
 
-    if (paymentMethod === "CASH") {
-      await cashLinkService.postSystemCashIn(tx, actor, creditAccount.branch, {
-        type: "CREDIT_COLLECTION",
-        source: "CREDIT_COLLECTION",
-        amount,
-        description: `Cash payment from credit collection ${collection.collectionCode}.`,
-        referenceNo: collection.referenceNo,
-        sourceId: collection.id,
-        sourceCode: collection.collectionCode,
-        transactionDate: collection.paidAt,
-      });
-    }
-
     return {
       collection: formatCreditCollection(collection),
       creditAccount: formatCreditAccount(updatedCreditAccount),
       replayed: false,
+      isFinalSettlementOnly: !collection,
     };
   });
 };
